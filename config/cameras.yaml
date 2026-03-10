@@ -1,0 +1,5 @@
+cameras:
+  - id: sample_video_01
+    url: ../data/sample.mp4
+    location: test_intersection
+    target_fps: 15
