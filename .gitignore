@@ -2,3 +2,4 @@
 *.pt
 venv/
 *.log
+post/
