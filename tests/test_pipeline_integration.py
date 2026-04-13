@@ -33,17 +33,16 @@ class FakeMessage:
 class TestPipelineIntegration(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        Base.metadata.drop_all(bind=engine)
-        Base.metadata.create_all(bind=engine)
-        cls.api_client = TestClient(app)
+        pass
 
     @classmethod
     def tearDownClass(cls):
-        Base.metadata.drop_all(bind=engine)
+        pass
 
     def setUp(self):
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
+        self.api_client = TestClient(app)
 
         self.speed_service = SpeedEstimationService(
             broker_host="localhost",
@@ -66,6 +65,10 @@ class TestPipelineIntegration(unittest.TestCase):
             broker_port=1883,
             api_url="http://testserver",
         )
+
+    def tearDown(self):
+        self.api_client.close()
+        Base.metadata.drop_all(bind=engine)
 
     def _forward_with_test_client(self, topic, payload):
         original_post = mqtt_forwarder_module.requests.post
@@ -138,10 +141,10 @@ class TestPipelineIntegration(unittest.TestCase):
 
         summary = self.api_client.get("/analytics/summary")
         self.assertEqual(summary.status_code, 200)
-        self.assertEqual(
-            summary.json(),
-            {"total_detections_logged": 2, "total_violations_logged": 2},
-        )
+        data = summary.json()
+        self.assertEqual(data["total_detections_logged"], 2)
+        self.assertEqual(data["total_speeds_logged"], 1)
+        self.assertEqual(data["total_violations_logged"], 2)
 
 
 if __name__ == "__main__":
