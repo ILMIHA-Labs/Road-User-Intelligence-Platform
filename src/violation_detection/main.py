@@ -4,6 +4,13 @@ import json
 import paho.mqtt.client as mqtt
 
 from violation_rules import ViolationRulesEngine
+from common.event_schemas import (
+    DetectionEvent,
+    SpeedEvent,
+    ViolationEvent,
+    dump_event,
+    parse_event_for_topic,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("ViolationDetectionAgent")
@@ -33,29 +40,32 @@ class ViolationDetectionService:
 
     def on_message(self, client, userdata, msg):
         try:
-            payload = json.loads(msg.payload.decode('utf-8'))
             topic = msg.topic
-            object_id = payload.get("object_id")
-            
-            if object_id is None:
-                return
+            event = parse_event_for_topic(topic, msg.payload)
                 
             # Update internal state representation
-            if topic == "camera/detections":
-                 self.engine.update_state(object_id, detection_event=payload)
-            elif topic == "camera/speeds":
-                 self.engine.update_state(object_id, speed_event=payload)
+            if topic == "camera/detections" and isinstance(event, DetectionEvent):
+                 self.engine.update_state(event.object_id, detection_event=dump_event(event))
+                 object_id = event.object_id
+            elif topic == "camera/speeds" and isinstance(event, SpeedEvent):
+                 self.engine.update_state(event.object_id, speed_event=dump_event(event))
+                 object_id = event.object_id
+            else:
+                 return
 
             # Evaluate rules
             violation_events = self.engine.generate_violation_events(object_id)
             
             # Emit violations if any
             for event in violation_events:
-                 self.client.publish(self.out_topic, json.dumps(event))
-                 logger.warning(f"VIOLATION DETECTED: {event}")
+                 payload = dump_event(event)
+                 self.client.publish(self.out_topic, json.dumps(payload))
+                 logger.warning(f"VIOLATION DETECTED: {payload}")
 
         except json.JSONDecodeError:
             logger.warning("Received invalid JSON")
+        except ValueError as e:
+            logger.warning(f"Received invalid event: {e}")
         except Exception as e:
             logger.error(f"Error processing message: {e}")
 

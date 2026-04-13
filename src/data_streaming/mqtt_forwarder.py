@@ -3,6 +3,7 @@ import logging
 import json
 import requests
 import paho.mqtt.client as mqtt
+from common.event_schemas import dump_event, parse_event_for_topic
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("DataStreamingAgent")
@@ -47,14 +48,14 @@ class MQTTForwarder:
             return
             
         try:
-            payload = json.loads(msg.payload.decode('utf-8'))
+            event = parse_event_for_topic(topic, msg.payload)
             
             # Forward the payload to the backend HTTP service
             target_url = f"{self.api_url}{endpoint}"
             
             # In MVP, firing an HTTP POST per message can create overhead
             # A stronger implementation would buffer and batch
-            response = requests.post(target_url, json=payload, timeout=2.0)
+            response = requests.post(target_url, json=dump_event(event), timeout=2.0)
             
             if response.status_code == 201:
                 # Successfully inserted into database
@@ -64,6 +65,8 @@ class MQTTForwarder:
                 
         except json.JSONDecodeError:
             logger.warning(f"Received invalid JSON on topic {topic}")
+        except ValueError as e:
+            logger.warning(f"Received invalid event on topic {topic}: {e}")
         except requests.exceptions.RequestException as e:
             logger.error(f"HTTP request to backend failed: {e}")
         except Exception as e:

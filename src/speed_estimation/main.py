@@ -2,11 +2,11 @@ import argparse
 import logging
 import json
 import time
-from datetime import datetime
 import paho.mqtt.client as mqtt
 
 from calibration import CameraCalibration
 from speed_calc import SpeedCalculator
+from common.event_schemas import DetectionEvent, SpeedEvent, dump_event, parse_event_for_topic
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SpeedEstimationAgent")
@@ -36,33 +36,27 @@ class SpeedEstimationService:
 
     def on_message(self, client, userdata, msg):
         try:
-            payload = json.loads(msg.payload.decode('utf-8'))
-            
-            camera_id = payload.get("camera_id")
-            object_id = payload.get("object_id")
-            timestamp = payload.get("timestamp")
-            bbox = payload.get("bbox")
-            source = payload.get("source", "unknown")
-            
-            if None in (camera_id, object_id, timestamp, bbox):
-                # Ignore invalid events
+            detection_event = parse_event_for_topic(msg.topic, msg.payload)
+            if not isinstance(detection_event, DetectionEvent):
                 return
 
-            speed_kmh = self.calculator.update_position(object_id, timestamp, bbox)
+            speed_kmh = self.calculator.update_position(
+                detection_event.object_id,
+                detection_event.timestamp.isoformat(),
+                detection_event.bbox,
+            )
             
             if speed_kmh is not None:
-                # Generate speed event
-                speed_event = {
-                    "camera_id": camera_id,
-                    "object_id": object_id,
-                    "speed_kmh": round(speed_kmh, 1),
-                    "timestamp": timestamp,
-                    "source": source
-                }
-                
-                # Publish event
-                self.client.publish(self.out_topic, json.dumps(speed_event))
-                logger.debug(f"Published speed event: {speed_event}")
+                speed_event = SpeedEvent(
+                    camera_id=detection_event.camera_id,
+                    object_id=detection_event.object_id,
+                    speed_kmh=round(speed_kmh, 1),
+                    timestamp=detection_event.timestamp,
+                    source=detection_event.source,
+                )
+
+                self.client.publish(self.out_topic, json.dumps(dump_event(speed_event)))
+                logger.debug(f"Published speed event: {dump_event(speed_event)}")
 
             # Periodically clean up old tracks (approx every few seconds based on messages)
             # In a production system, this would be a separate thread or timer
@@ -71,6 +65,8 @@ class SpeedEstimationService:
 
         except json.JSONDecodeError:
             logger.warning("Received invalid JSON on detection topic")
+        except ValueError as e:
+            logger.warning(f"Received invalid detection event: {e}")
         except Exception as e:
             logger.error(f"Error processing message: {e}")
 

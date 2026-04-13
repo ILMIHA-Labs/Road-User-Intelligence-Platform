@@ -1,4 +1,5 @@
 import logging
+from common.event_schemas import ViolationEvent
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +82,13 @@ class ViolationRulesEngine:
             return events
 
         for vtype in violation_types:
-             events.append({
-                 "violation_type": vtype,
-                 "object_id": object_id,
-                 "camera_id": state.get("camera_id", "unknown"),
-                 "timestamp": state.get("last_seen", "")
-             })
+             events.append(
+                 ViolationEvent(
+                     violation_type=vtype,
+                     object_id=object_id,
+                     camera_id=state.get("camera_id", "unknown"),
+                     timestamp=state.get("last_seen", ""),
+                 )
+             )
              
         return events

@@ -13,7 +13,8 @@ class TestBackendAPI(unittest.TestCase):
     
     @classmethod
     def setUpClass(cls):
-        # Create tables
+        # Reset tables so test expectations do not depend on prior local runs.
+        Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
         cls.client = TestClient(app)
 

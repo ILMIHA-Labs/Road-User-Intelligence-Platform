@@ -5,6 +5,8 @@ paho-mqtt
 pyyaml
 scipy
 fastapi
+httpx
 uvicorn
 sqlalchemy
 pandas
+requests

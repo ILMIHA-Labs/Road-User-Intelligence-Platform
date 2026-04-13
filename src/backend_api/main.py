@@ -1,17 +1,18 @@
 import logging
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
 
 from . import models, schemas
-from .database import engine, get_db
+from .database import engine, get_db, init_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("BackendAPI")
 
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="Road User Intelligence Platform API")
+
+@app.on_event("startup")
+def startup_event():
+    init_db()
 
 @app.get("/")
 def read_root():

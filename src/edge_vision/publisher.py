@@ -2,6 +2,7 @@ import paho.mqtt.client as mqtt
 import json
 import logging
 from datetime import datetime, timezone
+from common.event_schemas import DetectionEvent, dump_event
 
 logger = logging.getLogger(__name__)
 
@@ -51,19 +52,19 @@ class MQTTPublisher:
             if class_name == "person":
                 platform_class = "pedestrian"
                 
-            event = {
-                "camera_id": camera_id,
-                "timestamp": current_time,
-                "object_id": int(track_id),
-                "class": platform_class,
-                "helmet_status": "unknown", # To be implemented by a secondary classifier if needed
-                "bbox": [float(c) for c in box],
-                "confidence": float(conf),
-                "frame_number": frame_number,
-                "source": "edge"
-            }
-            
-            self.client.publish(self.topic, json.dumps(event))
+            event = DetectionEvent(
+                camera_id=camera_id,
+                timestamp=current_time,
+                object_id=int(track_id),
+                class_name=platform_class,
+                helmet_status="unknown",
+                bbox=[float(c) for c in box],
+                confidence=float(conf),
+                frame_number=frame_number,
+                source="edge",
+            )
+
+            self.client.publish(self.topic, json.dumps(dump_event(event)))
             published_count += 1
             
         return published_count
