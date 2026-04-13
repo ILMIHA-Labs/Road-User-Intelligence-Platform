@@ -33,6 +33,11 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("status", response.json())
 
+    def test_dashboard_static_page_serves(self):
+        response = self.client.get("/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Traffic Operations Dashboard", response.text)
+
     def test_create_detection(self):
         payload = {
             "camera_id": "test_cam",

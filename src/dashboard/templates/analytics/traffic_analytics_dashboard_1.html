@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TRAFFIC ANALYTICS | Admin Console</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary": "#e3e2e2",
+              "inverse-on-surface": "#f0f1f1",
+              "primary-container": "#3b3b3b",
+              "secondary-fixed-dim": "#acabab",
+              "error-container": "#ffdad6",
+              "on-primary-container": "#ffffff",
+              "surface-tint": "#5e5e5e",
+              "surface-container-low": "#f3f3f4",
+              "on-tertiary-fixed-variant": "#e3e2e2",
+              "surface-bright": "#f9f9f9",
+              "surface-container-high": "#e8e8e8",
+              "on-secondary-fixed-variant": "#3b3b3b",
+              "primary-fixed-dim": "#474747",
+              "on-secondary": "#ffffff",
+              "on-primary": "#e2e2e2",
+              "secondary-container": "#d6d4d3",
+              "inverse-surface": "#2f3131",
+              "secondary-fixed": "#c8c6c6",
+              "surface-variant": "#e2e2e2",
+              "surface-container-highest": "#e2e2e2",
+              "on-surface": "#1a1c1c",
+              "surface": "#f9f9f9",
+              "on-error": "#ffffff",
+              "outline-variant": "#c6c6c6",
+              "on-tertiary-container": "#ffffff",
+              "tertiary": "#3b3b3c",
+              "tertiary-container": "#747474",
+              "on-background": "#1a1c1c",
+              "primary": "#000000",
+              "inverse-primary": "#c6c6c6",
+              "primary-fixed": "#5e5e5e",
+              "on-primary-fixed": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary-fixed": "#ffffff",
+              "background": "#f9f9f9",
+              "outline": "#777777",
+              "surface-dim": "#dadada",
+              "on-surface-variant": "#474747",
+              "error": "#ba1a1a",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "tertiary-fixed-dim": "#464747",
+              "on-error-container": "#410002",
+              "tertiary-fixed": "#5e5e5e",
+              "surface-container": "#eeeeee",
+              "on-secondary-container": "#1b1c1c",
+              "secondary": "#5f5e5e",
+              "on-secondary-fixed": "#1b1c1c"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e2e2; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface overflow-x-hidden">
+<!-- SideNavBar Shell -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-6 z-40 h-screen w-64 border-r border-gray-100 bg-gray-50">
+<div class="mb-12">
+<h2 class="font-headline font-black tracking-tighter text-2xl text-black">TRAFFIC</h2>
+<p class="text-[10px] uppercase tracking-[0.2em] text-gray-400 mt-1">Admin Console</p>
+</div>
+<nav class="flex-1 space-y-2">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-black font-bold bg-white rounded-sm shadow-sm transition-transform scale-[0.98]" href="{{DATA:SCREEN:SCREEN_9}}">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-200 transition-all" href="{{DATA:SCREEN:SCREEN_2}}">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+<span class="font-label text-[10px] uppercase tracking-widest">Cameras</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-200 transition-all" href="{{DATA:SCREEN:SCREEN_13}}">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span class="font-label text-[10px] uppercase tracking-widest">Violations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-500 hover:bg-gray-200 transition-all" href="{{DATA:SCREEN:SCREEN_7}}">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label text-[10px] uppercase tracking-widest">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-gray-100">
+<button class="w-full bg-primary text-on-primary py-3 px-4 rounded-sm text-[10px] uppercase tracking-widest font-bold mb-6 hover:opacity-90 transition-opacity">
+                Generate Report
+            </button>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 text-gray-500 text-[10px] uppercase tracking-widest hover:text-black transition-colors" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="help_outline">help_outline</span> Support
+                </a>
+<a class="flex items-center gap-3 px-4 py-2 text-gray-500 text-[10px] uppercase tracking-widest hover:text-black transition-colors" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="list_alt">list_alt</span> Logs
+                </a>
+</div>
+<div class="mt-6 flex items-center gap-3 px-2">
+<div class="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+<img alt="System Administrator" data-alt="professional profile headshot of a system administrator in a neutral studio setting with soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQCebu-Op156RCG0UzqUHEfQ-02HQQHCYtNnVYn1qU5TxBmtoBtGWliKEUEwp5zA3nNNPuI9aLmJG3fTuxohy3uwZkvNDkVthyGL4SQkI83CsLCkWpmQAHq8AB1acMtxwyj0YCInKdJRAMY39V_LOg1fLmYuS6ky4HFvcBkf90VJR6eKWbYwwZ5N5D_2hSfycaB2vMKVso1byIkCQMtS6yrOoYPf5yRM6pFGvecGp8_UfrOTYfpbGPzEkDwKL1GF0HGeo5_AwyNPcj"/>
+</div>
+<div>
+<p class="text-[10px] font-bold leading-none">Admin Console</p>
+<p class="text-[9px] text-gray-400">Regional Traffic Control</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- TopAppBar Shell -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-8 py-4 w-full bg-white/85 backdrop-blur-xl border-b border-gray-100">
+<div class="flex items-center gap-8">
+<h1 class="font-headline font-black tracking-tighter text-2xl text-black">TRAFFIC ANALYTICS</h1>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-black border-b-2 border-black pb-1 font-['Inter'] font-medium tracking-tight text-sm" href="{{DATA:SCREEN:SCREEN_9}}">Global Filters</a>
+<a class="text-gray-400 hover:text-black transition-colors duration-200 font-['Inter'] font-medium tracking-tight text-sm" href="{{DATA:SCREEN:SCREEN_13}}">Date Range</a>
+<a class="text-gray-400 hover:text-black transition-colors duration-200 font-['Inter'] font-medium tracking-tight text-sm" href="#">Export</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+<span class="text-[10px] font-bold tracking-widest uppercase">Live View</span>
+</div>
+<div class="flex items-center gap-2 border-l border-gray-100 pl-4">
+<button class="p-2 text-gray-400 hover:text-black transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-gray-400 hover:text-black transition-colors">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Editorial Content Canvas -->
+<section class="p-8 max-w-[1400px]">
+<!-- Page Header -->
+<div class="mb-12 flex items-baseline justify-between">
+<div>
+<p class="text-label-sm uppercase tracking-[0.3em] text-gray-400 font-bold mb-2">Regional Oversight</p>
+<h2 class="text-4xl font-headline font-extrabold tracking-tighter text-black">Operational Overview</h2>
+</div>
+<div class="text-right">
+<p class="text-xs text-gray-400">Last updated: <span class="text-black font-medium">Today, 14:45:02</span></p>
+</div>
+</div>
+<!-- Bento KPI Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+<div class="bg-surface-container-lowest p-6 rounded-sm flex flex-col justify-between min-h-[160px]">
+<p class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Total Traffic Today</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-5xl font-black tracking-tighter">2,450</h3>
+<span class="text-xs text-gray-400">+12%</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-sm flex flex-col justify-between min-h-[160px]">
+<p class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Total Violations</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-5xl font-black tracking-tighter text-error">342</h3>
+<span class="text-xs text-error font-bold">Alert</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-sm flex flex-col justify-between min-h-[160px]">
+<p class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Helmet Compliance</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-5xl font-black tracking-tighter">82%</h3>
+<div class="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
+<div class="h-full bg-black w-[82%]"></div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-sm flex flex-col justify-between min-h-[160px]">
+<p class="text-[10px] uppercase tracking-widest text-gray-400 font-bold">Avg. Speed</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-5xl font-black tracking-tighter">45 <span class="text-xl font-medium tracking-normal">km/h</span></h3>
+</div>
+</div>
+</div>
+<!-- Middle Section: Main Charts & Live Feed -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">
+<!-- Main Activity Chart (Asymmetric) -->
+<div class="lg:col-span-8 bg-surface-container-lowest p-8 rounded-sm">
+<div class="flex items-center justify-between mb-8">
+<h4 class="text-lg font-bold tracking-tight">Activity Over Time</h4>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-black"></span>
+<span class="text-[10px] uppercase tracking-widest font-bold">Total Traffic</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 bg-secondary"></span>
+<span class="text-[10px] uppercase tracking-widest font-bold">Violations</span>
+</div>
+</div>
+</div>
+<!-- Simplified Visual for Line Chart -->
+<div class="h-64 flex items-end gap-1 relative overflow-hidden">
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none">
+<path d="M0 180 Q 100 120, 200 150 T 400 80 T 600 130 T 800 50 T 1000 100" fill="none" stroke="black" stroke-width="3"></path>
+<path d="M0 220 Q 100 190, 200 210 T 400 180 T 600 200 T 800 170 T 1000 190" fill="none" stroke="#5f5e5e" stroke-dasharray="4" stroke-width="2"></path>
+</svg>
+<div class="absolute bottom-0 w-full flex justify-between px-2 text-[10px] text-gray-400 uppercase tracking-widest font-bold pt-4 border-t border-gray-100">
+<span>08:00</span><span>10:00</span><span>12:00</span><span>14:00</span><span>16:00</span><span>18:00</span>
+</div>
+</div>
+</div>
+<!-- Live Alerts Feed -->
+<div class="lg:col-span-4 bg-black text-white p-6 rounded-sm flex flex-col">
+<div class="flex items-center justify-between mb-6">
+<h4 class="text-[10px] uppercase tracking-[0.2em] font-bold">Live Alerts Feed</h4>
+<span class="text-[10px] px-2 py-0.5 border border-white/20 rounded-full">Real-time</span>
+</div>
+<div class="flex-1 space-y-4 overflow-y-auto custom-scrollbar max-h-[300px]">
+<div class="p-3 bg-white/5 border-l-2 border-white/40">
+<p class="text-[10px] text-gray-400 font-mono mb-1">[14:32:05] Camera 01</p>
+<p class="text-xs font-bold">Helmet Violation Detected</p>
+<div class="flex justify-between items-center mt-2">
+<span class="text-[9px] uppercase tracking-widest text-gray-500">Conf. 92%</span>
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+</div>
+</div>
+<div class="p-3 bg-white/5 border-l-2 border-white/10">
+<p class="text-[10px] text-gray-400 font-mono mb-1">[14:31:48] Camera 04</p>
+<p class="text-xs font-bold">Speeding: 74 km/h</p>
+<div class="flex justify-between items-center mt-2">
+<span class="text-[9px] uppercase tracking-widest text-gray-500">Conf. 98%</span>
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+</div>
+</div>
+<div class="p-3 bg-white/5 border-l-2 border-white/10">
+<p class="text-[10px] text-gray-400 font-mono mb-1">[14:31:12] Camera 02</p>
+<p class="text-xs font-bold">Zebra Crossing Encroachment</p>
+<div class="flex justify-between items-center mt-2">
+<span class="text-[9px] uppercase tracking-widest text-gray-500">Conf. 85%</span>
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+</div>
+</div>
+<div class="p-3 bg-white/5 border-l-2 border-white/10">
+<p class="text-[10px] text-gray-400 font-mono mb-1">[14:30:55] Camera 01</p>
+<p class="text-xs font-bold">Helmet Violation Detected</p>
+<div class="flex justify-between items-center mt-2">
+<span class="text-[9px] uppercase tracking-widest text-gray-500">Conf. 89%</span>
+<span class="material-symbols-outlined text-sm" data-icon="visibility">visibility</span>
+</div>
+</div>
+</div>
+<button class="mt-6 text-[10px] uppercase tracking-widest font-bold text-center border border-white/20 py-3 hover:bg-white hover:text-black transition-colors">
+                        View All Activity
+                    </button>
+</div>
+</div>
+<!-- Bottom Data Layer -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Traffic Composition (Donut) -->
+<div class="bg-surface-container-low p-8 rounded-sm">
+<h4 class="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-8">Traffic Composition</h4>
+<div class="relative w-48 h-48 mx-auto mb-8">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<circle class="stroke-gray-200" cx="18" cy="18" fill="none" r="16" stroke-width="4"></circle>
+<!-- Motorcycles (40%) -->
+<circle class="stroke-black" cx="18" cy="18" fill="none" r="16" stroke-dasharray="40 100" stroke-dashoffset="0" stroke-width="4"></circle>
+<!-- Cars (35%) -->
+<circle class="stroke-secondary" cx="18" cy="18" fill="none" r="16" stroke-dasharray="35 100" stroke-dashoffset="-40" stroke-width="4"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center flex-col">
+<span class="text-2xl font-black">2.4k</span>
+<span class="text-[8px] uppercase tracking-widest font-bold text-gray-400">Total Units</span>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center text-[10px] font-bold tracking-widest uppercase">
+<span class="flex items-center gap-2"><span class="w-2 h-2 bg-black"></span> Motorcycles</span>
+<span>40%</span>
+</div>
+<div class="flex justify-between items-center text-[10px] font-bold tracking-widest uppercase">
+<span class="flex items-center gap-2"><span class="w-2 h-2 bg-secondary"></span> Cars</span>
+<span>35%</span>
+</div>
+<div class="flex justify-between items-center text-[10px] font-bold tracking-widest uppercase text-gray-400">
+<span class="flex items-center gap-2"><span class="w-2 h-2 bg-gray-200"></span> Heavy/Other</span>
+<span>25%</span>
+</div>
+</div>
+</div>
+<!-- Violations Breakdown (Bar Chart) -->
+<div class="bg-surface-container-low p-8 rounded-sm">
+<h4 class="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-8">Violations Breakdown</h4>
+<div class="space-y-6">
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span>Speeding</span>
+<span>142</span>
+</div>
+<div class="h-8 bg-white/50 w-full">
+<div class="h-full bg-black w-[65%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span>Helmet Violation</span>
+<span>120</span>
+</div>
+<div class="h-8 bg-white/50 w-full">
+<div class="h-full bg-secondary w-[55%]"></div>
+</div>
+</div>
+<div>
+<div class="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+<span>Zebra Crossing</span>
+<span>80</span>
+</div>
+<div class="h-8 bg-white/50 w-full">
+<div class="h-full bg-gray-300 w-[35%]"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Speed Distribution (Histogram) -->
+<div class="bg-surface-container-low p-8 rounded-sm">
+<h4 class="text-[10px] uppercase tracking-[0.2em] font-bold text-gray-400 mb-8">Speed Distribution</h4>
+<div class="flex items-end justify-between h-48 gap-2">
+<div class="flex-1 flex flex-col items-center">
+<div class="w-full bg-gray-200 h-[15%]"></div>
+<span class="text-[8px] uppercase font-bold text-gray-400 mt-2">0-20</span>
+</div>
+<div class="flex-1 flex flex-col items-center">
+<div class="w-full bg-gray-400 h-[45%]"></div>
+<span class="text-[8px] uppercase font-bold text-gray-400 mt-2">20-40</span>
+</div>
+<div class="flex-1 flex flex-col items-center">
+<div class="w-full bg-black h-[85%]"></div>
+<span class="text-[8px] uppercase font-bold text-gray-400 mt-2">40-60</span>
+</div>
+<div class="flex-1 flex flex-col items-center">
+<div class="w-full bg-secondary h-[25%]"></div>
+<span class="text-[8px] uppercase font-bold text-gray-400 mt-2">60+</span>
+</div>
+</div>
+<div class="mt-8 pt-8 border-t border-gray-200">
+<div class="flex justify-between items-center">
+<p class="text-xs text-on-surface-variant font-medium">Compliance Rate</p>
+<p class="text-xl font-black">94.2%</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Editorial Detail -->
+<footer class="mt-auto p-8 bg-white border-t border-gray-100">
+<div class="flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-4">
+<span class="text-[10px] font-bold uppercase tracking-[0.2em] text-black">TRAFFIC ANALYTICS SYSTEM V4.2</span>
+<span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+<span class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Regional Data Nodes Active</span>
+</div>
+<div class="flex gap-8">
+<a class="text-[9px] uppercase tracking-widest font-bold text-gray-400 hover:text-black transition-colors" href="#">Privacy Policy</a>
+<a class="text-[9px] uppercase tracking-widest font-bold text-gray-400 hover:text-black transition-colors" href="#">System Health</a>
+<a class="text-[9px] uppercase tracking-widest font-bold text-gray-400 hover:text-black transition-colors" href="#">Audit Logs</a>
+</div>
+</div>
+</footer>
+</main>
+<!-- Map/Visual context placeholder -->
+<div class="fixed right-8 bottom-8 z-50 group">
+<div class="w-48 h-32 bg-surface-container-lowest rounded-sm shadow-xl overflow-hidden border border-gray-100 group-hover:w-64 group-hover:h-48 transition-all duration-300">
+<div class="absolute inset-0 bg-black/10 z-10 pointer-events-none"></div>
+<img class="w-full h-full object-cover grayscale opacity-50" data-alt="minimalist monochrome map of a city traffic network with highlighted arterial roads and camera point indicators" data-location="Tokyo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAImqsL0UtGhViDT8R_qriX_zxe45EtGgDYHWca3E9WjfyMQyVvjNBzp1deFieWfWyVLfppQH0nK2Bm93kbXJv5k1z0qH0fSIWyMiCbxH5XGQ3JyQgDAlQoTdJESMSvSpPRjt9R6AQpg13RAExBZ2y-g-9HbGZ9YULUx2S76CbxhevG8wRsv9vcF0rV4XBYnifSdqgIHQnyDrvJBOUbrtIfu7oQUjhM1GBXD7jFmAbtZUtze8SF5h3HvoXWVNBruTpZo2wLXmGNf-pR"/>
+<div class="absolute bottom-2 left-2 z-20">
+<p class="text-[8px] uppercase tracking-widest font-black text-black bg-white/80 px-1 py-0.5">District Area 01</p>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traffic Analytics Dashboard</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: "#000000",
+            secondary: "#5f5e5e",
+            surface: "#f9f9f9",
+            "surface-container": "#eeeeee",
+            "surface-container-low": "#f3f3f4",
+            "surface-container-high": "#e8e8e8",
+            "surface-container-lowest": "#ffffff",
+            "on-surface": "#1a1c1c",
+            "on-surface-variant": "#474747",
+            outline: "#777777",
+            "outline-variant": "#c6c6c6",
+            error: "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-primary": "#e2e2e2"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"]
+          },
+          borderRadius: {
+            DEFAULT: "0.125rem",
+            lg: "0.25rem",
+            xl: "0.5rem"
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: "Inter", sans-serif; }
+    .material-symbols-outlined {
+      font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    }
+    .metric-card {
+      min-height: 10rem;
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface">
+  <aside class="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-black/5 bg-gray-50 p-6 md:flex">
+    <div class="mb-12 pt-8">
+      <h2 class="text-xs font-bold uppercase tracking-[0.25em] text-black">Traffic Console</h2>
+      <p class="mt-2 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Regional Traffic Control</p>
+    </div>
+    <nav class="flex-1 space-y-2">
+      <button data-view-button="overview" class="nav-btn flex w-full items-center gap-3 rounded-sm bg-white px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-black shadow-sm">
+        <span class="material-symbols-outlined text-lg">dashboard</span> Overview
+      </button>
+      <button data-view-button="cameras" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
+        <span class="material-symbols-outlined text-lg">videocam</span> Cameras
+      </button>
+      <button data-view-button="violations" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
+        <span class="material-symbols-outlined text-lg">report_problem</span> Violations
+      </button>
+    </nav>
+    <div class="border-t border-black/5 pt-6 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+      Live data from the Road User Intelligence Platform API
+    </div>
+  </aside>
+
+  <main class="min-h-screen md:ml-64">
+    <header class="sticky top-0 z-30 flex items-center justify-between border-b border-black/5 bg-white/85 px-6 py-4 backdrop-blur-xl md:px-8">
+      <div>
+        <p class="text-[10px] uppercase tracking-[0.3em] text-on-surface-variant">Editorial Analytics</p>
+        <h1 class="text-2xl font-black tracking-tighter md:text-3xl">Traffic Operations Dashboard</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
+          <span class="mr-2 inline-block h-2 w-2 rounded-full bg-error align-middle"></span>
+          Live View
+        </div>
+        <button id="refresh-button" class="rounded-sm bg-primary px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary">
+          Refresh Data
+        </button>
+      </div>
+    </header>
+
+    <section class="mx-auto max-w-[1440px] p-6 md:p-8">
+      <div class="mb-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        <div>
+          <p class="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-on-surface-variant">Regional Oversight</p>
+          <h2 class="text-5xl font-black tracking-tighter md:text-7xl">Operational Narrative</h2>
+          <p class="mt-4 max-w-2xl text-sm leading-6 text-on-surface-variant">
+            A quiet, editorial view into detections, violations, and camera activity across the current deployment.
+          </p>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Last refresh</p>
+          <p id="last-updated" class="text-sm font-semibold">Waiting for first sync</p>
+        </div>
+      </div>
+
+      <section id="overview-view" data-view="overview" class="space-y-8">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detections Logged</p>
+            <div>
+              <p id="total-detections" class="text-5xl font-black tracking-tighter">0</p>
+              <p class="mt-2 text-xs text-on-surface-variant">Total object detections persisted</p>
+            </div>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Speeds Logged</p>
+            <div>
+              <p id="total-speeds" class="text-5xl font-black tracking-tighter">0</p>
+              <p class="mt-2 text-xs text-on-surface-variant">Measured object speed samples</p>
+            </div>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violations Logged</p>
+            <div>
+              <p id="total-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
+              <p class="mt-2 text-xs text-on-surface-variant">Detected safety and traffic violations</p>
+            </div>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Active Cameras</p>
+            <div>
+              <p id="camera-count" class="text-5xl font-black tracking-tighter">0</p>
+              <p class="mt-2 text-xs text-on-surface-variant">Cameras with current persisted activity</p>
+            </div>
+          </article>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <section class="bg-surface-container-lowest p-8 xl:col-span-8">
+            <div class="mb-6 flex items-center justify-between">
+              <h3 class="text-lg font-black tracking-tight">Camera Performance</h3>
+              <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">By persisted event volume</p>
+            </div>
+            <div id="camera-summary" class="space-y-4"></div>
+          </section>
+
+          <section class="bg-black p-6 text-white xl:col-span-4">
+            <div class="mb-6 flex items-center justify-between">
+              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Violation Breakdown</h3>
+              <span class="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">Current window</span>
+            </div>
+            <div id="violation-breakdown" class="space-y-5"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="cameras-view" data-view="cameras" class="hidden space-y-8">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <article class="bg-surface-container-lowest p-8">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Observed Cameras</p>
+            <p id="camera-overview-count" class="mt-3 text-6xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Highest Activity</p>
+            <p id="camera-top-name" class="mt-3 text-2xl font-black tracking-tighter">No data</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Camera Violations</p>
+            <p id="camera-total-violations" class="mt-3 text-6xl font-black tracking-tighter text-error">0</p>
+          </article>
+        </div>
+        <div id="camera-cards" class="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3"></div>
+      </section>
+
+      <section id="violations-view" data-view="violations" class="hidden space-y-8">
+        <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <section class="bg-surface-container-lowest p-8 lg:col-span-4">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Weekly Volume</p>
+            <p id="violations-hero-total" class="mt-4 text-[3.5rem] font-black tracking-tighter">0</p>
+            <p id="violations-hero-copy" class="mt-4 text-sm leading-6 text-on-surface-variant">No violations have been recorded yet.</p>
+          </section>
+          <section class="bg-surface-container-lowest p-8 lg:col-span-8">
+            <div class="mb-6 flex items-center justify-between">
+              <h3 class="text-xl font-black tracking-tight">Recent Violations</h3>
+              <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Latest persisted records</p>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse text-left">
+                <thead>
+                  <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                    <th class="px-4 py-4">Timestamp</th>
+                    <th class="px-4 py-4">Camera</th>
+                    <th class="px-4 py-4">Type</th>
+                    <th class="px-4 py-4">Object</th>
+                  </tr>
+                </thead>
+                <tbody id="violations-table"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      summary: null,
+      byCamera: [],
+      violations: [],
+      recent: { detections: [], speeds: [], violations: [] }
+    };
+
+    function formatTimestamp(value) {
+      if (!value) return "No timestamp";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "medium"
+      }).format(date);
+    }
+
+    function setActiveView(viewName) {
+      document.querySelectorAll("[data-view]").forEach((section) => {
+        section.classList.toggle("hidden", section.dataset.view !== viewName);
+      });
+
+      document.querySelectorAll("[data-view-button]").forEach((button) => {
+        const isActive = button.dataset.viewButton === viewName;
+        button.classList.toggle("bg-white", isActive);
+        button.classList.toggle("shadow-sm", isActive);
+        button.classList.toggle("font-bold", isActive);
+        button.classList.toggle("text-black", isActive);
+        button.classList.toggle("text-on-surface-variant", !isActive);
+      });
+    }
+
+    async function loadJson(url) {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Request failed for ${url}: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function renderOverview() {
+      const summary = state.summary || {};
+      document.getElementById("total-detections").textContent = summary.total_detections_logged ?? 0;
+      document.getElementById("total-speeds").textContent = summary.total_speeds_logged ?? 0;
+      document.getElementById("total-violations").textContent = summary.total_violations_logged ?? 0;
+      document.getElementById("camera-count").textContent = state.byCamera.length;
+
+      const cameraSummary = document.getElementById("camera-summary");
+      cameraSummary.innerHTML = "";
+      if (!state.byCamera.length) {
+        cameraSummary.innerHTML = '<p class="text-sm text-on-surface-variant">No camera activity available yet.</p>';
+      } else {
+        state.byCamera.forEach((camera) => {
+          const total = camera.detections + camera.speeds + camera.violations;
+          const row = document.createElement("div");
+          row.className = "bg-surface-container-low p-5";
+          row.innerHTML = `
+            <div class="mb-3 flex items-center justify-between">
+              <div>
+                <p class="text-xs font-black tracking-tight">${camera.camera_id}</p>
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Observed volume ${total}</p>
+              </div>
+              <div class="text-right text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                <div>Detections ${camera.detections}</div>
+                <div>Speeds ${camera.speeds}</div>
+                <div>Violations ${camera.violations}</div>
+              </div>
+            </div>
+            <div class="h-2 bg-white">
+              <div class="h-full bg-black" style="width:${Math.min(100, total * 10)}%"></div>
+            </div>
+          `;
+          cameraSummary.appendChild(row);
+        });
+      }
+
+      const violationBreakdown = document.getElementById("violation-breakdown");
+      violationBreakdown.innerHTML = "";
+      if (!state.violations.length) {
+        violationBreakdown.innerHTML = '<p class="text-sm text-white/70">No violations available yet.</p>';
+      } else {
+        const maxCount = Math.max(...state.violations.map((item) => item.count), 1);
+        state.violations.forEach((item) => {
+          const width = (item.count / maxCount) * 100;
+          const block = document.createElement("div");
+          block.innerHTML = `
+            <div class="mb-2 flex justify-between text-[10px] font-bold uppercase tracking-[0.2em]">
+              <span>${item.violation_type.replaceAll("_", " ")}</span>
+              <span>${item.count}</span>
+            </div>
+            <div class="h-8 bg-white/10">
+              <div class="h-full bg-white" style="width:${width}%"></div>
+            </div>
+          `;
+          violationBreakdown.appendChild(block);
+        });
+      }
+    }
+
+    function renderCameras() {
+      document.getElementById("camera-overview-count").textContent = state.byCamera.length;
+      const topCamera = [...state.byCamera].sort((a, b) =>
+        (b.detections + b.speeds + b.violations) - (a.detections + a.speeds + a.violations)
+      )[0];
+      document.getElementById("camera-top-name").textContent = topCamera ? topCamera.camera_id : "No data";
+      document.getElementById("camera-total-violations").textContent =
+        state.byCamera.reduce((sum, camera) => sum + camera.violations, 0);
+
+      const cards = document.getElementById("camera-cards");
+      cards.innerHTML = "";
+      if (!state.byCamera.length) {
+        cards.innerHTML = '<p class="text-sm text-on-surface-variant">No camera records available yet.</p>';
+        return;
+      }
+
+      state.byCamera.forEach((camera, index) => {
+        const card = document.createElement("article");
+        card.className = "bg-surface-container-lowest";
+        card.innerHTML = `
+          <div class="aspect-video bg-black/95 p-6 text-white">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-[0.2em]">Node ${String(index + 1).padStart(2, "0")}</span>
+              <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">Observed</span>
+            </div>
+            <div class="mt-10">
+              <p class="text-3xl font-black tracking-tighter">${camera.camera_id}</p>
+              <p class="mt-2 text-sm text-white/70">Persisted detections, speeds, and violations for this camera.</p>
+            </div>
+          </div>
+          <div class="p-6">
+            <div class="grid grid-cols-3 gap-3">
+              <div class="bg-surface-container-low p-4">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Detections</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter">${camera.detections}</p>
+              </div>
+              <div class="bg-surface-container-low p-4">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Speeds</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter">${camera.speeds}</p>
+              </div>
+              <div class="bg-surface-container-low p-4">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter text-error">${camera.violations}</p>
+              </div>
+            </div>
+          </div>
+        `;
+        cards.appendChild(card);
+      });
+    }
+
+    function renderViolations() {
+      const totalViolations = state.summary?.total_violations_logged ?? 0;
+      document.getElementById("violations-hero-total").textContent = totalViolations;
+      document.getElementById("violations-hero-copy").textContent = totalViolations
+        ? `The platform has persisted ${totalViolations} violations in the current dataset.`
+        : "No violations have been recorded yet.";
+
+      const table = document.getElementById("violations-table");
+      table.innerHTML = "";
+      if (!state.recent.violations.length) {
+        table.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-sm text-on-surface-variant">No violation records available.</td></tr>';
+        return;
+      }
+
+      state.recent.violations.forEach((violation) => {
+        const row = document.createElement("tr");
+        row.className = "border-t border-black/5 hover:bg-surface-container-low";
+        row.innerHTML = `
+          <td class="px-4 py-4 text-sm">${formatTimestamp(violation.timestamp)}</td>
+          <td class="px-4 py-4 text-sm font-mono">${violation.camera_id}</td>
+          <td class="px-4 py-4">
+            <span class="inline-flex bg-black px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
+              ${violation.violation_type.replaceAll("_", " ")}
+            </span>
+          </td>
+          <td class="px-4 py-4 text-sm">${violation.object_id}</td>
+        `;
+        table.appendChild(row);
+      });
+    }
+
+    async function refreshDashboard() {
+      try {
+        const [summary, byCamera, violations, recent] = await Promise.all([
+          loadJson("/analytics/summary"),
+          loadJson("/analytics/by-camera"),
+          loadJson("/analytics/violations"),
+          loadJson("/events/recent?limit=12")
+        ]);
+
+        state.summary = summary;
+        state.byCamera = byCamera.cameras || [];
+        state.violations = violations.violations || [];
+        state.recent = recent;
+
+        renderOverview();
+        renderCameras();
+        renderViolations();
+        document.getElementById("last-updated").textContent = new Date().toLocaleString();
+      } catch (error) {
+        console.error(error);
+        document.getElementById("last-updated").textContent = "Dashboard sync failed";
+      }
+    }
+
+    document.querySelectorAll("[data-view-button]").forEach((button) => {
+      button.addEventListener("click", () => setActiveView(button.dataset.viewButton));
+    });
+    document.getElementById("refresh-button").addEventListener("click", refreshDashboard);
+
+    setActiveView("overview");
+    refreshDashboard();
+  </script>
+</body>
+</html>

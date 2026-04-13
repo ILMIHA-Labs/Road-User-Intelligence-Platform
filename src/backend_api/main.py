@@ -1,9 +1,11 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+from starlette.staticfiles import StaticFiles
 
 from . import models, schemas
 from .database import engine, get_db, init_db
@@ -12,6 +14,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("BackendAPI")
 
 app = FastAPI(title="Road User Intelligence Platform API")
+
+dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
+if dashboard_dir.exists():
+    app.mount("/dashboard", StaticFiles(directory=dashboard_dir, html=True), name="dashboard")
 
 @app.on_event("startup")
 def startup_event():

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-container": "#1b1c1c",
+                        "secondary-fixed": "#c8c6c6",
+                        "outline-variant": "#c6c6c6",
+                        "outline": "#777777",
+                        "tertiary-fixed": "#5e5e5e",
+                        "on-primary": "#e2e2e2",
+                        "primary-container": "#3b3b3b",
+                        "on-primary-fixed-variant": "#e2e2e2",
+                        "on-tertiary-container": "#ffffff",
+                        "on-secondary-fixed-variant": "#3b3b3b",
+                        "surface-dim": "#dadada",
+                        "secondary-fixed-dim": "#acabab",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary": "#ffffff",
+                        "background": "#f9f9f9",
+                        "primary-fixed-dim": "#474747",
+                        "on-tertiary-fixed-variant": "#e3e2e2",
+                        "surface-container-high": "#e8e8e8",
+                        "secondary-container": "#d6d4d3",
+                        "on-background": "#1a1c1c",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "on-primary-fixed": "#ffffff",
+                        "tertiary-container": "#747474",
+                        "surface-tint": "#5e5e5e",
+                        "primary-fixed": "#5e5e5e",
+                        "on-primary-container": "#ffffff",
+                        "surface-variant": "#e2e2e2",
+                        "secondary": "#5f5e5e",
+                        "inverse-surface": "#2f3131",
+                        "on-surface-variant": "#474747",
+                        "surface-container-low": "#f3f3f4",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#ffffff",
+                        "inverse-on-surface": "#f0f1f1",
+                        "error": "#ba1a1a",
+                        "primary": "#000000",
+                        "on-tertiary": "#e3e2e2",
+                        "tertiary-fixed-dim": "#464747",
+                        "tertiary": "#3b3b3c",
+                        "surface-container-highest": "#e2e2e2",
+                        "error-container": "#ffdad6",
+                        "on-error-container": "#410002",
+                        "surface-container": "#eeeeee",
+                        "surface": "#f9f9f9",
+                        "inverse-primary": "#c6c6c6",
+                        "on-surface": "#1a1c1c"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-white/85 dark:bg-stone-950/85 backdrop-blur-md border-b border-stone-200/20 dark:border-stone-800/20 shadow-[0_32px_64px_-4px_rgba(26,28,28,0.04)] font-inter antialiased tracking-tight">
+<div class="flex justify-between items-center h-16 px-8 w-full">
+<div class="text-xl font-bold tracking-tighter text-stone-900 dark:text-stone-50">TrafficVision Pro</div>
+<nav class="hidden md:flex gap-x-8 items-center">
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors" href="#">Dashboard</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors" href="#">Live View</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors" href="#">Analytics</a>
+<a class="text-stone-900 dark:text-stone-50 border-b-2 border-stone-900 dark:border-stone-50 pb-1" href="#">Incidents</a>
+</nav>
+<div class="flex items-center gap-x-4">
+<button class="p-2 hover:bg-stone-100/50 dark:hover:bg-stone-800/50 transition-all active:scale-95 duration-200 text-stone-900 dark:text-stone-50">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-stone-100/50 dark:hover:bg-stone-800/50 transition-all active:scale-95 duration-200 text-stone-900 dark:text-stone-50">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden ml-2 ring-1 ring-stone-200">
+<img alt="Administrator Profile" data-alt="professional portrait of a system administrator in high contrast lighting, black and white editorial style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCca90tO3Xgg6icXw_02K97uMXQ-eIVcc8A8KDmZcgLEYDFW9Fn_pwN777KdyoaMlAj-xomHeJ2xOoEZvW1K7WJDBcNcCXzjOUI-tDkylzcZzfDUCouuoCy-uGjeZAczJ36-8-UYWtVwUfPTreP8g-ofjINGSLerv7EGCyyWbQKIHLC8Nbk7FQnqtdi6vT6E5B__N7tcuZeEOgrHWfdAOT6wIWjZ9NwVFLCsMmlVWW4SP36a4yqwhykPpN6vKBpRsQwewUe6jqEWBe1"/>
+</div>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 z-40 bg-stone-50 dark:bg-stone-900 flex flex-col py-8 gap-y-6 text-sm font-medium tracking-wide uppercase font-inter hidden lg:flex">
+<div class="px-8 mb-4">
+<h3 class="text-stone-900 dark:text-stone-50 font-bold text-xs">Admin Console</h3>
+<p class="text-stone-500 text-[10px] tracking-widest mt-1">Traffic Analytics</p>
+</div>
+<nav class="flex flex-col gap-y-2">
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 pl-4 transition-all py-3 flex items-center gap-x-3 hover:bg-stone-200 dark:hover:bg-stone-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="folder_shared">folder_shared</span>
+                Evidence Vault
+            </a>
+<a class="text-stone-900 dark:text-stone-50 font-bold border-l-4 border-stone-900 dark:border-stone-50 pl-4 py-3 flex items-center gap-x-3 bg-stone-200 dark:bg-stone-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+                Citation Manager
+            </a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 pl-4 transition-all py-3 flex items-center gap-x-3 hover:bg-stone-200 dark:hover:bg-stone-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="router">router</span>
+                Device Status
+            </a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 pl-4 transition-all py-3 flex items-center gap-x-3 hover:bg-stone-200 dark:hover:bg-stone-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="person_search">person_search</span>
+                User Audit
+            </a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 pl-4 transition-all py-3 flex items-center gap-x-3 hover:bg-stone-200 dark:hover:bg-stone-800/50" href="#">
+<span class="material-symbols-outlined" data-icon="history_edu">history_edu</span>
+                System Logs
+            </a>
+</nav>
+<div class="mt-auto px-6">
+<button class="w-full bg-primary text-on-primary py-4 rounded-lg text-xs font-bold tracking-widest hover:bg-primary-container transition-colors duration-200">
+                Generate Report
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="lg:ml-64 pt-24 px-8 pb-12 min-h-screen">
+<div class="max-w-7xl mx-auto">
+<!-- Evidence Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-y-4">
+<div class="space-y-1">
+<button class="flex items-center gap-x-2 text-stone-500 hover:text-stone-900 transition-colors text-xs font-medium uppercase tracking-widest mb-4">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>
+                        Back to Logs
+                    </button>
+<h1 class="text-5xl md:text-6xl font-black tracking-tighter text-stone-900 leading-none">Evidence File #88921</h1>
+</div>
+<div class="flex gap-x-3">
+<div class="px-3 py-1 bg-error/10 text-error text-[10px] font-bold tracking-widest uppercase rounded-full flex items-center gap-x-1">
+<span class="w-1.5 h-1.5 bg-error rounded-full"></span>
+                        High Severity
+                    </div>
+<div class="px-3 py-1 bg-stone-100 text-stone-600 text-[10px] font-bold tracking-widest uppercase rounded-full">
+                        Pending Review
+                    </div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+<!-- Main Evidence Section -->
+<div class="lg:col-span-8 space-y-12">
+<div class="relative aspect-video bg-stone-200 overflow-hidden rounded-lg shadow-2xl group">
+<img alt="Motorcycle violation evidence" class="w-full h-full object-cover grayscale brightness-75 transition-transform duration-700 group-hover:scale-105" data-alt="dramatic black and white high-angle shot of a motorcyclist without a helmet on a high-speed motorway with blurred asphalt background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5DO1UU_GAs351cT4AiFiouKp7IvL4BbSRjThXOlYidL-IPAs5vElfTd9Bd62gdC7Y2F_huj93Ks0zY62mv1PniCfKzOxA9Y2FQ6twtme1eEvPzH3oNhnh1kuZcgVX13N7peQMZRUXVhU_N-BqFKFzhiyt6Z_zrnIBIrhGSkGZDpB-nNDZMhTHhPwCgBjW50Ry4evees3sPi-JtkBQlWbiNBlmOXId6PSLclgMPSOPmOOTYN8NCZ7ctitCV3Pjg2hxwvuwru-eZmBF"/>
+<!-- AI Overlay - Bounding Boxes -->
+<div class="absolute inset-0 pointer-events-none">
+<div class="absolute top-[20%] left-[30%] w-[40%] h-[60%] border-2 border-white/80">
+<div class="absolute -top-6 left-0 bg-white text-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest">
+                                    Subject: Motorcyclist
+                                </div>
+<div class="absolute -bottom-2 -right-2 w-4 h-4 border-r-2 border-b-2 border-white"></div>
+</div>
+<div class="absolute top-[22%] left-[45%] w-[10%] h-[15%] border border-error bg-error/10">
+<div class="absolute -top-5 left-0 text-error text-[10px] font-black uppercase whitespace-nowrap">
+                                    Violation: No Helmet
+                                </div>
+</div>
+</div>
+<!-- Data Overlay -->
+<div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+<div class="p-4 bg-black/80 backdrop-blur-md text-white border-l-4 border-white">
+<p class="text-[10px] uppercase tracking-tighter opacity-70">Source Hardware</p>
+<p class="font-mono text-sm">TRAF-UNIT-9912A // SENSOR_4K</p>
+</div>
+<div class="flex flex-col items-end gap-y-2">
+<div class="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center backdrop-blur-sm bg-white/10">
+<span class="material-symbols-outlined text-white" data-icon="fullscreen">fullscreen</span>
+</div>
+<div class="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center backdrop-blur-sm bg-white/10">
+<span class="material-symbols-outlined text-white" data-icon="download">download</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Additional Context/Frames -->
+<div class="grid grid-cols-3 gap-4">
+<div class="aspect-square bg-stone-100 rounded border border-stone-200/20 overflow-hidden">
+<img alt="Context frame 1" class="w-full h-full object-cover grayscale" data-alt="black and white security footage frame of highway traffic flowing under a bridge" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxyeIg7870jMYuZe8akpFUDha8o9Kf4t5pIRpAuP46OXq3F6oI3UmmpW3dtFcbla3XgwWdFu6SUp-8kthNcZelsxvLzK92CklsdURvcUUAS0VvqwdpKciC3UK85nJEYPGGa-9eQtEUl2WuWOyb7FF2o1THMbClPlPYaoObsRyszLoXHKU3StbEoOSDPIzGaIeJ5-UffaMfbQEdbWztrnH2TL_7gbJcD8NWAW9OElhWbjllKjzxwan61YcsyXkS3VFw-jnjq9HGAWS1"/>
+</div>
+<div class="aspect-square bg-stone-100 rounded border border-stone-200/20 overflow-hidden">
+<img alt="Context frame 2" class="w-full h-full object-cover grayscale opacity-50" data-alt="close up grainy texture of motorcycle license plate in black and white silhouette" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAV9HxXRBTStp0RdfakZKLonnS0A_aZ8jb9vgJxOyZpa4yNf9vZGEen3KCDojs8W3GTMUeCJzjWXq0HMIo1VmC0OKWY8T_4FeRlkY0RffV6Za950b97Br3wOuaatMt6tGDmUeRuchA2ZZVS8EAXl3Re7b9G-oPBnnxy4APs0jmgd_zFqLkpo29L2MWGw8elj47Er1JFl6_BToHkhuH2vv7WCZOryKi6nuYVzc1xThvHcj9ZqNZrUCBhLL1gruWRwIiIAs9o3R5MbwJe"/>
+</div>
+<div class="aspect-square bg-stone-100 rounded border border-stone-200/20 flex items-center justify-center group cursor-pointer hover:bg-stone-200 transition-colors">
+<div class="text-center">
+<span class="material-symbols-outlined text-stone-400" data-icon="add_circle">add_circle</span>
+<p class="text-[10px] font-bold uppercase tracking-widest mt-2 text-stone-500">View All 12</p>
+</div>
+</div>
+</div>
+<!-- Audit Trail / History Section -->
+<section class="pt-12 border-t border-stone-200">
+<div class="flex items-center gap-x-2 mb-6">
+<span class="material-symbols-outlined text-stone-400" data-icon="history">history</span>
+<h3 class="text-xs font-black uppercase tracking-[0.2em] text-stone-900">Audit Trail</h3>
+</div>
+<div class="space-y-4">
+<div class="flex items-start justify-between py-3 border-b border-stone-100">
+<div class="flex items-center gap-x-4">
+<div class="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center overflow-hidden">
+<img alt="Officer" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCca90tO3Xgg6icXw_02K97uMXQ-eIVcc8A8KDmZcgLEYDFW9Fn_pwN777KdyoaMlAj-xomHeJ2xOoEZvW1K7WJDBcNcCXzjOUI-tDkylzcZzfDUCouuoCy-uGjeZAczJ36-8-UYWtVwUfPTreP8g-ofjINGSLerv7EGCyyWbQKIHLC8Nbk7FQnqtdi6vT6E5B__N7tcuZeEOgrHWfdAOT6wIWjZ9NwVFLCsMmlVWW4SP36a4yqwhykPpN6vKBpRsQwewUe6jqEWBe1"/>
+</div>
+<div>
+<p class="text-[11px] font-bold text-stone-900">Senior Officer J. Sterling</p>
+<p class="text-[10px] text-stone-500 uppercase tracking-wider">Access Level 4</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-[10px] font-mono text-stone-400">Oct 31, 14:45:12</p>
+<p class="text-[10px] font-bold text-stone-900 uppercase">Viewed Evidence</p>
+</div>
+</div>
+<div class="flex items-start justify-between py-3 border-b border-stone-100 opacity-60">
+<div class="flex items-center gap-x-4">
+<div class="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center">
+<span class="material-symbols-outlined text-stone-400 text-sm" data-icon="smart_toy">smart_toy</span>
+</div>
+<div>
+<p class="text-[11px] font-bold text-stone-900">System AI (Neural_09)</p>
+<p class="text-[10px] text-stone-500 uppercase tracking-wider">Automated Audit</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-[10px] font-mono text-stone-400">Oct 31, 14:22:02</p>
+<p class="text-[10px] font-bold text-stone-900 uppercase">Initial Flagging</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Telemetry & Sidebar -->
+<div class="lg:col-span-4 space-y-10">
+<!-- Confidence Score -->
+<div class="pt-8 border-t-4 border-black">
+<p class="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 mb-2">Detection Confidence</p>
+<h2 class="text-7xl font-black tracking-tighter leading-none italic">98.2<span class="text-3xl not-italic">%</span></h2>
+<div class="mt-4 h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
+<div class="h-full bg-black w-[98.2%]"></div>
+</div>
+</div>
+<!-- Verification Checklist -->
+<section class="bg-stone-50 border border-stone-200 p-6 rounded-lg">
+<p class="text-[10px] font-black uppercase tracking-[0.2em] text-stone-900 mb-6">Verification Checklist</p>
+<div class="space-y-4">
+<label class="flex items-center gap-x-4 cursor-pointer group">
+<div class="relative w-5 h-5 flex items-center justify-center">
+<input class="peer appearance-none w-5 h-5 border border-stone-300 rounded-none checked:bg-black checked:border-black transition-all" type="checkbox"/>
+<span class="material-symbols-outlined text-white text-sm absolute opacity-0 peer-checked:opacity-100 pointer-events-none" data-icon="check">check</span>
+</div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-stone-600 group-hover:text-stone-900 transition-colors">1. License Plate Verified</span>
+</label>
+<label class="flex items-center gap-x-4 cursor-pointer group">
+<div class="relative w-5 h-5 flex items-center justify-center">
+<input class="peer appearance-none w-5 h-5 border border-stone-300 rounded-none checked:bg-black checked:border-black transition-all" type="checkbox"/>
+<span class="material-symbols-outlined text-white text-sm absolute opacity-0 peer-checked:opacity-100 pointer-events-none" data-icon="check">check</span>
+</div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-stone-600 group-hover:text-stone-900 transition-colors">2. Violation Type Confirmed</span>
+</label>
+<label class="flex items-center gap-x-4 cursor-pointer group">
+<div class="relative w-5 h-5 flex items-center justify-center">
+<input class="peer appearance-none w-5 h-5 border border-stone-300 rounded-none checked:bg-black checked:border-black transition-all" type="checkbox"/>
+<span class="material-symbols-outlined text-white text-sm absolute opacity-0 peer-checked:opacity-100 pointer-events-none" data-icon="check">check</span>
+</div>
+<span class="text-[11px] font-bold uppercase tracking-wider text-stone-600 group-hover:text-stone-900 transition-colors">3. Image Quality Adequate</span>
+</label>
+</div>
+</section>
+<!-- Metadata Grid -->
+<section class="space-y-6">
+<div class="grid grid-cols-2 gap-y-6">
+<div>
+<p class="text-[10px] font-bold uppercase tracking-widest text-stone-400">Vehicle Type</p>
+<p class="text-lg font-bold text-stone-900">Motorcycle</p>
+</div>
+<div>
+<p class="text-[10px] font-bold uppercase tracking-widest text-stone-400">License Plate</p>
+<p class="text-lg font-mono font-bold text-stone-900 bg-stone-100 px-2 py-0.5 inline-block">ZX-8821-M</p>
+</div>
+</div>
+<div class="pt-6 border-t border-stone-200">
+<p class="text-[10px] font-bold uppercase tracking-widest text-stone-400">Timestamp</p>
+<p class="text-lg font-medium text-stone-900">Oct 31, 2023 — 14:22:01</p>
+</div>
+</section>
+<!-- Contextual Map -->
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<p class="text-[10px] font-bold uppercase tracking-widest text-stone-400">Sensor Location</p>
+<p class="text-[10px] font-mono text-stone-900">CAM-4922-NW</p>
+</div>
+<div class="h-40 w-full rounded-lg bg-stone-100 relative overflow-hidden ring-1 ring-stone-200">
+<img alt="Location map" class="w-full h-full object-cover grayscale opacity-30" data-alt="minimalist architectural map style in grayscale showing simplified road grid of an urban intersection" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcSkePQhVhTP4WLRhEDspfjYN9FQeTVLguWteTnxcR5LoM0UaaGnLTIGQtwNdrG4sp1AR3ajNkjiajxUBIqx_KqjDqrIsCJYd3J-yzfTYYQFucRBSgqAGAKjP6aKK7MwTykt7wOqtYo0_1QbjdXf3MaaBD6Lq80w3_CSvZoHUd-nURfEZ8Diyp3J6PQSvmAcMnd0mgJ5iIhnyicJXF9T7dCj2sF1Lad7IP7FSSWpZgTFeUAPSjGLp2ILQHs54hP-_mSCclrSoqJf_X"/>
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-4 h-4 bg-black rounded-full animate-pulse flex items-center justify-center">
+<div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="flex flex-col gap-y-3 pt-8">
+<button class="w-full py-5 bg-black text-white font-black text-xs tracking-[0.2em] uppercase hover:bg-stone-800 transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-x-2">
+                            APPROVE &amp; ISSUE CITATION
+                            <span class="material-symbols-outlined text-sm" data-icon="send">send</span>
+</button>
+<button class="w-full py-5 bg-transparent border-2 border-stone-200 text-stone-400 font-black text-xs tracking-[0.2em] uppercase hover:border-black hover:text-black transition-all flex items-center justify-center gap-x-2">
+                            MARK FOR MANUAL REVIEW
+                            <span class="material-symbols-outlined text-sm" data-icon="rate_review">rate_review</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Footer Meta -->
+<footer class="mt-24 pt-8 border-t border-stone-100 flex flex-col md:flex-row justify-between items-center gap-y-4">
+<div class="flex gap-x-8">
+<div class="text-[10px] font-medium text-stone-400">
+<span class="font-bold text-stone-900 uppercase tracking-widest mr-2">System Audit</span>
+                        6.2ms Latency / Hash: f9a22...01e
+                    </div>
+<div class="text-[10px] font-medium text-stone-400">
+<span class="font-bold text-stone-900 uppercase tracking-widest mr-2">Protocol</span>
+                        V-TRAC.A.04
+                    </div>
+</div>
+<div class="text-[10px] font-bold tracking-[0.2em] text-stone-300 uppercase">
+                    © 2023 TrafficVision Pro Security Division
+                </div>
+</footer>
+</div>
+</main>
+</body></html>
