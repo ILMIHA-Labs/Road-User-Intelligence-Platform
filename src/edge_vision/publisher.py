@@ -11,7 +11,7 @@ class MQTTPublisher:
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.topic = topic
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
     def connect(self):
         try:

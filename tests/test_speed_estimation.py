@@ -9,6 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 's
 
 from speed_estimation.calibration import CameraCalibration
 from speed_estimation.speed_calc import SpeedCalculator
+from speed_estimation.main import SpeedEstimationService
 
 class TestSpeedEstimation(unittest.TestCase):
     
@@ -43,6 +44,20 @@ class TestSpeedEstimation(unittest.TestCase):
         t3 = datetime(2025, 1, 1, 12, 0, 2, tzinfo=timezone.utc).isoformat()
         speed3 = calc.update_position(obj_id, t3, [20150, 100, 20250, 200])
         self.assertEqual(speed3, 200.0) # Our outlier cap
+
+    def test_service_uses_per_camera_calibration(self):
+        service = SpeedEstimationService(
+            broker_host="localhost",
+            broker_port=1883,
+            pixels_per_meter=25.0,
+            camera_profiles={"cam_fast": {"pixels_per_meter": 10.0}},
+        )
+
+        calculator = service._get_calculator("cam_fast")
+        self.assertEqual(calculator.calibration.pixels_per_meter, 10.0)
+
+        default_calculator = service._get_calculator("cam_default")
+        self.assertEqual(default_calculator.calibration.pixels_per_meter, 25.0)
 
 if __name__ == '__main__':
     unittest.main()

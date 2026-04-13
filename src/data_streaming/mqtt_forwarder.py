@@ -26,19 +26,19 @@ class MQTTForwarder:
             "camera/trajectories": "/trajectories"
         }
         
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
-    def on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        if reason_code == 0:
             logger.info(f"Connected to MQTT Broker at {self.broker_host}:{self.broker_port}")
             # Subscribe to all required topics
             topics = [(topic, 0) for topic in self.topic_map.keys()]
             self.client.subscribe(topics)
             logger.info(f"Subscribed to: {list(self.topic_map.keys())}")
         else:
-            logger.error(f"Failed to connect, return code {rc}")
+            logger.error(f"Failed to connect, return code {reason_code}")
 
     def on_message(self, client, userdata, msg):
         topic = msg.topic

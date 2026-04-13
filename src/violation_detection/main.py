@@ -3,7 +3,8 @@ import logging
 import json
 import paho.mqtt.client as mqtt
 
-from violation_rules import ViolationRulesEngine
+from violation_detection.violation_rules import ViolationRulesEngine
+from common.camera_config import build_camera_profile_map
 from common.event_schemas import (
     DetectionEvent,
     SpeedEvent,
@@ -16,13 +17,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("ViolationDetectionAgent")
 
 class ViolationDetectionService:
-    def __init__(self, broker_host, broker_port, speed_limit):
+    def __init__(self, broker_host, broker_port, speed_limit, camera_profiles=None):
         self.broker_host = broker_host
         self.broker_port = broker_port
+        self.default_speed_limit = speed_limit
+        self.camera_profiles = camera_profiles or {}
+        self.engines = {}
         
-        self.engine = ViolationRulesEngine(speed_limit_kmh=speed_limit)
-        
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         
@@ -30,13 +32,28 @@ class ViolationDetectionService:
         self.topics = [("camera/detections", 0), ("camera/speeds", 0)]
         self.out_topic = "camera/violations"
 
-    def on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def _get_engine(self, camera_id):
+        engine = self.engines.get(camera_id)
+        if engine is not None:
+            return engine
+
+        speed_limit = self.camera_profiles.get(camera_id, {}).get(
+            "speed_limit_kmh", self.default_speed_limit
+        )
+        engine = ViolationRulesEngine(speed_limit_kmh=speed_limit)
+        self.engines[camera_id] = engine
+        logger.info(
+            f"Initialized violation rules for {camera_id} with speed limit {speed_limit} km/h"
+        )
+        return engine
+
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        if reason_code == 0:
             logger.info(f"Connected to MQTT Broker at {self.broker_host}:{self.broker_port}")
             self.client.subscribe(self.topics)
             logger.info("Subscribed to detection and speed topics")
         else:
-            logger.error(f"Failed to connect, return code {rc}")
+            logger.error(f"Failed to connect, return code {reason_code}")
 
     def on_message(self, client, userdata, msg):
         try:
@@ -45,16 +62,20 @@ class ViolationDetectionService:
                 
             # Update internal state representation
             if topic == "camera/detections" and isinstance(event, DetectionEvent):
-                 self.engine.update_state(event.object_id, detection_event=dump_event(event))
+                 engine = self._get_engine(event.camera_id)
+                 engine.update_state(event.object_id, detection_event=dump_event(event))
                  object_id = event.object_id
+                 camera_id = event.camera_id
             elif topic == "camera/speeds" and isinstance(event, SpeedEvent):
-                 self.engine.update_state(event.object_id, speed_event=dump_event(event))
+                 engine = self._get_engine(event.camera_id)
+                 engine.update_state(event.object_id, speed_event=dump_event(event))
                  object_id = event.object_id
+                 camera_id = event.camera_id
             else:
                  return
 
             # Evaluate rules
-            violation_events = self.engine.generate_violation_events(object_id)
+            violation_events = self.engines[camera_id].generate_violation_events(object_id)
             
             # Emit violations if any
             for event in violation_events:
@@ -85,12 +106,19 @@ def main():
     parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
     parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
     parser.add_argument("--speed-limit", type=float, default=60.0, help="Speed limit in km/h for violations")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config/cameras.yaml",
+        help="Path to camera config with per-camera rule thresholds",
+    )
     args = parser.parse_args()
 
     service = ViolationDetectionService(
         broker_host=args.broker,
         broker_port=args.port,
-        speed_limit=args.speed_limit
+        speed_limit=args.speed_limit,
+        camera_profiles=build_camera_profile_map(args.config),
     )
     service.run()
 

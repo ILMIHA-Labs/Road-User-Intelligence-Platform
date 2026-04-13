@@ -4,35 +4,52 @@ import json
 import time
 import paho.mqtt.client as mqtt
 
-from calibration import CameraCalibration
-from speed_calc import SpeedCalculator
+from speed_estimation.calibration import CameraCalibration
+from speed_estimation.speed_calc import SpeedCalculator
 from common.event_schemas import DetectionEvent, SpeedEvent, dump_event, parse_event_for_topic
+from common.camera_config import build_camera_profile_map
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("SpeedEstimationAgent")
 
 class SpeedEstimationService:
-    def __init__(self, broker_host, broker_port, pixels_per_meter):
+    def __init__(self, broker_host, broker_port, pixels_per_meter, camera_profiles=None):
         self.broker_host = broker_host
         self.broker_port = broker_port
+        self.default_pixels_per_meter = pixels_per_meter
+        self.camera_profiles = camera_profiles or {}
+        self.calculators = {}
         
-        self.calibration = CameraCalibration(pixels_per_meter=pixels_per_meter)
-        self.calculator = SpeedCalculator(calibration=self.calibration)
-        
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         
         self.in_topic = "camera/detections"
         self.out_topic = "camera/speeds"
 
-    def on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def _get_calculator(self, camera_id):
+        calculator = self.calculators.get(camera_id)
+        if calculator is not None:
+            return calculator
+
+        pixels_per_meter = self.camera_profiles.get(camera_id, {}).get(
+            "pixels_per_meter", self.default_pixels_per_meter
+        )
+        calibration = CameraCalibration(pixels_per_meter=pixels_per_meter)
+        calculator = SpeedCalculator(calibration=calibration)
+        self.calculators[camera_id] = calculator
+        logger.info(
+            f"Initialized speed estimator for {camera_id} with {pixels_per_meter} pixels/meter"
+        )
+        return calculator
+
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        if reason_code == 0:
             logger.info(f"Connected to MQTT Broker at {self.broker_host}:{self.broker_port}")
             self.client.subscribe(self.in_topic)
             logger.info(f"Subscribed to topic: {self.in_topic}")
         else:
-            logger.error(f"Failed to connect, return code {rc}")
+            logger.error(f"Failed to connect, return code {reason_code}")
 
     def on_message(self, client, userdata, msg):
         try:
@@ -40,7 +57,8 @@ class SpeedEstimationService:
             if not isinstance(detection_event, DetectionEvent):
                 return
 
-            speed_kmh = self.calculator.update_position(
+            calculator = self._get_calculator(detection_event.camera_id)
+            speed_kmh = calculator.update_position(
                 detection_event.object_id,
                 detection_event.timestamp.isoformat(),
                 detection_event.bbox,
@@ -61,7 +79,8 @@ class SpeedEstimationService:
             # Periodically clean up old tracks (approx every few seconds based on messages)
             # In a production system, this would be a separate thread or timer
             if int(time.time()) % 10 == 0:
-                 self.calculator.clean_old_tracks(time.time())
+                 for calculator in self.calculators.values():
+                     calculator.clean_old_tracks(time.time())
 
         except json.JSONDecodeError:
             logger.warning("Received invalid JSON on detection topic")
@@ -86,12 +105,19 @@ def main():
     parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
     parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
     parser.add_argument("--ppm", type=float, default=25.0, help="Pixels per meter for MVP calibration")
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config/cameras.yaml",
+        help="Path to camera config with per-camera calibration values",
+    )
     args = parser.parse_args()
 
     service = SpeedEstimationService(
         broker_host=args.broker,
         broker_port=args.port,
-        pixels_per_meter=args.ppm
+        pixels_per_meter=args.ppm,
+        camera_profiles=build_camera_profile_map(args.config),
     )
     service.run()
 
