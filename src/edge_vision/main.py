@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import cv2
 import time
 from camera_capture import CameraCapture
@@ -9,13 +10,45 @@ from publisher import MQTTPublisher
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("EdgeVisionMain")
 
+
+def _env_flag(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 def main():
     parser = argparse.ArgumentParser(description="Edge Vision Agent")
-    parser.add_argument("--source", type=str, default="0", help="Camera source (index or file path)")
-    parser.add_argument("--camera-id", type=str, default="edge_cam_01", help="Camera ID")
-    parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
-    parser.add_argument("--show", action="store_true", help="Show video feed")
+    parser.add_argument(
+        "--source",
+        type=str,
+        default=os.getenv("EDGE_SOURCE", "0"),
+        help="Camera source (index or file path)",
+    )
+    parser.add_argument(
+        "--camera-id",
+        type=str,
+        default=os.getenv("CAMERA_ID", "edge_cam_01"),
+        help="Camera ID",
+    )
+    parser.add_argument(
+        "--broker",
+        type=str,
+        default=os.getenv("MQTT_BROKER_HOST", "localhost"),
+        help="MQTT broker host",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+        help="MQTT broker port",
+    )
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        default=_env_flag("EDGE_SHOW_VIDEO", False),
+        help="Show video feed",
+    )
     args = parser.parse_args()
 
     # Initialize components

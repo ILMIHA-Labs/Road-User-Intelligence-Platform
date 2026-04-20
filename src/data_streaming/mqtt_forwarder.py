@@ -1,6 +1,7 @@
 import argparse
 import logging
 import json
+import os
 import requests
 import paho.mqtt.client as mqtt
 from common.event_schemas import dump_event, parse_event_for_topic
@@ -85,9 +86,24 @@ class MQTTForwarder:
 
 def main():
     parser = argparse.ArgumentParser(description="Data Streaming Agent")
-    parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
-    parser.add_argument("--api", type=str, default="http://localhost:8000", help="Backend API base URL")
+    parser.add_argument(
+        "--broker",
+        type=str,
+        default=os.getenv("MQTT_BROKER_HOST", "localhost"),
+        help="MQTT broker host",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+        help="MQTT broker port",
+    )
+    parser.add_argument(
+        "--api",
+        type=str,
+        default=os.getenv("BACKEND_API_URL", "http://localhost:8000"),
+        help="Backend API base URL",
+    )
     args = parser.parse_args()
 
     forwarder = MQTTForwarder(

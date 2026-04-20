@@ -1,6 +1,7 @@
 import argparse
 import logging
 import json
+import os
 import time
 import paho.mqtt.client as mqtt
 
@@ -102,13 +103,28 @@ class SpeedEstimationService:
 
 def main():
     parser = argparse.ArgumentParser(description="Speed Estimation Agent")
-    parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
-    parser.add_argument("--ppm", type=float, default=25.0, help="Pixels per meter for MVP calibration")
+    parser.add_argument(
+        "--broker",
+        type=str,
+        default=os.getenv("MQTT_BROKER_HOST", "localhost"),
+        help="MQTT broker host",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+        help="MQTT broker port",
+    )
+    parser.add_argument(
+        "--ppm",
+        type=float,
+        default=float(os.getenv("DEFAULT_PIXELS_PER_METER", "25.0")),
+        help="Pixels per meter for MVP calibration",
+    )
     parser.add_argument(
         "--config",
         type=str,
-        default="config/cameras.yaml",
+        default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
         help="Path to camera config with per-camera calibration values",
     )
     args = parser.parse_args()

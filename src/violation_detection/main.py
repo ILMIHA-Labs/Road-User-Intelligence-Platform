@@ -1,6 +1,7 @@
 import argparse
 import logging
 import json
+import os
 import paho.mqtt.client as mqtt
 
 from violation_detection.violation_rules import ViolationRulesEngine
@@ -103,13 +104,28 @@ class ViolationDetectionService:
 
 def main():
     parser = argparse.ArgumentParser(description="Violation Detection Agent")
-    parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
-    parser.add_argument("--speed-limit", type=float, default=60.0, help="Speed limit in km/h for violations")
+    parser.add_argument(
+        "--broker",
+        type=str,
+        default=os.getenv("MQTT_BROKER_HOST", "localhost"),
+        help="MQTT broker host",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+        help="MQTT broker port",
+    )
+    parser.add_argument(
+        "--speed-limit",
+        type=float,
+        default=float(os.getenv("DEFAULT_SPEED_LIMIT_KMH", "60.0")),
+        help="Speed limit in km/h for violations",
+    )
     parser.add_argument(
         "--config",
         type=str,
-        default="config/cameras.yaml",
+        default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
         help="Path to camera config with per-camera rule thresholds",
     )
     args = parser.parse_args()

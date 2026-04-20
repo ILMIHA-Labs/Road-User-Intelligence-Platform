@@ -57,8 +57,7 @@ kill "$VIOL_PID"   2>/dev/null || true
 kill "$SPEED_PID"  2>/dev/null || true
 kill "$STREAM_PID" 2>/dev/null || true
 kill "$MQTT_PID"   2>/dev/null || true
-echo "Agents stopped. Backend API kept alive."
+echo "Agents stopped. Backend API kept alive (PID $API_PID)."
 echo ""
 echo "Dashboard available at: http://127.0.0.1:8000/dashboard"
-echo "Press Ctrl+C to stop the backend when done."
-wait "$API_PID"
+echo "Run 'kill $API_PID' to stop the backend when done."
