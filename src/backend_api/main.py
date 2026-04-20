@@ -1,9 +1,11 @@
 import logging
+import math
 from datetime import datetime
 from pathlib import Path
 
+import yaml
 from fastapi import FastAPI, Depends, HTTPException, Query
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 from starlette.staticfiles import StaticFiles
 
@@ -14,6 +16,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("BackendAPI")
 
 app = FastAPI(title="Road User Intelligence Platform API")
+
+_CAMERAS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "cameras.yaml"
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
 if dashboard_dir.exists():
@@ -26,6 +30,20 @@ def startup_event():
 @app.get("/")
 def read_root():
     return {"status": "MVP API is running"}
+
+
+@app.get("/cameras/config")
+def get_cameras_config():
+    """Return merged camera profiles from cameras.yaml (defaults + per-camera overrides)."""
+    try:
+        with open(_CAMERAS_CONFIG_PATH, "r") as f:
+            raw = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        return {"cameras": []}
+    defaults = raw.get("defaults", {})
+    cameras = raw.get("cameras", [])
+    merged = [{**defaults, **cam} for cam in cameras]
+    return {"cameras": merged}
 
 
 def _apply_time_filters(query, model, start: datetime = None, end: datetime = None):
@@ -198,23 +216,31 @@ def get_violation_breakdown(
 @app.get("/events/recent")
 def get_recent_events(
     camera_id: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
     limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
     detections_query = db.query(models.DBDetection)
     detections_query = _apply_camera_filter(detections_query, models.DBDetection, camera_id)
-    detections = detections_query.order_by(models.DBDetection.timestamp.desc()).limit(limit).all()
+    detections_query = _apply_time_filters(detections_query, models.DBDetection, start, end)
+    detections = detections_query.order_by(models.DBDetection.timestamp.desc()).offset(offset).limit(limit).all()
 
     speeds_query = db.query(models.DBSpeed)
     speeds_query = _apply_camera_filter(speeds_query, models.DBSpeed, camera_id)
-    speeds = speeds_query.order_by(models.DBSpeed.timestamp.desc()).limit(limit).all()
+    speeds_query = _apply_time_filters(speeds_query, models.DBSpeed, start, end)
+    speeds = speeds_query.order_by(models.DBSpeed.timestamp.desc()).offset(offset).limit(limit).all()
 
     violations_query = db.query(models.DBViolation)
     violations_query = _apply_camera_filter(violations_query, models.DBViolation, camera_id)
-    violations = violations_query.order_by(models.DBViolation.timestamp.desc()).limit(limit).all()
+    violations_query = _apply_time_filters(violations_query, models.DBViolation, start, end)
+    violations = violations_query.order_by(models.DBViolation.timestamp.desc()).offset(offset).limit(limit).all()
 
     return {
         "camera_id": camera_id,
+        "start": start,
+        "end": end,
         "detections": [
             {
                 "camera_id": row.camera_id,
@@ -247,5 +273,92 @@ def get_recent_events(
                 "timestamp": row.timestamp,
             }
             for row in violations
+        ],
+    }
+
+
+@app.get("/analytics/speed-distribution")
+def get_speed_distribution(
+    camera_id: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """Return speed counts bucketed into 20 km/h bands."""
+    BANDS = [
+        (0, 20, "0–20"),
+        (20, 40, "20–40"),
+        (40, 60, "40–60"),
+        (60, 80, "60–80"),
+        (80, 100, "80–100"),
+        (100, 120, "100–120"),
+        (120, None, "120+"),
+    ]
+
+    bucket_expr = case(
+        *[
+            (
+                (models.DBSpeed.speed_kmh >= lo) & (models.DBSpeed.speed_kmh < hi),
+                label,
+            )
+            for lo, hi, label in BANDS
+            if hi is not None
+        ],
+        else_="120+",
+    )
+
+    query = db.query(bucket_expr.label("band"), func.count(models.DBSpeed.id).label("count"))
+    query = _apply_camera_filter(query, models.DBSpeed, camera_id)
+    query = _apply_time_filters(query, models.DBSpeed, start, end)
+    rows = query.group_by(bucket_expr).all()
+
+    counts = {row.band: row.count for row in rows}
+    return {
+        "camera_id": camera_id,
+        "start": start,
+        "end": end,
+        "buckets": [
+            {"band": label, "count": counts.get(label, 0)}
+            for _, _, label in BANDS
+        ],
+    }
+
+
+@app.get("/violations/log")
+def get_violations_log(
+    camera_id: str = Query(default=None),
+    violation_type: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """Paginated, filterable violations list with total count."""
+    query = db.query(models.DBViolation)
+    if camera_id:
+        query = query.filter(models.DBViolation.camera_id == camera_id)
+    if violation_type:
+        query = query.filter(models.DBViolation.violation_type == violation_type)
+    query = _apply_time_filters(query, models.DBViolation, start, end)
+
+    total = query.count()
+    offset = (page - 1) * page_size
+    rows = query.order_by(models.DBViolation.timestamp.desc()).offset(offset).limit(page_size).all()
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": math.ceil(total / page_size) if total else 0,
+        "items": [
+            {
+                "id": row.id,
+                "violation_type": row.violation_type,
+                "object_id": row.object_id,
+                "camera_id": row.camera_id,
+                "timestamp": row.timestamp,
+            }
+            for row in rows
         ],
     }

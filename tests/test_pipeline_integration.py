@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-from backend_api.database import SessionLocal
+from backend_api.database import SessionLocal, init_db
 from backend_api.main import app, engine
 from backend_api.models import Base, DBDetection, DBSpeed, DBViolation
 from data_streaming import mqtt_forwarder as mqtt_forwarder_module
@@ -42,7 +42,9 @@ class TestPipelineIntegration(unittest.TestCase):
     def setUp(self):
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
-        self.api_client = TestClient(app)
+        init_db()
+        self.api_client_cm = TestClient(app)
+        self.api_client = self.api_client_cm.__enter__()
 
         self.speed_service = SpeedEstimationService(
             broker_host="localhost",
@@ -67,7 +69,7 @@ class TestPipelineIntegration(unittest.TestCase):
         )
 
     def tearDown(self):
-        self.api_client.close()
+        self.api_client_cm.__exit__(None, None, None)
         Base.metadata.drop_all(bind=engine)
 
     def _forward_with_test_client(self, topic, payload):

@@ -47,6 +47,12 @@
     .metric-card {
       min-height: 10rem;
     }
+    .bar-fill {
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .speed-bar-fill {
+      transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="bg-surface text-on-surface">
@@ -103,6 +109,33 @@
         </div>
       </div>
 
+      <section class="mb-8 grid grid-cols-1 gap-4 bg-surface-container-low p-4 lg:grid-cols-[2fr_1fr_1fr_auto_auto] lg:items-end">
+        <label class="block">
+          <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera Scope</span>
+          <select id="camera-filter" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0">
+            <option value="">All cameras</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Start Time</span>
+          <input id="start-filter" type="datetime-local" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" />
+        </label>
+        <label class="block">
+          <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">End Time</span>
+          <input id="end-filter" type="datetime-local" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" />
+        </label>
+        <button id="apply-filters" class="bg-primary px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary">
+          Apply Filters
+        </button>
+        <button id="clear-filters" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface">
+          Clear
+        </button>
+      </section>
+
+      <div id="active-scope" class="mb-8 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+        Scope: all cameras, all recorded time
+      </div>
+
       <section id="overview-view" data-view="overview" class="space-y-8">
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
@@ -149,7 +182,8 @@
               <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Violation Breakdown</h3>
               <span class="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">Current window</span>
             </div>
-            <div id="violation-breakdown" class="space-y-5"></div>
+            <div id="violation-breakdown" class="space-y-4"></div>
+            <div id="violation-breakdown-total" class="mt-6 border-t border-white/10 pt-4 text-[10px] uppercase tracking-[0.2em] text-white/40"></div>
           </section>
         </div>
       </section>
@@ -172,34 +206,230 @@
         <div id="camera-cards" class="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3"></div>
       </section>
 
-      <section id="violations-view" data-view="violations" class="hidden space-y-8">
-        <div class="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          <section class="bg-surface-container-lowest p-8 lg:col-span-4">
-            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Weekly Volume</p>
-            <p id="violations-hero-total" class="mt-4 text-[3.5rem] font-black tracking-tighter">0</p>
-            <p id="violations-hero-copy" class="mt-4 text-sm leading-6 text-on-surface-variant">No violations have been recorded yet.</p>
-          </section>
-          <section class="bg-surface-container-lowest p-8 lg:col-span-8">
-            <div class="mb-6 flex items-center justify-between">
-              <h3 class="text-xl font-black tracking-tight">Recent Violations</h3>
-              <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Latest persisted records</p>
+      <!-- ═══ CAMERA DETAIL VIEW ═══ -->
+      <section id="camera-detail-view" data-view="camera-detail" class="hidden space-y-8">
+        <!-- Breadcrumb / back -->
+        <div class="flex items-center gap-3">
+          <button id="camera-detail-back" class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant hover:text-black transition-colors">
+            <span class="material-symbols-outlined text-base">arrow_back</span>
+            All Cameras
+          </button>
+          <span class="text-[10px] text-outline-variant">/</span>
+          <span id="camera-detail-breadcrumb" class="text-[10px] font-bold uppercase tracking-[0.2em] text-black"></span>
+        </div>
+
+        <!-- Hero header -->
+        <div class="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-on-surface-variant">Camera Node</p>
+            <h2 id="camera-detail-title" class="text-5xl font-black tracking-tighter md:text-6xl"></h2>
+            <p id="camera-detail-location" class="mt-2 text-sm text-on-surface-variant"></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
+              <span class="mr-2 inline-block h-2 w-2 rounded-full bg-error align-middle animate-pulse"></span>Observed
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full border-collapse text-left">
-                <thead>
-                  <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
-                    <th class="px-4 py-4">Timestamp</th>
-                    <th class="px-4 py-4">Camera</th>
-                    <th class="px-4 py-4">Type</th>
-                    <th class="px-4 py-4">Object</th>
-                  </tr>
-                </thead>
-                <tbody id="violations-table"></tbody>
-              </table>
+          </div>
+        </div>
+
+        <!-- 4-metric row -->
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detections</p>
+            <p id="cd-detections" class="text-5xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Speed Samples</p>
+            <p id="cd-speeds" class="text-5xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
+            <p id="cd-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-black p-6 text-white">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Speed Limit</p>
+            <div>
+              <p id="cd-speed-limit" class="text-5xl font-black tracking-tighter">—</p>
+              <p class="mt-1 text-xs text-white/40">km/h configured</p>
             </div>
-          </section>
+          </article>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+
+          <!-- Left column: calibration + violation breakdown -->
+          <div class="space-y-6 xl:col-span-4">
+
+            <!-- Calibration card -->
+            <section class="bg-surface-container-lowest p-6">
+              <h3 class="mb-5 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Calibration & Config</h3>
+              <dl id="cd-config-list" class="space-y-4"></dl>
+            </section>
+
+            <!-- Violation type breakdown -->
+            <section class="bg-black p-6 text-white">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Violation Breakdown</h3>
+              </div>
+              <div id="cd-violation-breakdown" class="space-y-4">
+                <p class="text-sm text-white/50">No violations for this camera.</p>
+              </div>
+            </section>
+          </div>
+
+          <!-- Right column: detections + violations tables -->
+          <div class="space-y-6 xl:col-span-8">
+
+            <!-- Recent detections -->
+            <section class="bg-surface-container-lowest p-6">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-lg font-black tracking-tight">Recent Detections</h3>
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Latest 20 records</p>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-left">
+                  <thead>
+                    <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                      <th class="px-4 py-3">Timestamp</th>
+                      <th class="px-4 py-3">Class</th>
+                      <th class="px-4 py-3">Confidence</th>
+                      <th class="px-4 py-3">Object ID</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cd-detections-table"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Recent violations -->
+            <section class="bg-surface-container-lowest p-6">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-lg font-black tracking-tight">Recent Violations</h3>
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Latest 20 records</p>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-left">
+                  <thead>
+                    <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                      <th class="px-4 py-3">Timestamp</th>
+                      <th class="px-4 py-3">Type</th>
+                      <th class="px-4 py-3">Object ID</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cd-violations-table"></tbody>
+                </table>
+              </div>
+            </section>
+
+          </div>
         </div>
       </section>
+      <!-- ═══ / CAMERA DETAIL VIEW ═══ -->
+
+      <!-- ═══ VIOLATIONS PAGE ═══ -->
+      <section id="violations-view" data-view="violations" class="hidden space-y-8">
+
+        <!-- Hero stats row (inspired by violations_log_2) -->
+        <div class="grid grid-cols-1 gap-0 md:grid-cols-3">
+          <article class="bg-surface-container-lowest p-8 border-l-4 border-black">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Total Violations</p>
+            <p id="vl-total" class="mt-3 text-[3.5rem] font-black tracking-tighter leading-none">0</p>
+            <p id="vl-copy" class="mt-3 text-xs text-on-surface-variant">No violations recorded yet.</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8 border-l-4 border-outline-variant">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Most Common Type</p>
+            <p id="vl-top-type" class="mt-3 text-2xl font-black tracking-tighter uppercase">—</p>
+            <p id="vl-top-type-pct" class="mt-2 text-xs text-on-surface-variant"></p>
+          </article>
+          <article class="bg-surface-container-lowest p-8 border-l-4 border-outline-variant">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Top Offending Camera</p>
+            <p id="vl-top-camera" class="mt-3 text-2xl font-black tracking-tighter">—</p>
+            <p id="vl-top-camera-count" class="mt-2 text-xs text-on-surface-variant"></p>
+          </article>
+        </div>
+
+        <!-- Filter bar -->
+        <section class="bg-surface-container-low p-1 flex flex-wrap items-center gap-0">
+          <div class="relative flex-1 min-w-[200px]">
+            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-base select-none">search</span>
+            <input id="vl-search" type="text" placeholder="Filter by camera ID…"
+              class="w-full border-0 bg-surface-container-lowest py-3 pl-12 pr-4 text-sm focus:ring-0" />
+          </div>
+          <select id="vl-type-filter" class="border-0 bg-surface-container-lowest py-3 px-6 text-[10px] font-bold uppercase tracking-[0.2em] focus:ring-0 appearance-none">
+            <option value="">All Types</option>
+          </select>
+          <select id="vl-camera-filter" class="border-0 bg-surface-container-lowest py-3 px-6 text-[10px] font-bold uppercase tracking-[0.2em] focus:ring-0 appearance-none">
+            <option value="">All Cameras</option>
+          </select>
+          <button id="vl-apply" class="bg-primary px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary">
+            Apply
+          </button>
+          <button id="vl-clear" class="bg-surface-container-highest px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">
+            Clear
+          </button>
+        </section>
+
+        <!-- Paginated violations table -->
+        <section class="bg-surface-container-lowest">
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse text-left">
+              <thead>
+                <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                  <th class="px-6 py-4">Timestamp</th>
+                  <th class="px-6 py-4">Camera</th>
+                  <th class="px-6 py-4">Type</th>
+                  <th class="px-6 py-4">Object ID</th>
+                  <th class="px-6 py-4 text-center">Evidence</th>
+                </tr>
+              </thead>
+              <tbody id="vl-table"></tbody>
+            </table>
+          </div>
+          <!-- Pagination bar -->
+          <div class="flex items-center justify-between px-6 py-5 border-t border-surface-container">
+            <p id="vl-pagination-label" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></p>
+            <div id="vl-pagination-controls" class="flex items-center gap-1"></div>
+          </div>
+        </section>
+
+        <!-- Grouped count sections side-by-side -->
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+
+          <!-- By Type -->
+          <section class="bg-black p-8 text-white">
+            <div class="mb-6 flex items-center justify-between">
+              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">By Violation Type</h3>
+              <span id="vl-type-count-label" class="text-[10px] text-white/40 uppercase tracking-[0.15em]"></span>
+            </div>
+            <div id="vl-type-bars" class="space-y-4"></div>
+          </section>
+
+          <!-- By Camera -->
+          <section class="bg-surface-container-lowest p-8">
+            <div class="mb-6 flex items-center justify-between">
+              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">By Camera</h3>
+              <span id="vl-camera-count-label" class="text-[10px] text-on-surface-variant uppercase tracking-[0.15em]"></span>
+            </div>
+            <div id="vl-camera-bars" class="space-y-4"></div>
+          </section>
+
+        </div>
+
+        <!-- Speed Distribution -->
+        <section class="bg-surface-container-lowest p-8">
+          <div class="mb-6 flex items-end justify-between">
+            <div>
+              <h3 class="text-xl font-black tracking-tight">Speed Distribution</h3>
+              <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Km/h band frequency across all filtered records</p>
+            </div>
+            <p id="speed-dist-total" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></p>
+          </div>
+          <div id="speed-distribution" class="flex items-end gap-2 h-40"></div>
+          <div id="speed-dist-labels" class="mt-2 flex gap-2"></div>
+        </section>
+
+      </section>
+      <!-- ═══ / VIOLATIONS PAGE ═══ -->
     </section>
   </main>
 
@@ -208,7 +438,16 @@
       summary: null,
       byCamera: [],
       violations: [],
-      recent: { detections: [], speeds: [], violations: [] }
+      speedDist: [],
+      cameraConfigs: [],
+      recent: { detections: [], speeds: [], violations: [] },
+      violationLog: { items: [], total: 0, page: 1, pages: 0, pageSize: 25 },
+      violationLogFilters: { type: "", camera: "", search: "" },
+      filters: {
+        cameraId: "",
+        start: "",
+        end: ""
+      }
     };
 
     function formatTimestamp(value) {
@@ -226,8 +465,10 @@
         section.classList.toggle("hidden", section.dataset.view !== viewName);
       });
 
+      // camera-detail is a sub-view of cameras — highlight the Cameras nav button
+      const navHighlight = viewName === "camera-detail" ? "cameras" : viewName;
       document.querySelectorAll("[data-view-button]").forEach((button) => {
-        const isActive = button.dataset.viewButton === viewName;
+        const isActive = button.dataset.viewButton === navHighlight;
         button.classList.toggle("bg-white", isActive);
         button.classList.toggle("shadow-sm", isActive);
         button.classList.toggle("font-bold", isActive);
@@ -244,12 +485,63 @@
       return response.json();
     }
 
+    function buildQuery(params) {
+      const search = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          search.set(key, value);
+        }
+      });
+      const query = search.toString();
+      return query ? `?${query}` : "";
+    }
+
+    function normalizeDateInput(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toISOString();
+    }
+
+    function syncFilterInputs() {
+      document.getElementById("camera-filter").value = state.filters.cameraId;
+      document.getElementById("start-filter").value = state.filters.start;
+      document.getElementById("end-filter").value = state.filters.end;
+    }
+
+    function updateScopeLabel() {
+      const cameraLabel = state.filters.cameraId || "all cameras";
+      const startLabel = state.filters.start ? formatTimestamp(normalizeDateInput(state.filters.start)) : "beginning";
+      const endLabel = state.filters.end ? formatTimestamp(normalizeDateInput(state.filters.end)) : "now";
+      const timeLabel = state.filters.start || state.filters.end
+        ? `${startLabel} to ${endLabel}`
+        : "all recorded time";
+      document.getElementById("active-scope").textContent = `Scope: ${cameraLabel}, ${timeLabel}`;
+    }
+
+    function populateCameraOptions() {
+      const select = document.getElementById("camera-filter");
+      const currentValue = state.filters.cameraId;
+      select.innerHTML = '<option value="">All cameras</option>';
+      state.byCamera.forEach((camera) => {
+        const option = document.createElement("option");
+        option.value = camera.camera_id;
+        option.textContent = camera.camera_id;
+        if (camera.camera_id === currentValue) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+    }
+
     function renderOverview() {
       const summary = state.summary || {};
       document.getElementById("total-detections").textContent = summary.total_detections_logged ?? 0;
       document.getElementById("total-speeds").textContent = summary.total_speeds_logged ?? 0;
       document.getElementById("total-violations").textContent = summary.total_violations_logged ?? 0;
       document.getElementById("camera-count").textContent = state.byCamera.length;
+      populateCameraOptions();
+      updateScopeLabel();
 
       const cameraSummary = document.getElementById("camera-summary");
       cameraSummary.innerHTML = "";
@@ -259,7 +551,8 @@
         state.byCamera.forEach((camera) => {
           const total = camera.detections + camera.speeds + camera.violations;
           const row = document.createElement("div");
-          row.className = "bg-surface-container-low p-5";
+          row.className = "bg-surface-container-low p-5 cursor-pointer hover:bg-surface-container transition-colors";
+          row.addEventListener("click", () => { setActiveView("cameras"); openCameraDetail(camera.camera_id); });
           row.innerHTML = `
             <div class="mb-3 flex items-center justify-between">
               <div>
@@ -281,25 +574,38 @@
       }
 
       const violationBreakdown = document.getElementById("violation-breakdown");
+      const violationTotal = document.getElementById("violation-breakdown-total");
       violationBreakdown.innerHTML = "";
       if (!state.violations.length) {
         violationBreakdown.innerHTML = '<p class="text-sm text-white/70">No violations available yet.</p>';
+        violationTotal.textContent = "";
       } else {
+        const totalCount = state.violations.reduce((s, i) => s + i.count, 0);
         const maxCount = Math.max(...state.violations.map((item) => item.count), 1);
-        state.violations.forEach((item) => {
-          const width = (item.count / maxCount) * 100;
+        const sorted = [...state.violations].sort((a, b) => b.count - a.count);
+        sorted.forEach((item, idx) => {
+          const pct = Math.round((item.count / totalCount) * 100);
+          const barWidth = (item.count / maxCount) * 100;
           const block = document.createElement("div");
+          block.className = "group";
           block.innerHTML = `
-            <div class="mb-2 flex justify-between text-[10px] font-bold uppercase tracking-[0.2em]">
-              <span>${item.violation_type.replaceAll("_", " ")}</span>
-              <span>${item.count}</span>
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-white/30">${String(idx + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.violation_type.replaceAll("_", " ")}</span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-[10px] text-white/50">${pct}%</span>
+                <span class="text-sm font-black tabular-nums text-white">${item.count}</span>
+              </div>
             </div>
-            <div class="h-8 bg-white/10">
-              <div class="h-full bg-white" style="width:${width}%"></div>
+            <div class="relative h-1.5 bg-white/10 overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${barWidth}%"></div>
             </div>
           `;
           violationBreakdown.appendChild(block);
         });
+        violationTotal.textContent = `${totalCount} total violations across ${sorted.length} type${sorted.length !== 1 ? "s" : ""}`;
       }
     }
 
@@ -319,33 +625,65 @@
         return;
       }
 
-      state.byCamera.forEach((camera, index) => {
+      const ranked = [...state.byCamera].sort(
+        (a, b) => (b.detections + b.speeds + b.violations) - (a.detections + a.speeds + a.violations)
+      );
+      ranked.forEach((camera, index) => {
+        const total = camera.detections + camera.speeds + camera.violations;
+        const dPct = total ? Math.round((camera.detections / total) * 100) : 0;
+        const sPct = total ? Math.round((camera.speeds / total) * 100) : 0;
+        const vPct = total ? 100 - dPct - sPct : 0;
+        const violationRate = total ? ((camera.violations / total) * 100).toFixed(1) : "0.0";
+        const severityLabel = camera.violations === 0
+          ? "<span class=\"bg-surface-container text-on-surface-variant px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]\">Clean</span>"
+          : camera.violations < 5
+          ? "<span class=\"bg-black/10 text-on-surface px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]\">Low</span>"
+          : camera.violations < 20
+          ? "<span class=\"bg-error-container text-error px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]\">Moderate</span>"
+          : "<span class=\"bg-error text-white px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]\">High</span>";
         const card = document.createElement("article");
-        card.className = "bg-surface-container-lowest";
+        card.className = "bg-surface-container-lowest cursor-pointer transition-shadow hover:shadow-[0_8px_32px_-4px_rgba(26,28,28,0.1)]";
+        card.addEventListener("click", () => openCameraDetail(camera.camera_id));
         card.innerHTML = `
-          <div class="aspect-video bg-black/95 p-6 text-white">
-            <div class="flex items-center justify-between">
-              <span class="text-[10px] font-bold uppercase tracking-[0.2em]">Node ${String(index + 1).padStart(2, "0")}</span>
-              <span class="rounded-full bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">Observed</span>
+          <div class="bg-black p-6 text-white">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="text-[9px] font-bold tabular-nums text-white/30">#${index + 1}</span>
+                <p class="mt-1 text-2xl font-black tracking-tighter">${camera.camera_id}</p>
+              </div>
+              <div class="text-right">
+                ${severityLabel}
+                <p class="mt-2 text-[10px] text-white/40">Violation rate</p>
+                <p class="text-lg font-black tabular-nums">${violationRate}%</p>
+              </div>
             </div>
-            <div class="mt-10">
-              <p class="text-3xl font-black tracking-tighter">${camera.camera_id}</p>
-              <p class="mt-2 text-sm text-white/70">Persisted detections, speeds, and violations for this camera.</p>
+            <div class="mt-5">
+              <p class="mb-1.5 text-[9px] uppercase tracking-[0.2em] text-white/30">Event mix</p>
+              <div class="flex h-1.5 overflow-hidden gap-0.5">
+                <div class="bar-fill h-full bg-white" style="width:${dPct}%" title="Detections"></div>
+                <div class="bar-fill h-full bg-white/50" style="width:${sPct}%" title="Speeds"></div>
+                <div class="bar-fill h-full bg-error" style="width:${vPct}%" title="Violations"></div>
+              </div>
+              <div class="mt-2 flex gap-4 text-[9px] uppercase tracking-[0.15em] text-white/40">
+                <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-white"></span>Det</span>
+                <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-white/50"></span>Spd</span>
+                <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-error"></span>Vio</span>
+              </div>
             </div>
           </div>
           <div class="p-6">
             <div class="grid grid-cols-3 gap-3">
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Detections</p>
-                <p class="mt-2 text-2xl font-black tracking-tighter">${camera.detections}</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter">${camera.detections.toLocaleString()}</p>
               </div>
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Speeds</p>
-                <p class="mt-2 text-2xl font-black tracking-tighter">${camera.speeds}</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter">${camera.speeds.toLocaleString()}</p>
               </div>
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
-                <p class="mt-2 text-2xl font-black tracking-tighter text-error">${camera.violations}</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter text-error">${camera.violations.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -354,54 +692,413 @@
       });
     }
 
+    const SEVERITY_CHIP = {
+      speeding:     "bg-error text-white",
+      no_helmet:    "bg-error-container text-error",
+      red_light:    "bg-error text-white",
+      wrong_way:    "bg-error text-white",
+      illegal_turn: "bg-error-container text-error",
+      no_seatbelt:  "bg-error-container text-error",
+    };
+
+    async function loadViolationLog() {
+      const { type, camera, search } = state.violationLogFilters;
+      const params = {
+        page: state.violationLog.page,
+        page_size: state.violationLog.pageSize,
+        camera_id: camera || search || state.filters.cameraId || "",
+        violation_type: type,
+        start: normalizeDateInput(state.filters.start),
+        end: normalizeDateInput(state.filters.end),
+      };
+      try {
+        const data = await loadJson(`/violations/log${buildQuery(params)}`);
+        state.violationLog = { ...state.violationLog, ...data };
+        renderViolationLogTable();
+        renderViolationPagination();
+      } catch (err) {
+        console.error("Violation log fetch failed", err);
+      }
+    }
+
     function renderViolations() {
       const totalViolations = state.summary?.total_violations_logged ?? 0;
-      document.getElementById("violations-hero-total").textContent = totalViolations;
-      document.getElementById("violations-hero-copy").textContent = totalViolations
-        ? `The platform has persisted ${totalViolations} violations in the current dataset.`
-        : "No violations have been recorded yet.";
+      document.getElementById("vl-total").textContent = totalViolations.toLocaleString();
+      document.getElementById("vl-copy").textContent = totalViolations
+        ? `${totalViolations.toLocaleString()} violations persisted in current scope.`
+        : "No violations recorded yet.";
 
-      const table = document.getElementById("violations-table");
-      table.innerHTML = "";
-      if (!state.recent.violations.length) {
-        table.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-sm text-on-surface-variant">No violation records available.</td></tr>';
-        return;
+      // Top type
+      const sorted = [...state.violations].sort((a, b) => b.count - a.count);
+      const topType = sorted[0];
+      const pct = topType && totalViolations ? Math.round((topType.count / totalViolations) * 100) : 0;
+      document.getElementById("vl-top-type").textContent = topType
+        ? topType.violation_type.replaceAll("_", " ") : "—";
+      document.getElementById("vl-top-type-pct").textContent = topType
+        ? `${pct}% of total violations` : "";
+
+      // Top camera
+      const topCamera = [...state.byCamera].sort((a, b) => b.violations - a.violations)[0];
+      document.getElementById("vl-top-camera").textContent = topCamera ? topCamera.camera_id : "—";
+      document.getElementById("vl-top-camera-count").textContent = topCamera
+        ? `${topCamera.violations.toLocaleString()} violations recorded` : "";
+
+      // Populate type filter dropdown
+      const typeSelect = document.getElementById("vl-type-filter");
+      const currentType = state.violationLogFilters.type;
+      typeSelect.innerHTML = '<option value="">All Types</option>';
+      sorted.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.violation_type;
+        opt.textContent = item.violation_type.replaceAll("_", " ").replace(/\b\w/g, l => l.toUpperCase());
+        if (item.violation_type === currentType) opt.selected = true;
+        typeSelect.appendChild(opt);
+      });
+
+      // Populate camera filter dropdown
+      const camSelect = document.getElementById("vl-camera-filter");
+      const currentCam = state.violationLogFilters.camera;
+      camSelect.innerHTML = '<option value="">All Cameras</option>';
+      state.byCamera.forEach(cam => {
+        const opt = document.createElement("option");
+        opt.value = cam.camera_id;
+        opt.textContent = cam.camera_id;
+        if (cam.camera_id === currentCam) opt.selected = true;
+        camSelect.appendChild(opt);
+      });
+
+      // By-type bars (black panel)
+      const typeBars = document.getElementById("vl-type-bars");
+      typeBars.innerHTML = "";
+      document.getElementById("vl-type-count-label").textContent =
+        sorted.length ? `${sorted.length} type${sorted.length !== 1 ? "s" : ""}` : "";
+      if (!sorted.length) {
+        typeBars.innerHTML = '<p class="text-sm text-white/50">No violation data.</p>';
+      } else {
+        const maxC = Math.max(...sorted.map(i => i.count), 1);
+        sorted.forEach((item, idx) => {
+          const w = (item.count / maxC) * 100;
+          const p = Math.round((item.count / (totalViolations || 1)) * 100);
+          const block = document.createElement("div");
+          block.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-white/30">${String(idx + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.violation_type.replaceAll("_", " ")}</span>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-[10px] text-white/50">${p}%</span>
+                <span class="text-sm font-black tabular-nums text-white">${item.count.toLocaleString()}</span>
+              </div>
+            </div>
+            <div class="relative h-1.5 bg-white/10 overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${w}%"></div>
+            </div>`;
+          typeBars.appendChild(block);
+        });
       }
 
-      state.recent.violations.forEach((violation) => {
-        const row = document.createElement("tr");
-        row.className = "border-t border-black/5 hover:bg-surface-container-low";
-        row.innerHTML = `
-          <td class="px-4 py-4 text-sm">${formatTimestamp(violation.timestamp)}</td>
-          <td class="px-4 py-4 text-sm font-mono">${violation.camera_id}</td>
-          <td class="px-4 py-4">
-            <span class="inline-flex bg-black px-2 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
-              ${violation.violation_type.replaceAll("_", " ")}
+      // By-camera bars (white panel)
+      const camBars = document.getElementById("vl-camera-bars");
+      camBars.innerHTML = "";
+      const camsSorted = [...state.byCamera].sort((a, b) => b.violations - a.violations);
+      document.getElementById("vl-camera-count-label").textContent =
+        camsSorted.length ? `${camsSorted.length} camera${camsSorted.length !== 1 ? "s" : ""}` : "";
+      if (!camsSorted.length) {
+        camBars.innerHTML = '<p class="text-sm text-on-surface-variant">No camera data.</p>';
+      } else {
+        const maxV = Math.max(...camsSorted.map(c => c.violations), 1);
+        camsSorted.forEach((cam, idx) => {
+          const w = (cam.violations / maxV) * 100;
+          const div = document.createElement("div");
+          div.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-on-surface-variant">${String(idx + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] cursor-pointer hover:text-black underline-offset-2 hover:underline"
+                  data-cam-link="${cam.camera_id}">${cam.camera_id}</span>
+              </div>
+              <span class="text-sm font-black tabular-nums text-error">${cam.violations.toLocaleString()}</span>
+            </div>
+            <div class="relative h-1.5 bg-surface-container overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-error" style="width:${w}%"></div>
+            </div>`;
+          camBars.appendChild(div);
+        });
+        // wire camera links
+        camBars.querySelectorAll("[data-cam-link]").forEach(el => {
+          el.addEventListener("click", () => openCameraDetail(el.dataset.camLink));
+        });
+      }
+    }
+
+    function renderViolationLogTable() {
+      const tbody = document.getElementById("vl-table");
+      tbody.innerHTML = "";
+      if (!state.violationLog.items.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-sm text-on-surface-variant">No violation records match the current filters.</td></tr>';
+        return;
+      }
+      state.violationLog.items.forEach((v, idx) => {
+        const chip = SEVERITY_CHIP[v.violation_type] ?? "bg-black text-white";
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-surface-container-low transition-colors group " + (idx % 2 !== 0 ? "bg-surface-container-low/30" : "");
+        tr.innerHTML = `
+          <td class="px-6 py-5 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
+          <td class="px-6 py-5 text-xs font-mono font-semibold">${v.camera_id}</td>
+          <td class="px-6 py-5">
+            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${chip}">
+              ${v.violation_type.replaceAll("_", " ")}
             </span>
           </td>
-          <td class="px-4 py-4 text-sm">${violation.object_id}</td>
+          <td class="px-6 py-5 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
+          <td class="px-6 py-5 text-center">
+            <button class="inline-flex items-center gap-1 border border-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors evidence-btn"
+              data-camera="${v.camera_id}">
+              View <span class="material-symbols-outlined text-xs">arrow_forward</span>
+            </button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      // wire evidence buttons → camera detail
+      tbody.querySelectorAll(".evidence-btn").forEach(btn => {
+        btn.addEventListener("click", () => openCameraDetail(btn.dataset.camera));
+      });
+    }
+
+    function renderViolationPagination() {
+      const { page, pages, pageSize, total } = state.violationLog;
+      const label = document.getElementById("vl-pagination-label");
+      const controls = document.getElementById("vl-pagination-controls");
+      if (!total) { label.textContent = "No results"; controls.innerHTML = ""; return; }
+      const from = (page - 1) * pageSize + 1;
+      const to = Math.min(page * pageSize, total);
+      label.textContent = `Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${total.toLocaleString()}`;
+      controls.innerHTML = "";
+
+      const mkBtn = (content, targetPage, active = false, disabled = false) => {
+        const btn = document.createElement("button");
+        btn.innerHTML = content;
+        btn.className = active
+          ? "w-9 h-9 bg-black text-white text-xs font-bold flex items-center justify-center"
+          : "w-9 h-9 border border-outline-variant text-xs flex items-center justify-center hover:bg-surface-container transition-colors";
+        if (disabled) btn.disabled = true, btn.classList.add("opacity-30", "cursor-not-allowed");
+        if (!disabled && !active) btn.addEventListener("click", () => {
+          state.violationLog.page = targetPage;
+          loadViolationLog();
+        });
+        return btn;
+      };
+
+      controls.appendChild(mkBtn('<span class="material-symbols-outlined text-sm">chevron_left</span>', page - 1, false, page <= 1));
+      // page window
+      const window = 2;
+      for (let p = Math.max(1, page - window); p <= Math.min(pages, page + window); p++) {
+        controls.appendChild(mkBtn(p, p, p === page));
+      }
+      controls.appendChild(mkBtn('<span class="material-symbols-outlined text-sm">chevron_right</span>', page + 1, false, page >= pages));
+    }
+
+    async function openCameraDetail(cameraId) {
+      setActiveView("camera-detail");
+
+      // Header
+      document.getElementById("camera-detail-breadcrumb").textContent = cameraId;
+      document.getElementById("camera-detail-title").textContent = cameraId;
+
+      // Config info
+      const cfg = state.cameraConfigs.find(c => c.id === cameraId) || {};
+      document.getElementById("camera-detail-location").textContent =
+        cfg.location ? `Location: ${cfg.location}` : "No location configured";
+      document.getElementById("cd-speed-limit").textContent =
+        cfg.speed_limit_kmh != null ? cfg.speed_limit_kmh : "—";
+
+      // Config list
+      const configFields = [
+        { label: "Speed Limit",        value: cfg.speed_limit_kmh != null ? `${cfg.speed_limit_kmh} km/h` : "Default" },
+        { label: "Pixels / Metre",     value: cfg.pixels_per_meter != null ? cfg.pixels_per_meter : "Default" },
+        { label: "Target FPS",         value: cfg.target_fps != null ? cfg.target_fps : "Default" },
+        { label: "Location",           value: cfg.location || "—" },
+        { label: "Source URL",         value: cfg.url || "—" },
+      ];
+      const configList = document.getElementById("cd-config-list");
+      configList.innerHTML = "";
+      configFields.forEach(({ label, value }) => {
+        const row = document.createElement("div");
+        row.className = "flex items-start justify-between gap-4 border-b border-surface-container pb-3 last:border-b-0 last:pb-0";
+        row.innerHTML = `
+          <dt class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant shrink-0">${label}</dt>
+          <dd class="text-xs font-semibold text-right break-all">${value}</dd>
         `;
-        table.appendChild(row);
+        configList.appendChild(row);
+      });
+
+      // Summary counts (from cached byCamera state)
+      const camStats = state.byCamera.find(c => c.camera_id === cameraId) || { detections: 0, speeds: 0, violations: 0 };
+      document.getElementById("cd-detections").textContent = camStats.detections.toLocaleString();
+      document.getElementById("cd-speeds").textContent = camStats.speeds.toLocaleString();
+      document.getElementById("cd-violations").textContent = camStats.violations.toLocaleString();
+
+      // Fetch per-camera recent events + violation breakdown in parallel
+      try {
+        const q = buildQuery({ camera_id: cameraId, limit: 20 });
+        const [recent, breakdown] = await Promise.all([
+          loadJson(`/events/recent${q}`),
+          loadJson(`/analytics/violations${buildQuery({ camera_id: cameraId })}`),
+        ]);
+
+        renderCameraDetailDetections(recent.detections || []);
+        renderCameraDetailViolations(recent.violations || []);
+        renderCameraDetailBreakdown(breakdown.violations || []);
+      } catch (err) {
+        console.error("Camera detail fetch failed", err);
+      }
+    }
+
+    function renderCameraDetailDetections(detections) {
+      const tbody = document.getElementById("cd-detections-table");
+      tbody.innerHTML = "";
+      if (!detections.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-sm text-on-surface-variant">No detection records for this camera.</td></tr>';
+        return;
+      }
+      detections.forEach((d, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = idx % 2 === 0 ? "hover:bg-surface-container-low" : "bg-surface-container-low/50 hover:bg-surface-container";
+        const conf = d.confidence != null ? `${(d.confidence * 100).toFixed(1)}%` : "—";
+        tr.innerHTML = `
+          <td class="px-4 py-3 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(d.timestamp)}</td>
+          <td class="px-4 py-3"><span class="inline-flex bg-surface-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em]">${d.class ?? "—"}</span></td>
+          <td class="px-4 py-3 text-xs tabular-nums font-semibold">${conf}</td>
+          <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${d.object_id ?? "—"}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderCameraDetailViolations(violations) {
+      const tbody = document.getElementById("cd-violations-table");
+      tbody.innerHTML = "";
+      if (!violations.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-sm text-on-surface-variant">No violation records for this camera.</td></tr>';
+        return;
+      }
+      const SEVERITY_CHIP = {
+        speeding: "bg-error text-white",
+        no_helmet: "bg-error-container text-error",
+        red_light: "bg-error text-white",
+        wrong_way: "bg-error text-white",
+        illegal_turn: "bg-error-container text-error",
+        no_seatbelt: "bg-error-container text-error",
+      };
+      violations.forEach((v, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = idx % 2 === 0 ? "hover:bg-surface-container-low" : "bg-surface-container-low/50 hover:bg-surface-container";
+        const chip = SEVERITY_CHIP[v.violation_type] ?? "bg-black text-white";
+        tr.innerHTML = `
+          <td class="px-4 py-3 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
+          <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${chip}">${v.violation_type.replaceAll("_", " ")}</span></td>
+          <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderCameraDetailBreakdown(violations) {
+      const container = document.getElementById("cd-violation-breakdown");
+      container.innerHTML = "";
+      if (!violations.length) {
+        container.innerHTML = '<p class="text-sm text-white/50">No violations for this camera.</p>';
+        return;
+      }
+      const total = violations.reduce((s, i) => s + i.count, 0);
+      const max = Math.max(...violations.map(i => i.count), 1);
+      const sorted = [...violations].sort((a, b) => b.count - a.count);
+      sorted.forEach((item, idx) => {
+        const pct = Math.round((item.count / total) * 100);
+        const w = (item.count / max) * 100;
+        const block = document.createElement("div");
+        block.innerHTML = `
+          <div class="mb-1 flex items-baseline justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-[9px] font-bold tabular-nums text-white/30">${String(idx + 1).padStart(2, "0")}</span>
+              <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.violation_type.replaceAll("_", " ")}</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span class="text-[10px] text-white/50">${pct}%</span>
+              <span class="text-sm font-black tabular-nums text-white">${item.count}</span>
+            </div>
+          </div>
+          <div class="relative h-1.5 bg-white/10 overflow-hidden">
+            <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${w}%"></div>
+          </div>
+        `;
+        container.appendChild(block);
+      });
+    }
+
+    function renderSpeedDistribution() {
+      const container = document.getElementById("speed-distribution");
+      const labelsEl = document.getElementById("speed-dist-labels");
+      const totalEl = document.getElementById("speed-dist-total");
+      if (!container) return;
+      container.innerHTML = "";
+      labelsEl.innerHTML = "";
+      const buckets = state.speedDist;
+      if (!buckets.length) return;
+      const maxCount = Math.max(...buckets.map(b => b.count), 1);
+      const totalSpeeds = buckets.reduce((s, b) => s + b.count, 0);
+      if (totalEl) totalEl.textContent = totalSpeeds ? `${totalSpeeds.toLocaleString()} speed samples` : "";
+      buckets.forEach(bucket => {
+        const heightPct = (bucket.count / maxCount) * 100;
+        const isEmpty = bucket.count === 0;
+        const col = document.createElement("div");
+        col.className = "flex flex-col items-center gap-1 flex-1";
+        col.innerHTML = `
+          <span class="text-[9px] tabular-nums text-on-surface-variant">${bucket.count > 0 ? bucket.count.toLocaleString() : ""}</span>
+          <div class="w-full flex flex-col justify-end" style="height:9rem;">
+            <div class="speed-bar-fill w-full ${ bucket.count > 0 ? "bg-black" : "bg-surface-container" }"
+              style="height:${heightPct}%;min-height:${isEmpty ? 0 : 4}px;"
+              title="${bucket.band} km/h: ${bucket.count}"></div>
+          </div>
+        `;
+        container.appendChild(col);
+        const lbl = document.createElement("div");
+        lbl.className = "flex-1 text-center text-[9px] uppercase tracking-[0.1em] text-on-surface-variant truncate";
+        lbl.textContent = bucket.band;
+        labelsEl.appendChild(lbl);
       });
     }
 
     async function refreshDashboard() {
       try {
-        const [summary, byCamera, violations, recent] = await Promise.all([
-          loadJson("/analytics/summary"),
-          loadJson("/analytics/by-camera"),
-          loadJson("/analytics/violations"),
-          loadJson("/events/recent?limit=12")
+        const filterParams = {
+          camera_id: state.filters.cameraId,
+          start: normalizeDateInput(state.filters.start),
+          end: normalizeDateInput(state.filters.end)
+        };
+        const [summary, byCamera, violations, recent, speedDist, cameraConfigs] = await Promise.all([
+          loadJson(`/analytics/summary${buildQuery(filterParams)}`),
+          loadJson(`/analytics/by-camera${buildQuery({ start: filterParams.start, end: filterParams.end })}`),
+          loadJson(`/analytics/violations${buildQuery(filterParams)}`),
+          loadJson(`/events/recent${buildQuery({ ...filterParams, limit: 20 })}`),
+          loadJson(`/analytics/speed-distribution${buildQuery(filterParams)}`),
+          loadJson(`/cameras/config`)
         ]);
 
         state.summary = summary;
         state.byCamera = byCamera.cameras || [];
         state.violations = violations.violations || [];
         state.recent = recent;
+        state.speedDist = speedDist.buckets || [];
+        state.cameraConfigs = cameraConfigs.cameras || [];
 
         renderOverview();
         renderCameras();
         renderViolations();
+        renderSpeedDistribution();
+        state.violationLog.page = 1;
+        await loadViolationLog();
         document.getElementById("last-updated").textContent = new Date().toLocaleString();
       } catch (error) {
         console.error(error);
@@ -412,9 +1109,41 @@
     document.querySelectorAll("[data-view-button]").forEach((button) => {
       button.addEventListener("click", () => setActiveView(button.dataset.viewButton));
     });
+    document.getElementById("camera-detail-back").addEventListener("click", () => setActiveView("cameras"));
     document.getElementById("refresh-button").addEventListener("click", refreshDashboard);
 
+    document.getElementById("vl-apply").addEventListener("click", () => {
+      state.violationLogFilters.type   = document.getElementById("vl-type-filter").value;
+      state.violationLogFilters.camera = document.getElementById("vl-camera-filter").value;
+      state.violationLogFilters.search = document.getElementById("vl-search").value;
+      state.violationLog.page = 1;
+      loadViolationLog();
+    });
+    document.getElementById("vl-clear").addEventListener("click", () => {
+      state.violationLogFilters = { type: "", camera: "", search: "" };
+      state.violationLog.page = 1;
+      document.getElementById("vl-search").value = "";
+      document.getElementById("vl-type-filter").value = "";
+      document.getElementById("vl-camera-filter").value = "";
+      loadViolationLog();
+    });
+    document.getElementById("vl-search").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("vl-apply").click();
+    });
+    document.getElementById("apply-filters").addEventListener("click", () => {
+      state.filters.cameraId = document.getElementById("camera-filter").value;
+      state.filters.start = document.getElementById("start-filter").value;
+      state.filters.end = document.getElementById("end-filter").value;
+      refreshDashboard();
+    });
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      state.filters = { cameraId: "", start: "", end: "" };
+      syncFilterInputs();
+      refreshDashboard();
+    });
+
     setActiveView("overview");
+    syncFilterInputs();
     refreshDashboard();
   </script>
 </body>

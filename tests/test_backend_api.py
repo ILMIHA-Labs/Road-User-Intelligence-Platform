@@ -6,6 +6,7 @@ import os
 # Ensure src is in the path for importing backend_api
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
+from backend_api.database import init_db
 from backend_api.main import app, engine
 from backend_api.models import Base
 
@@ -22,10 +23,12 @@ class TestBackendAPI(unittest.TestCase):
     def setUp(self):
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
-        self.client = TestClient(app)
+        init_db()
+        self.client_cm = TestClient(app)
+        self.client = self.client_cm.__enter__()
 
     def tearDown(self):
-        self.client.close()
+        self.client_cm.__exit__(None, None, None)
         Base.metadata.drop_all(bind=engine)
 
     def test_read_root(self):
@@ -167,6 +170,28 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(len(data["speeds"]), 1)
         self.assertEqual(len(data["violations"]), 1)
         self.assertEqual(data["detections"][0]["class"], "car")
+
+    def test_recent_events_support_time_filters(self):
+        self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 1,
+            "camera_id": "cam_recent",
+            "timestamp": "2023-10-27T09:00:02Z",
+        })
+        self.client.post("/violations", json={
+            "violation_type": "helmet_violation",
+            "object_id": 2,
+            "camera_id": "cam_recent",
+            "timestamp": "2023-10-27T11:00:02Z",
+        })
+
+        response = self.client.get(
+            "/events/recent?camera_id=cam_recent&start=2023-10-27T10:00:00Z&end=2023-10-27T12:00:00Z"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data["violations"]), 1)
+        self.assertEqual(data["violations"][0]["violation_type"], "helmet_violation")
 
     def test_summary_filters(self):
         self.client.post("/detections", json={
