@@ -18,11 +18,31 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger("ViolationDetectionAgent")
 
 class ViolationDetectionService:
-    def __init__(self, broker_host, broker_port, speed_limit, camera_profiles=None):
+    def __init__(
+        self,
+        broker_host,
+        broker_port,
+        speed_limit,
+        camera_profiles=None,
+        speed_tolerance_kmh=0.0,
+        severe_speed_delta_kmh=20.0,
+        speed_reset_delta_kmh=5.0,
+        stopped_speed_threshold_kmh=3.0,
+        stopped_duration_seconds=20,
+        stopped_resume_speed_kmh=8.0,
+        state_ttl_seconds=120,
+    ):
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.default_speed_limit = speed_limit
         self.camera_profiles = camera_profiles or {}
+        self.default_speed_tolerance_kmh = speed_tolerance_kmh
+        self.default_severe_speed_delta_kmh = severe_speed_delta_kmh
+        self.default_speed_reset_delta_kmh = speed_reset_delta_kmh
+        self.default_stopped_speed_threshold_kmh = stopped_speed_threshold_kmh
+        self.default_stopped_duration_seconds = stopped_duration_seconds
+        self.default_stopped_resume_speed_kmh = stopped_resume_speed_kmh
+        self.default_state_ttl_seconds = state_ttl_seconds
         self.engines = {}
         
         self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
@@ -38,10 +58,39 @@ class ViolationDetectionService:
         if engine is not None:
             return engine
 
-        speed_limit = self.camera_profiles.get(camera_id, {}).get(
-            "speed_limit_kmh", self.default_speed_limit
+        camera_profile = self.camera_profiles.get(camera_id, {})
+        speed_limit = camera_profile.get("speed_limit_kmh", self.default_speed_limit)
+        speed_tolerance_kmh = camera_profile.get(
+            "speed_tolerance_kmh", self.default_speed_tolerance_kmh
         )
-        engine = ViolationRulesEngine(speed_limit_kmh=speed_limit)
+        severe_speed_delta_kmh = camera_profile.get(
+            "severe_speed_delta_kmh", self.default_severe_speed_delta_kmh
+        )
+        speed_reset_delta_kmh = camera_profile.get(
+            "speed_reset_delta_kmh", self.default_speed_reset_delta_kmh
+        )
+        stopped_speed_threshold_kmh = camera_profile.get(
+            "stopped_speed_threshold_kmh", self.default_stopped_speed_threshold_kmh
+        )
+        stopped_duration_seconds = camera_profile.get(
+            "stopped_duration_seconds", self.default_stopped_duration_seconds
+        )
+        stopped_resume_speed_kmh = camera_profile.get(
+            "stopped_resume_speed_kmh", self.default_stopped_resume_speed_kmh
+        )
+        state_ttl_seconds = camera_profile.get(
+            "state_ttl_seconds", self.default_state_ttl_seconds
+        )
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=speed_limit,
+            speed_tolerance_kmh=speed_tolerance_kmh,
+            severe_speed_delta_kmh=severe_speed_delta_kmh,
+            speed_reset_delta_kmh=speed_reset_delta_kmh,
+            stopped_speed_threshold_kmh=stopped_speed_threshold_kmh,
+            stopped_duration_seconds=stopped_duration_seconds,
+            stopped_resume_speed_kmh=stopped_resume_speed_kmh,
+            state_ttl_seconds=state_ttl_seconds,
+        )
         self.engines[camera_id] = engine
         logger.info(
             f"Initialized violation rules for {camera_id} with speed limit {speed_limit} km/h"
@@ -123,6 +172,48 @@ def main():
         help="Speed limit in km/h for violations",
     )
     parser.add_argument(
+        "--speed-tolerance",
+        type=float,
+        default=float(os.getenv("DEFAULT_SPEED_TOLERANCE_KMH", "0.0")),
+        help="Extra tolerance added above the speed limit before a speed violation is triggered",
+    )
+    parser.add_argument(
+        "--severe-speed-delta",
+        type=float,
+        default=float(os.getenv("SEVERE_SPEED_DELTA_KMH", "20.0")),
+        help="Additional speed above the threshold that upgrades a violation to severe speeding",
+    )
+    parser.add_argument(
+        "--speed-reset-delta",
+        type=float,
+        default=float(os.getenv("SPEED_RESET_DELTA_KMH", "5.0")),
+        help="How far below the speed threshold an object must drop before it can trigger again",
+    )
+    parser.add_argument(
+        "--state-ttl-seconds",
+        type=int,
+        default=int(os.getenv("VIOLATION_STATE_TTL_SECONDS", "120")),
+        help="How long to retain stale object state before cleanup",
+    )
+    parser.add_argument(
+        "--stopped-speed-threshold",
+        type=float,
+        default=float(os.getenv("STOPPED_SPEED_THRESHOLD_KMH", "3.0")),
+        help="Maximum speed still treated as stationary for stopped-vehicle rules",
+    )
+    parser.add_argument(
+        "--stopped-duration-seconds",
+        type=int,
+        default=int(os.getenv("STOPPED_DURATION_SECONDS", "20")),
+        help="How long a vehicle must remain stopped before triggering a stopped-vehicle violation",
+    )
+    parser.add_argument(
+        "--stopped-resume-speed",
+        type=float,
+        default=float(os.getenv("STOPPED_RESUME_SPEED_KMH", "8.0")),
+        help="Speed above which a stopped-vehicle state resets",
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
@@ -135,6 +226,13 @@ def main():
         broker_port=args.port,
         speed_limit=args.speed_limit,
         camera_profiles=build_camera_profile_map(args.config),
+        speed_tolerance_kmh=args.speed_tolerance,
+        severe_speed_delta_kmh=args.severe_speed_delta,
+        speed_reset_delta_kmh=args.speed_reset_delta,
+        stopped_speed_threshold_kmh=args.stopped_speed_threshold,
+        stopped_duration_seconds=args.stopped_duration_seconds,
+        stopped_resume_speed_kmh=args.stopped_resume_speed,
+        state_ttl_seconds=args.state_ttl_seconds,
     )
     service.run()
 

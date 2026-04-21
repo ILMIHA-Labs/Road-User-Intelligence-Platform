@@ -1,28 +1,103 @@
 import logging
+from datetime import datetime, timezone
+
 from common.event_schemas import ViolationEvent
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_timestamp(value):
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        normalized = value.replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+    return None
+
 
 class ViolationRulesEngine:
     """
     Evaluates business rules to detect safety violations based on object state.
     """
-    def __init__(self, speed_limit_kmh=60.0):
+    def __init__(
+        self,
+        speed_limit_kmh=60.0,
+        speed_tolerance_kmh=0.0,
+        severe_speed_delta_kmh=20.0,
+        speed_reset_delta_kmh=5.0,
+        stopped_speed_threshold_kmh=3.0,
+        stopped_duration_seconds=20,
+        stopped_resume_speed_kmh=8.0,
+        state_ttl_seconds=120,
+        helmet_required_classes=None,
+        helmet_violation_statuses=None,
+        stopped_vehicle_classes=None,
+    ):
         self.speed_limit_kmh = speed_limit_kmh
+        self.speed_tolerance_kmh = speed_tolerance_kmh
+        self.severe_speed_delta_kmh = severe_speed_delta_kmh
+        self.speed_reset_delta_kmh = speed_reset_delta_kmh
+        self.stopped_speed_threshold_kmh = stopped_speed_threshold_kmh
+        self.stopped_duration_seconds = stopped_duration_seconds
+        self.stopped_resume_speed_kmh = stopped_resume_speed_kmh
+        self.state_ttl_seconds = state_ttl_seconds
+        self.helmet_required_classes = set(helmet_required_classes or {"motorcycle"})
+        self.helmet_violation_statuses = set(
+            helmet_violation_statuses or {"no_helmet", "missing_helmet"}
+        )
+        self.stopped_vehicle_classes = set(
+            stopped_vehicle_classes or {"car", "bus", "truck"}
+        )
         # A simple state cache: object_id -> dict of properties
         self.object_states = {}
+
+    def cleanup_stale_states(self, now=None):
+        if not self.state_ttl_seconds:
+            return
+
+        now = now or datetime.now(timezone.utc)
+        stale_ids = []
+        for object_id, state in self.object_states.items():
+            last_seen = _parse_timestamp(state.get("last_seen"))
+            if last_seen is None:
+                continue
+            age_seconds = (now - last_seen).total_seconds()
+            if age_seconds > self.state_ttl_seconds:
+                stale_ids.append(object_id)
+
+        for object_id in stale_ids:
+            del self.object_states[object_id]
 
     def update_state(self, object_id, detection_event=None, speed_event=None):
         """
         Updates the cached state of an object using incoming MQTT events.
         """
+        event_time = None
+        if detection_event:
+            event_time = detection_event.get("timestamp")
+        elif speed_event:
+            event_time = speed_event.get("timestamp")
+
+        self.cleanup_stale_states(now=_parse_timestamp(event_time) or datetime.now(timezone.utc))
+
         if object_id not in self.object_states:
              self.object_states[object_id] = {
                  "class": "unknown", 
                  "helmet_status": "unknown", 
                  "speed_kmh": 0.0,
                  "bbox": [],
-                 "last_seen": ""
+                 "last_seen": "",
+                 "camera_id": "unknown",
+                 "speed_violation_triggered": False,
+                 "severe_speed_violation_triggered": False,
+                 "helmet_violation_triggered": False,
+                 "stopped_since": None,
+                 "stopped_vehicle_violation_triggered": False,
              }
              
         state = self.object_states[object_id]
@@ -50,21 +125,66 @@ class ViolationRulesEngine:
         violations = []
 
         # Rule 1: Speed Violation
-        if state["speed_kmh"] > self.speed_limit_kmh:
-             # Basic check to avoid continuous alerts for the same object
-             if not state.get("speed_violation_triggered", False):
-                 violations.append("speed_violation")
-                 state["speed_violation_triggered"] = True
+        speed_threshold = self.speed_limit_kmh + self.speed_tolerance_kmh
+        speed_reset_threshold = max(0.0, speed_threshold - self.speed_reset_delta_kmh)
+        current_speed = state.get("speed_kmh", 0.0)
+
+        # Reset speed-related state once the object clearly falls back below the threshold.
+        if current_speed <= speed_reset_threshold:
+            state["speed_violation_triggered"] = False
+            state["severe_speed_violation_triggered"] = False
+
+        if current_speed > speed_threshold + self.severe_speed_delta_kmh:
+            if not state.get("severe_speed_violation_triggered", False) and not state.get(
+                "speed_violation_triggered", False
+            ):
+                violations.append("severe_speed_violation")
+                state["severe_speed_violation_triggered"] = True
+                state["speed_violation_triggered"] = True
+        elif current_speed > speed_threshold:
+            if not state.get("speed_violation_triggered", False):
+                violations.append("speed_violation")
+                state["speed_violation_triggered"] = True
 
         # Rule 2: Helmet Violation
-        # In a real scenario, "no_helmet" would be set by a secondary classification model 
+        # In a real scenario, "no_helmet" would be set by a secondary classification model
         # inside the edge node if a motorcycle is detected.
-        if state["class"] == "motorcycle" and state["helmet_status"] == "no_helmet":
+        requires_helmet = state["class"] in self.helmet_required_classes
+        helmet_status = state.get("helmet_status", "unknown")
+        if not requires_helmet or helmet_status == "helmet":
+            state["helmet_violation_triggered"] = False
+
+        if requires_helmet and helmet_status in self.helmet_violation_statuses:
             if not state.get("helmet_violation_triggered", False):
                  violations.append("helmet_violation")
                  state["helmet_violation_triggered"] = True
-                 
-        # Rule 3: Zebra Crossing Violation (MVP simple stub)
+
+        # Rule 3: Stopped Vehicle Violation
+        applicable_stopped_class = state["class"] in self.stopped_vehicle_classes
+        current_time = _parse_timestamp(state.get("last_seen")) or datetime.now(timezone.utc)
+
+        if (
+            applicable_stopped_class
+            and self.stopped_duration_seconds > 0
+            and current_speed <= self.stopped_speed_threshold_kmh
+        ):
+            if state.get("stopped_since") is None:
+                state["stopped_since"] = state.get("last_seen")
+
+            stopped_since = _parse_timestamp(state.get("stopped_since"))
+            if stopped_since is not None:
+                stopped_seconds = (current_time - stopped_since).total_seconds()
+                if (
+                    stopped_seconds >= self.stopped_duration_seconds
+                    and not state.get("stopped_vehicle_violation_triggered", False)
+                ):
+                    violations.append("stopped_vehicle_violation")
+                    state["stopped_vehicle_violation_triggered"] = True
+        elif (not applicable_stopped_class) or current_speed >= self.stopped_resume_speed_kmh:
+            state["stopped_since"] = None
+            state["stopped_vehicle_violation_triggered"] = False
+
+        # Rule 4: Zebra Crossing Violation (MVP simple stub)
         # We would ideally check if a pedestrian is in a designated polygonal zone, 
         # and if a fast-moving vehicle intersects the pedestrian's path. We'll leave it as a stub for MVP.
         
