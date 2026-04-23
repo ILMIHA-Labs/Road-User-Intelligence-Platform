@@ -182,6 +182,46 @@ class TestViolationDetection(unittest.TestCase):
         self.assertIn("multiple_riders_violation", engine.evaluate_violations(bike_id))
         self.assertEqual(engine.object_states[bike_id]["estimated_rider_count"], 3)
 
+    def test_rider_association_picks_single_best_motorcycle(self):
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            max_motorcycle_riders=1,
+        )
+
+        engine.update_state(
+            80,
+            detection_event={
+                "class": "motorcycle",
+                "camera_id": "cam_assoc",
+                "bbox": [100.0, 100.0, 200.0, 200.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        engine.update_state(
+            81,
+            detection_event={
+                "class": "motorcycle",
+                "camera_id": "cam_assoc",
+                "bbox": [230.0, 100.0, 330.0, 200.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        engine.update_state(
+            82,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": "cam_assoc",
+                "bbox": [115.0, 75.0, 155.0, 155.0],
+                "timestamp": "2025-01-01T10:00:01Z",
+            },
+        )
+
+        self.assertEqual(engine._best_motorcycle_match(82), 80)
+        self.assertEqual(engine._count_motorcycle_riders(80), 2)
+        self.assertEqual(engine._count_motorcycle_riders(81), 1)
+        self.assertIn("multiple_riders_violation", engine.evaluate_violations(80))
+        self.assertEqual(engine.evaluate_violations(81), [])
+
     def test_service_emits_multiple_riders_violation_from_detection_flow(self):
         service = ViolationDetectionService(
             broker_host="localhost",

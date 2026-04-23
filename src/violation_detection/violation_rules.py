@@ -94,6 +94,51 @@ class ViolationRulesEngine:
         )
         return within_x and within_y
 
+    def _association_score(self, motorcycle_state, pedestrian_state):
+        if not self._is_recent_pair(motorcycle_state, pedestrian_state):
+            return None
+        if not self._is_pedestrian_on_motorcycle(motorcycle_state, pedestrian_state):
+            return None
+
+        mbox = motorcycle_state.get("bbox") or []
+        pbox = pedestrian_state.get("bbox") or []
+        if len(mbox) != 4 or len(pbox) != 4:
+            return None
+
+        mx1, my1, mx2, my2 = mbox
+        px1, py1, px2, py2 = pbox
+        mwidth = max(mx2 - mx1, 1.0)
+        mheight = max(my2 - my1, 1.0)
+        mcx = (mx1 + mx2) / 2.0
+        mcy = (my1 + my2) / 2.0
+        pcx = (px1 + px2) / 2.0
+        pcy = (py1 + py2) / 2.0
+
+        horizontal_offset = abs(pcx - mcx) / mwidth
+        vertical_offset = abs(pcy - mcy) / mheight
+        return horizontal_offset + vertical_offset
+
+    def _best_motorcycle_match(self, pedestrian_object_id):
+        pedestrian_state = self.object_states.get(pedestrian_object_id)
+        if not pedestrian_state or pedestrian_state.get("class") != "pedestrian":
+            return None
+
+        camera_id = pedestrian_state.get("camera_id")
+        best_match_id = None
+        best_score = None
+        for object_id, state in self.object_states.items():
+            if state.get("class") != "motorcycle":
+                continue
+            if state.get("camera_id") != camera_id:
+                continue
+            score = self._association_score(state, pedestrian_state)
+            if score is None:
+                continue
+            if best_score is None or score < best_score:
+                best_score = score
+                best_match_id = object_id
+        return best_match_id
+
     def _count_motorcycle_riders(self, motorcycle_object_id):
         motorcycle_state = self.object_states.get(motorcycle_object_id)
         if not motorcycle_state or motorcycle_state.get("class") != "motorcycle":
@@ -108,9 +153,7 @@ class ViolationRulesEngine:
                 continue
             if state.get("camera_id") != camera_id:
                 continue
-            if not self._is_recent_pair(motorcycle_state, state):
-                continue
-            if self._is_pedestrian_on_motorcycle(motorcycle_state, state):
+            if self._best_motorcycle_match(object_id) == motorcycle_object_id:
                 rider_count += 1
         return rider_count
 
@@ -121,15 +164,9 @@ class ViolationRulesEngine:
 
         related_ids = {object_id}
         if state.get("class") == "pedestrian":
-            for candidate_id, candidate_state in self.object_states.items():
-                if candidate_state.get("class") != "motorcycle":
-                    continue
-                if candidate_state.get("camera_id") != state.get("camera_id"):
-                    continue
-                if not self._is_recent_pair(candidate_state, state):
-                    continue
-                if self._is_pedestrian_on_motorcycle(candidate_state, state):
-                    related_ids.add(candidate_id)
+            best_match_id = self._best_motorcycle_match(object_id)
+            if best_match_id is not None:
+                related_ids.add(best_match_id)
         return list(related_ids)
 
     def cleanup_stale_states(self, now=None):
