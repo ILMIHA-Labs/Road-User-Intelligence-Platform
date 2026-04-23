@@ -186,6 +186,26 @@
             <div id="violation-breakdown-total" class="mt-6 border-t border-white/10 pt-4 text-[10px] uppercase tracking-[0.2em] text-white/40"></div>
           </section>
         </div>
+
+        <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <article class="bg-surface-container-lowest p-6 xl:col-span-2">
+            <div class="mb-4 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violation Coverage</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Rules Active In This MVP</h3>
+              </div>
+              <span id="rule-coverage-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="rule-coverage" class="grid grid-cols-1 gap-3 md:grid-cols-2"></div>
+          </article>
+          <article class="bg-black p-6 text-white">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Operations Note</p>
+            <h3 class="mt-3 text-2xl font-black tracking-tight">Live Feed Later</h3>
+            <p class="mt-3 text-sm leading-6 text-white/70">
+              This dashboard currently focuses on persisted analytics and recent records. We can add live camera viewing later once we choose whether to embed RTSP/WebRTC streams directly or proxy snapshots/video through the backend.
+            </p>
+          </article>
+        </section>
       </section>
 
       <section id="cameras-view" data-view="cameras" class="hidden space-y-8">
@@ -434,6 +454,54 @@
   </main>
 
   <script>
+    const VIOLATION_META = {
+      helmet_violation: {
+        label: "Helmet Violation",
+        chip: "bg-error-container text-error",
+        description: "Motorcycle rider detected without a helmet signal."
+      },
+      speed_violation: {
+        label: "Speed Violation",
+        chip: "bg-error text-white",
+        description: "Vehicle exceeded the configured speed threshold."
+      },
+      severe_speed_violation: {
+        label: "Severe Speeding",
+        chip: "bg-black text-white",
+        description: "Vehicle exceeded the severe-speed threshold by a wide margin."
+      },
+      stopped_vehicle_violation: {
+        label: "Stopped Vehicle",
+        chip: "bg-amber-200 text-black",
+        description: "Vehicle stayed effectively stationary longer than allowed."
+      },
+      multiple_riders_violation: {
+        label: "Multiple Riders",
+        chip: "bg-sky-200 text-sky-950",
+        description: "Estimated rider count on a motorcycle exceeded the allowed limit."
+      },
+      red_light: {
+        label: "Red Light",
+        chip: "bg-error text-white",
+        description: "Vehicle crossed during a red signal."
+      },
+      wrong_way: {
+        label: "Wrong Way",
+        chip: "bg-error text-white",
+        description: "Vehicle direction conflicted with the configured lane flow."
+      },
+      illegal_turn: {
+        label: "Illegal Turn",
+        chip: "bg-error-container text-error",
+        description: "Vehicle turned through a restricted movement."
+      },
+      no_seatbelt: {
+        label: "No Seatbelt",
+        chip: "bg-error-container text-error",
+        description: "Occupant appears to be without a seatbelt."
+      },
+    };
+
     const state = {
       summary: null,
       byCamera: [],
@@ -458,6 +526,14 @@
         dateStyle: "medium",
         timeStyle: "medium"
       }).format(date);
+    }
+
+    function getViolationMeta(type) {
+      return VIOLATION_META[type] || {
+        label: type ? type.replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "Unknown Violation",
+        chip: "bg-black text-white",
+        description: "Violation captured by the current rules engine."
+      };
     }
 
     function setActiveView(viewName) {
@@ -584,6 +660,7 @@
         const maxCount = Math.max(...state.violations.map((item) => item.count), 1);
         const sorted = [...state.violations].sort((a, b) => b.count - a.count);
         sorted.forEach((item, idx) => {
+          const meta = getViolationMeta(item.violation_type);
           const pct = Math.round((item.count / totalCount) * 100);
           const barWidth = (item.count / maxCount) * 100;
           const block = document.createElement("div");
@@ -592,13 +669,14 @@
             <div class="mb-1 flex items-baseline justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-[9px] font-bold tabular-nums text-white/30">${String(idx + 1).padStart(2, "0")}</span>
-                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.violation_type.replaceAll("_", " ")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${meta.label}</span>
               </div>
               <div class="flex items-baseline gap-2">
                 <span class="text-[10px] text-white/50">${pct}%</span>
                 <span class="text-sm font-black tabular-nums text-white">${item.count}</span>
               </div>
             </div>
+            <p class="mb-2 text-[11px] leading-5 text-white/55">${meta.description}</p>
             <div class="relative h-1.5 bg-white/10 overflow-hidden">
               <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${barWidth}%"></div>
             </div>
@@ -607,6 +685,37 @@
         });
         violationTotal.textContent = `${totalCount} total violations across ${sorted.length} type${sorted.length !== 1 ? "s" : ""}`;
       }
+
+      const coverage = document.getElementById("rule-coverage");
+      const coverageCount = document.getElementById("rule-coverage-count");
+      const activeTypes = [...new Set(state.violations.map((item) => item.violation_type))];
+      const featuredTypes = activeTypes.length ? activeTypes : [
+        "helmet_violation",
+        "speed_violation",
+        "severe_speed_violation",
+        "stopped_vehicle_violation",
+        "multiple_riders_violation",
+      ];
+      coverage.innerHTML = "";
+      coverageCount.textContent = `${featuredTypes.length} rule${featuredTypes.length !== 1 ? "s" : ""}`;
+      featuredTypes.forEach((type) => {
+        const meta = getViolationMeta(type);
+        const card = document.createElement("div");
+        card.className = "border border-black/5 bg-surface-container-low p-4";
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Rule</p>
+              <h4 class="mt-1 text-lg font-black tracking-tight">${meta.label}</h4>
+            </div>
+            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">
+              Active
+            </span>
+          </div>
+          <p class="mt-3 text-sm leading-6 text-on-surface-variant">${meta.description}</p>
+        `;
+        coverage.appendChild(card);
+      });
     }
 
     function renderCameras() {
@@ -692,15 +801,6 @@
       });
     }
 
-    const SEVERITY_CHIP = {
-      speeding:     "bg-error text-white",
-      no_helmet:    "bg-error-container text-error",
-      red_light:    "bg-error text-white",
-      wrong_way:    "bg-error text-white",
-      illegal_turn: "bg-error-container text-error",
-      no_seatbelt:  "bg-error-container text-error",
-    };
-
     async function loadViolationLog() {
       const { type, camera, search } = state.violationLogFilters;
       const params = {
@@ -732,10 +832,11 @@
       const sorted = [...state.violations].sort((a, b) => b.count - a.count);
       const topType = sorted[0];
       const pct = topType && totalViolations ? Math.round((topType.count / totalViolations) * 100) : 0;
+      const topTypeMeta = topType ? getViolationMeta(topType.violation_type) : null;
       document.getElementById("vl-top-type").textContent = topType
-        ? topType.violation_type.replaceAll("_", " ") : "—";
+        ? topTypeMeta.label : "—";
       document.getElementById("vl-top-type-pct").textContent = topType
-        ? `${pct}% of total violations` : "";
+        ? `${pct}% of total violations. ${topTypeMeta.description}` : "";
 
       // Top camera
       const topCamera = [...state.byCamera].sort((a, b) => b.violations - a.violations)[0];
@@ -748,9 +849,10 @@
       const currentType = state.violationLogFilters.type;
       typeSelect.innerHTML = '<option value="">All Types</option>';
       sorted.forEach(item => {
+        const meta = getViolationMeta(item.violation_type);
         const opt = document.createElement("option");
         opt.value = item.violation_type;
-        opt.textContent = item.violation_type.replaceAll("_", " ").replace(/\b\w/g, l => l.toUpperCase());
+        opt.textContent = meta.label;
         if (item.violation_type === currentType) opt.selected = true;
         typeSelect.appendChild(opt);
       });
@@ -777,6 +879,7 @@
       } else {
         const maxC = Math.max(...sorted.map(i => i.count), 1);
         sorted.forEach((item, idx) => {
+          const meta = getViolationMeta(item.violation_type);
           const w = (item.count / maxC) * 100;
           const p = Math.round((item.count / (totalViolations || 1)) * 100);
           const block = document.createElement("div");
@@ -784,13 +887,14 @@
             <div class="mb-1 flex items-baseline justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-[9px] font-bold tabular-nums text-white/30">${String(idx + 1).padStart(2, "0")}</span>
-                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.violation_type.replaceAll("_", " ")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${meta.label}</span>
               </div>
               <div class="flex items-baseline gap-2">
                 <span class="text-[10px] text-white/50">${p}%</span>
                 <span class="text-sm font-black tabular-nums text-white">${item.count.toLocaleString()}</span>
               </div>
             </div>
+            <p class="mb-2 text-[11px] leading-5 text-white/55">${meta.description}</p>
             <div class="relative h-1.5 bg-white/10 overflow-hidden">
               <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${w}%"></div>
             </div>`;
@@ -840,16 +944,17 @@
         return;
       }
       state.violationLog.items.forEach((v, idx) => {
-        const chip = SEVERITY_CHIP[v.violation_type] ?? "bg-black text-white";
+        const meta = getViolationMeta(v.violation_type);
         const tr = document.createElement("tr");
         tr.className = "hover:bg-surface-container-low transition-colors group " + (idx % 2 !== 0 ? "bg-surface-container-low/30" : "");
         tr.innerHTML = `
           <td class="px-6 py-5 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
           <td class="px-6 py-5 text-xs font-mono font-semibold">${v.camera_id}</td>
           <td class="px-6 py-5">
-            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${chip}">
-              ${v.violation_type.replaceAll("_", " ")}
+            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">
+              ${meta.label}
             </span>
+            <p class="mt-1 text-[11px] leading-5 text-on-surface-variant">${meta.description}</p>
           </td>
           <td class="px-6 py-5 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
           <td class="px-6 py-5 text-center">
@@ -983,21 +1088,16 @@
         tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-6 text-sm text-on-surface-variant">No violation records for this camera.</td></tr>';
         return;
       }
-      const SEVERITY_CHIP = {
-        speeding: "bg-error text-white",
-        no_helmet: "bg-error-container text-error",
-        red_light: "bg-error text-white",
-        wrong_way: "bg-error text-white",
-        illegal_turn: "bg-error-container text-error",
-        no_seatbelt: "bg-error-container text-error",
-      };
       violations.forEach((v, idx) => {
         const tr = document.createElement("tr");
         tr.className = idx % 2 === 0 ? "hover:bg-surface-container-low" : "bg-surface-container-low/50 hover:bg-surface-container";
-        const chip = SEVERITY_CHIP[v.violation_type] ?? "bg-black text-white";
+        const meta = getViolationMeta(v.violation_type);
         tr.innerHTML = `
           <td class="px-4 py-3 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
-          <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${chip}">${v.violation_type.replaceAll("_", " ")}</span></td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">${meta.label}</span>
+            <p class="mt-1 text-[11px] leading-5 text-on-surface-variant">${meta.description}</p>
+          </td>
           <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
         `;
         tbody.appendChild(tr);
@@ -1015,6 +1115,7 @@
       const max = Math.max(...violations.map(i => i.count), 1);
       const sorted = [...violations].sort((a, b) => b.count - a.count);
       sorted.forEach((item, idx) => {
+        const meta = getViolationMeta(item.violation_type);
         const pct = Math.round((item.count / total) * 100);
         const w = (item.count / max) * 100;
         const block = document.createElement("div");
@@ -1022,13 +1123,14 @@
           <div class="mb-1 flex items-baseline justify-between">
             <div class="flex items-center gap-2">
               <span class="text-[9px] font-bold tabular-nums text-white/30">${String(idx + 1).padStart(2, "0")}</span>
-              <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.violation_type.replaceAll("_", " ")}</span>
+              <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${meta.label}</span>
             </div>
             <div class="flex items-baseline gap-2">
               <span class="text-[10px] text-white/50">${pct}%</span>
               <span class="text-sm font-black tabular-nums text-white">${item.count}</span>
             </div>
           </div>
+          <p class="mb-2 text-[11px] leading-5 text-white/55">${meta.description}</p>
           <div class="relative h-1.5 bg-white/10 overflow-hidden">
             <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${w}%"></div>
           </div>
