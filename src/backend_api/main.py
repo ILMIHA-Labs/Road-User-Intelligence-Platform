@@ -39,11 +39,11 @@ def get_cameras_config():
         with open(_CAMERAS_CONFIG_PATH, "r") as f:
             raw = yaml.safe_load(f) or {}
     except FileNotFoundError:
-        return {"cameras": []}
+        return {"defaults": {}, "cameras": []}
     defaults = raw.get("defaults", {})
     cameras = raw.get("cameras", [])
     merged = [{**defaults, **cam} for cam in cameras]
-    return {"cameras": merged}
+    return {"defaults": defaults, "cameras": merged}
 
 
 def _apply_time_filters(query, model, start: datetime = None, end: datetime = None):

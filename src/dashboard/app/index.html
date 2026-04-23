@@ -71,6 +71,9 @@
       <button data-view-button="live" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">live_tv</span> Live Feed
       </button>
+      <button data-view-button="configs" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
+        <span class="material-symbols-outlined text-lg">tune</span> Configs
+      </button>
       <button data-view-button="violations" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">report_problem</span> Violations
       </button>
@@ -257,6 +260,50 @@
             <span id="live-feed-caption" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
           </div>
           <div id="live-feed-grid" class="grid grid-cols-1 gap-6 lg:grid-cols-2"></div>
+        </section>
+      </section>
+
+      <section id="configs-view" data-view="configs" class="hidden space-y-8">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-4">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Configured Cameras</p>
+            <p id="config-camera-count" class="mt-3 text-6xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8 xl:col-span-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Default Settings</p>
+            <p id="config-default-count" class="mt-3 text-6xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8 xl:col-span-2">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Configuration Surface</p>
+            <p class="mt-3 text-2xl font-black tracking-tight">Read-only operational tuning</p>
+            <p class="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant">
+              These values are the effective runtime settings loaded from camera YAML. They are displayed here for validation and operator visibility, not editing.
+            </p>
+          </article>
+        </div>
+
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-black p-8 text-white xl:col-span-4">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Global Baseline</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Default Rule Set</h3>
+              </div>
+              <span class="text-[10px] uppercase tracking-[0.2em] text-white/40">Applied before overrides</span>
+            </div>
+            <dl id="config-defaults-list" class="space-y-4"></dl>
+          </article>
+
+          <article class="bg-surface-container-lowest p-8 xl:col-span-8">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera Profiles</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Effective Per-Camera Config</h3>
+              </div>
+              <span id="config-summary-caption" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="config-camera-grid" class="grid grid-cols-1 gap-6 2xl:grid-cols-2"></div>
+          </article>
         </section>
       </section>
 
@@ -541,6 +588,7 @@
       byCamera: [],
       violations: [],
       speedDist: [],
+      cameraDefaults: {},
       cameraConfigs: [],
       recent: { detections: [], speeds: [], violations: [] },
       violationLog: { items: [], total: 0, page: 1, pages: 0, pageSize: 25 },
@@ -551,6 +599,29 @@
         end: ""
       }
     };
+
+    const CONFIG_FIELDS = [
+      ["location", "Location"],
+      ["url", "Source URL"],
+      ["target_fps", "Target FPS"],
+      ["pixels_per_meter", "Pixels / Metre"],
+      ["speed_limit_kmh", "Speed Limit"],
+      ["speed_tolerance_kmh", "Speed Tolerance"],
+      ["severe_speed_delta_kmh", "Severe Speed Delta"],
+      ["speed_reset_delta_kmh", "Speed Reset Delta"],
+      ["stopped_speed_threshold_kmh", "Stopped Speed Threshold"],
+      ["stopped_duration_seconds", "Stopped Duration"],
+      ["stopped_resume_speed_kmh", "Stopped Resume Speed"],
+      ["state_ttl_seconds", "State TTL"],
+      ["max_motorcycle_riders", "Max Motorcycle Riders"],
+      ["rider_association_window_seconds", "Rider Association Window"],
+      ["rider_horizontal_margin_ratio", "Rider Horizontal Margin"],
+      ["rider_upper_margin_ratio", "Rider Upper Margin"],
+      ["rider_lower_margin_ratio", "Rider Lower Margin"],
+      ["live_feed_type", "Live Feed Type"],
+      ["live_feed_url", "Live Feed URL"],
+      ["preview_image_url", "Preview Image URL"],
+    ];
 
     function formatTimestamp(value) {
       if (!value) return "No timestamp";
@@ -568,6 +639,17 @@
         chip: "bg-black text-white",
         description: "Violation captured by the current rules engine."
       };
+    }
+
+    function formatConfigValue(key, value) {
+      if (value === null || value === undefined || value === "") return "—";
+      if (typeof value === "number") {
+        if (key.endsWith("_kmh")) return `${value} km/h`;
+        if (key === "pixels_per_meter") return `${value} px/m`;
+        if (key.includes("duration") || key.includes("window") || key.endsWith("_seconds")) return `${value} s`;
+        return Number.isInteger(value) ? `${value}` : value.toFixed(2);
+      }
+      return `${value}`;
     }
 
     function setActiveView(viewName) {
@@ -925,6 +1007,81 @@
 
       liveGrid.querySelectorAll("[data-open-camera]").forEach((button) => {
         button.addEventListener("click", () => openCameraDetail(button.dataset.openCamera));
+      });
+    }
+
+    function renderConfigs() {
+      const defaultsList = document.getElementById("config-defaults-list");
+      const cameraGrid = document.getElementById("config-camera-grid");
+      const defaults = state.cameraDefaults || {};
+      const cameras = state.cameraConfigs || [];
+
+      document.getElementById("config-camera-count").textContent = cameras.length.toLocaleString();
+      document.getElementById("config-default-count").textContent = Object.keys(defaults).length.toLocaleString();
+      document.getElementById("config-summary-caption").textContent = cameras.length
+        ? `${cameras.length} effective profile${cameras.length !== 1 ? "s" : ""}`
+        : "No camera profiles loaded";
+
+      defaultsList.innerHTML = "";
+      const defaultFields = CONFIG_FIELDS.filter(([key]) => defaults[key] !== undefined);
+      if (!defaultFields.length) {
+        defaultsList.innerHTML = '<p class="text-sm text-white/60">No default config values are available.</p>';
+      } else {
+        defaultFields.forEach(([key, label]) => {
+          const row = document.createElement("div");
+          row.className = "flex items-start justify-between gap-4 border-b border-white/10 pb-3 last:border-b-0 last:pb-0";
+          row.innerHTML = `
+            <dt class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">${label}</dt>
+            <dd class="text-xs font-semibold text-right break-all">${formatConfigValue(key, defaults[key])}</dd>
+          `;
+          defaultsList.appendChild(row);
+        });
+      }
+
+      cameraGrid.innerHTML = "";
+      if (!cameras.length) {
+        cameraGrid.innerHTML = '<p class="text-sm text-on-surface-variant">No camera config is available yet.</p>';
+        return;
+      }
+
+      cameras.forEach((camera) => {
+        const overrides = CONFIG_FIELDS.filter(([key]) =>
+          defaults[key] !== undefined && camera[key] !== undefined && camera[key] !== defaults[key]
+        );
+        const card = document.createElement("article");
+        card.className = "border border-black/5 bg-surface-container-low p-6";
+        card.innerHTML = `
+          <div class="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera Profile</p>
+              <h4 class="mt-1 text-2xl font-black tracking-tight">${camera.id || "Unknown Camera"}</h4>
+              <p class="mt-2 text-sm leading-6 text-on-surface-variant">${camera.location || "No location configured"}</p>
+            </div>
+            <div class="text-right">
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] bg-black text-white">
+                ${overrides.length} override${overrides.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+          <dl class="space-y-3">
+            ${CONFIG_FIELDS
+              .filter(([key]) => camera[key] !== undefined)
+              .map(([key, label]) => {
+                const isOverride = defaults[key] !== undefined && camera[key] !== defaults[key];
+                return `
+                  <div class="flex items-start justify-between gap-4 border-b border-black/5 pb-3 last:border-b-0 last:pb-0">
+                    <dt class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">${label}</dt>
+                    <dd class="max-w-[65%] text-right text-xs font-semibold break-all">
+                      <span>${formatConfigValue(key, camera[key])}</span>
+                      ${isOverride ? '<span class="ml-2 inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.15em] bg-error-container text-error">override</span>' : ""}
+                    </dd>
+                  </div>
+                `;
+              })
+              .join("")}
+          </dl>
+        `;
+        cameraGrid.appendChild(card);
       });
     }
 
@@ -1322,11 +1479,13 @@
         state.violations = violations.violations || [];
         state.recent = recent;
         state.speedDist = speedDist.buckets || [];
+        state.cameraDefaults = cameraConfigs.defaults || {};
         state.cameraConfigs = cameraConfigs.cameras || [];
 
         renderOverview();
         renderCameras();
         renderLiveFeeds();
+        renderConfigs();
         renderViolations();
         renderSpeedDistribution();
         state.violationLog.page = 1;

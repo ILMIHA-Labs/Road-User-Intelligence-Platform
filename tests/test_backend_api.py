@@ -41,6 +41,18 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Traffic Operations Dashboard", response.text)
 
+    def test_camera_config_endpoint_returns_defaults_and_merged_profiles(self):
+        response = self.client.get("/cameras/config")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("defaults", data)
+        self.assertIn("cameras", data)
+        self.assertGreaterEqual(len(data["cameras"]), 1)
+        first_camera = data["cameras"][0]
+        self.assertEqual(first_camera["id"], "sample_video_01")
+        self.assertIn("speed_limit_kmh", first_camera)
+        self.assertIn("max_motorcycle_riders", first_camera)
+
     def test_create_detection(self):
         payload = {
             "camera_id": "test_cam",
