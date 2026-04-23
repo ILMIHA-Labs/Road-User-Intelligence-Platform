@@ -30,6 +30,11 @@ class ViolationDetectionService:
         stopped_speed_threshold_kmh=3.0,
         stopped_duration_seconds=20,
         stopped_resume_speed_kmh=8.0,
+        max_motorcycle_riders=2,
+        rider_association_window_seconds=2,
+        rider_horizontal_margin_ratio=0.35,
+        rider_upper_margin_ratio=0.75,
+        rider_lower_margin_ratio=0.25,
         state_ttl_seconds=120,
     ):
         self.broker_host = broker_host
@@ -42,6 +47,11 @@ class ViolationDetectionService:
         self.default_stopped_speed_threshold_kmh = stopped_speed_threshold_kmh
         self.default_stopped_duration_seconds = stopped_duration_seconds
         self.default_stopped_resume_speed_kmh = stopped_resume_speed_kmh
+        self.default_max_motorcycle_riders = max_motorcycle_riders
+        self.default_rider_association_window_seconds = rider_association_window_seconds
+        self.default_rider_horizontal_margin_ratio = rider_horizontal_margin_ratio
+        self.default_rider_upper_margin_ratio = rider_upper_margin_ratio
+        self.default_rider_lower_margin_ratio = rider_lower_margin_ratio
         self.default_state_ttl_seconds = state_ttl_seconds
         self.engines = {}
         
@@ -78,6 +88,25 @@ class ViolationDetectionService:
         stopped_resume_speed_kmh = camera_profile.get(
             "stopped_resume_speed_kmh", self.default_stopped_resume_speed_kmh
         )
+        max_motorcycle_riders = camera_profile.get(
+            "max_motorcycle_riders", self.default_max_motorcycle_riders
+        )
+        rider_association_window_seconds = camera_profile.get(
+            "rider_association_window_seconds",
+            self.default_rider_association_window_seconds,
+        )
+        rider_horizontal_margin_ratio = camera_profile.get(
+            "rider_horizontal_margin_ratio",
+            self.default_rider_horizontal_margin_ratio,
+        )
+        rider_upper_margin_ratio = camera_profile.get(
+            "rider_upper_margin_ratio",
+            self.default_rider_upper_margin_ratio,
+        )
+        rider_lower_margin_ratio = camera_profile.get(
+            "rider_lower_margin_ratio",
+            self.default_rider_lower_margin_ratio,
+        )
         state_ttl_seconds = camera_profile.get(
             "state_ttl_seconds", self.default_state_ttl_seconds
         )
@@ -89,6 +118,11 @@ class ViolationDetectionService:
             stopped_speed_threshold_kmh=stopped_speed_threshold_kmh,
             stopped_duration_seconds=stopped_duration_seconds,
             stopped_resume_speed_kmh=stopped_resume_speed_kmh,
+            max_motorcycle_riders=max_motorcycle_riders,
+            rider_association_window_seconds=rider_association_window_seconds,
+            rider_horizontal_margin_ratio=rider_horizontal_margin_ratio,
+            rider_upper_margin_ratio=rider_upper_margin_ratio,
+            rider_lower_margin_ratio=rider_lower_margin_ratio,
             state_ttl_seconds=state_ttl_seconds,
         )
         self.engines[camera_id] = engine
@@ -114,24 +148,25 @@ class ViolationDetectionService:
             if topic == "camera/detections" and isinstance(event, DetectionEvent):
                  engine = self._get_engine(event.camera_id)
                  engine.update_state(event.object_id, detection_event=dump_event(event))
-                 object_id = event.object_id
+                 object_ids = engine.get_related_object_ids(event.object_id)
                  camera_id = event.camera_id
             elif topic == "camera/speeds" and isinstance(event, SpeedEvent):
                  engine = self._get_engine(event.camera_id)
                  engine.update_state(event.object_id, speed_event=dump_event(event))
-                 object_id = event.object_id
+                 object_ids = [event.object_id]
                  camera_id = event.camera_id
             else:
                  return
 
             # Evaluate rules
-            violation_events = self.engines[camera_id].generate_violation_events(object_id)
-            
-            # Emit violations if any
-            for event in violation_events:
-                 payload = dump_event(event)
-                 self.client.publish(self.out_topic, json.dumps(payload))
-                 logger.warning(f"VIOLATION DETECTED: {payload}")
+            for object_id in object_ids:
+                violation_events = self.engines[camera_id].generate_violation_events(object_id)
+
+                # Emit violations if any
+                for event in violation_events:
+                     payload = dump_event(event)
+                     self.client.publish(self.out_topic, json.dumps(payload))
+                     logger.warning(f"VIOLATION DETECTED: {payload}")
 
         except json.JSONDecodeError:
             logger.warning("Received invalid JSON")
@@ -214,6 +249,36 @@ def main():
         help="Speed above which a stopped-vehicle state resets",
     )
     parser.add_argument(
+        "--max-motorcycle-riders",
+        type=int,
+        default=int(os.getenv("MAX_MOTORCYCLE_RIDERS", "2")),
+        help="Maximum allowed riders on a motorcycle before triggering a violation",
+    )
+    parser.add_argument(
+        "--rider-association-window-seconds",
+        type=float,
+        default=float(os.getenv("RIDER_ASSOCIATION_WINDOW_SECONDS", "2")),
+        help="Maximum timestamp gap allowed when linking rider detections to a motorcycle",
+    )
+    parser.add_argument(
+        "--rider-horizontal-margin-ratio",
+        type=float,
+        default=float(os.getenv("RIDER_HORIZONTAL_MARGIN_RATIO", "0.35")),
+        help="Horizontal expansion around motorcycle boxes used when linking riders",
+    )
+    parser.add_argument(
+        "--rider-upper-margin-ratio",
+        type=float,
+        default=float(os.getenv("RIDER_UPPER_MARGIN_RATIO", "0.75")),
+        help="How far above the motorcycle box a rider center can be and still count as associated",
+    )
+    parser.add_argument(
+        "--rider-lower-margin-ratio",
+        type=float,
+        default=float(os.getenv("RIDER_LOWER_MARGIN_RATIO", "0.25")),
+        help="How far below the motorcycle box a rider center can be and still count as associated",
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
@@ -232,6 +297,11 @@ def main():
         stopped_speed_threshold_kmh=args.stopped_speed_threshold,
         stopped_duration_seconds=args.stopped_duration_seconds,
         stopped_resume_speed_kmh=args.stopped_resume_speed,
+        max_motorcycle_riders=args.max_motorcycle_riders,
+        rider_association_window_seconds=args.rider_association_window_seconds,
+        rider_horizontal_margin_ratio=args.rider_horizontal_margin_ratio,
+        rider_upper_margin_ratio=args.rider_upper_margin_ratio,
+        rider_lower_margin_ratio=args.rider_lower_margin_ratio,
         state_ttl_seconds=args.state_ttl_seconds,
     )
     service.run()

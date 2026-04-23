@@ -37,6 +37,11 @@ class ViolationRulesEngine:
         helmet_required_classes=None,
         helmet_violation_statuses=None,
         stopped_vehicle_classes=None,
+        max_motorcycle_riders=2,
+        rider_association_window_seconds=2,
+        rider_horizontal_margin_ratio=0.35,
+        rider_upper_margin_ratio=0.75,
+        rider_lower_margin_ratio=0.25,
     ):
         self.speed_limit_kmh = speed_limit_kmh
         self.speed_tolerance_kmh = speed_tolerance_kmh
@@ -53,8 +58,79 @@ class ViolationRulesEngine:
         self.stopped_vehicle_classes = set(
             stopped_vehicle_classes or {"car", "bus", "truck"}
         )
+        self.max_motorcycle_riders = max_motorcycle_riders
+        self.rider_association_window_seconds = rider_association_window_seconds
+        self.rider_horizontal_margin_ratio = rider_horizontal_margin_ratio
+        self.rider_upper_margin_ratio = rider_upper_margin_ratio
+        self.rider_lower_margin_ratio = rider_lower_margin_ratio
         # A simple state cache: object_id -> dict of properties
         self.object_states = {}
+
+    def _is_recent_pair(self, state_a, state_b):
+        ts_a = _parse_timestamp(state_a.get("last_seen"))
+        ts_b = _parse_timestamp(state_b.get("last_seen"))
+        if ts_a is None or ts_b is None:
+            return False
+        return abs((ts_a - ts_b).total_seconds()) <= self.rider_association_window_seconds
+
+    def _is_pedestrian_on_motorcycle(self, motorcycle_state, pedestrian_state):
+        mbox = motorcycle_state.get("bbox") or []
+        pbox = pedestrian_state.get("bbox") or []
+        if len(mbox) != 4 or len(pbox) != 4:
+            return False
+
+        mx1, my1, mx2, my2 = mbox
+        px1, py1, px2, py2 = pbox
+        mwidth = max(mx2 - mx1, 1.0)
+        mheight = max(my2 - my1, 1.0)
+        pcx = (px1 + px2) / 2.0
+        pcy = (py1 + py2) / 2.0
+
+        within_x = (mx1 - mwidth * self.rider_horizontal_margin_ratio) <= pcx <= (
+            mx2 + mwidth * self.rider_horizontal_margin_ratio
+        )
+        within_y = (my1 - mheight * self.rider_upper_margin_ratio) <= pcy <= (
+            my2 + mheight * self.rider_lower_margin_ratio
+        )
+        return within_x and within_y
+
+    def _count_motorcycle_riders(self, motorcycle_object_id):
+        motorcycle_state = self.object_states.get(motorcycle_object_id)
+        if not motorcycle_state or motorcycle_state.get("class") != "motorcycle":
+            return 0
+
+        camera_id = motorcycle_state.get("camera_id")
+        rider_count = 1  # driver/rider on the motorcycle itself
+        for object_id, state in self.object_states.items():
+            if object_id == motorcycle_object_id:
+                continue
+            if state.get("class") != "pedestrian":
+                continue
+            if state.get("camera_id") != camera_id:
+                continue
+            if not self._is_recent_pair(motorcycle_state, state):
+                continue
+            if self._is_pedestrian_on_motorcycle(motorcycle_state, state):
+                rider_count += 1
+        return rider_count
+
+    def get_related_object_ids(self, object_id):
+        state = self.object_states.get(object_id)
+        if not state:
+            return [object_id]
+
+        related_ids = {object_id}
+        if state.get("class") == "pedestrian":
+            for candidate_id, candidate_state in self.object_states.items():
+                if candidate_state.get("class") != "motorcycle":
+                    continue
+                if candidate_state.get("camera_id") != state.get("camera_id"):
+                    continue
+                if not self._is_recent_pair(candidate_state, state):
+                    continue
+                if self._is_pedestrian_on_motorcycle(candidate_state, state):
+                    related_ids.add(candidate_id)
+        return list(related_ids)
 
     def cleanup_stale_states(self, now=None):
         if not self.state_ttl_seconds:
@@ -98,6 +174,7 @@ class ViolationRulesEngine:
                  "helmet_violation_triggered": False,
                  "stopped_since": None,
                  "stopped_vehicle_violation_triggered": False,
+                 "multiple_riders_violation_triggered": False,
              }
              
         state = self.object_states[object_id]
@@ -159,7 +236,17 @@ class ViolationRulesEngine:
                  violations.append("helmet_violation")
                  state["helmet_violation_triggered"] = True
 
-        # Rule 3: Stopped Vehicle Violation
+        # Rule 3: Too many riders on a motorcycle
+        if state["class"] == "motorcycle" and self.max_motorcycle_riders > 0:
+            rider_count = self._count_motorcycle_riders(object_id)
+            state["estimated_rider_count"] = rider_count
+            if rider_count <= self.max_motorcycle_riders:
+                state["multiple_riders_violation_triggered"] = False
+            elif not state.get("multiple_riders_violation_triggered", False):
+                violations.append("multiple_riders_violation")
+                state["multiple_riders_violation_triggered"] = True
+
+        # Rule 4: Stopped Vehicle Violation
         applicable_stopped_class = state["class"] in self.stopped_vehicle_classes
         current_time = _parse_timestamp(state.get("last_seen")) or datetime.now(timezone.utc)
 
@@ -184,7 +271,7 @@ class ViolationRulesEngine:
             state["stopped_since"] = None
             state["stopped_vehicle_violation_triggered"] = False
 
-        # Rule 4: Zebra Crossing Violation (MVP simple stub)
+        # Rule 5: Zebra Crossing Violation (MVP simple stub)
         # We would ideally check if a pedestrian is in a designated polygonal zone, 
         # and if a fast-moving vehicle intersects the pedestrian's path. We'll leave it as a stub for MVP.
         
