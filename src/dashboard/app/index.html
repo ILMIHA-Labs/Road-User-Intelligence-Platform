@@ -68,6 +68,9 @@
       <button data-view-button="cameras" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">videocam</span> Cameras
       </button>
+      <button data-view-button="live" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
+        <span class="material-symbols-outlined text-lg">live_tv</span> Live Feed
+      </button>
       <button data-view-button="violations" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">report_problem</span> Violations
       </button>
@@ -224,6 +227,37 @@
           </article>
         </div>
         <div id="camera-cards" class="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3"></div>
+      </section>
+
+      <section id="live-view" data-view="live" class="hidden space-y-8">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-4">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Configured Feeds</p>
+            <p id="live-camera-count" class="mt-3 text-6xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8 xl:col-span-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Ready To Embed</p>
+            <p id="live-ready-count" class="mt-3 text-6xl font-black tracking-tighter">0</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8 xl:col-span-2">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Live Feed Status</p>
+            <p class="mt-3 text-2xl font-black tracking-tight">Dashboard groundwork is ready</p>
+            <p class="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant">
+              This page uses camera config to surface feed metadata now, and it can embed live streams later when cameras expose RTSP, HLS, MJPEG, or proxied WebRTC endpoints.
+            </p>
+          </article>
+        </div>
+
+        <section class="bg-surface-container-lowest p-6">
+          <div class="mb-5 flex items-center justify-between">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Live Camera Matrix</p>
+              <h3 class="mt-1 text-2xl font-black tracking-tight">Preview-Ready Nodes</h3>
+            </div>
+            <span id="live-feed-caption" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+          </div>
+          <div id="live-feed-grid" class="grid grid-cols-1 gap-6 lg:grid-cols-2"></div>
+        </section>
       </section>
 
       <!-- ═══ CAMERA DETAIL VIEW ═══ -->
@@ -801,6 +835,99 @@
       });
     }
 
+    function renderLiveFeeds() {
+      const liveGrid = document.getElementById("live-feed-grid");
+      const allCameras = state.cameraConfigs.length
+        ? state.cameraConfigs
+        : state.byCamera.map((camera) => ({ id: camera.camera_id }));
+      const configuredFeeds = allCameras.filter((camera) =>
+        camera.live_feed_url || camera.preview_image_url || camera.url
+      );
+      const readyFeeds = allCameras.filter((camera) => camera.live_feed_url || camera.preview_image_url);
+
+      document.getElementById("live-camera-count").textContent = allCameras.length.toLocaleString();
+      document.getElementById("live-ready-count").textContent = readyFeeds.length.toLocaleString();
+      document.getElementById("live-feed-caption").textContent = configuredFeeds.length
+        ? `${configuredFeeds.length} feed${configuredFeeds.length !== 1 ? "s" : ""} with source metadata`
+        : "No feed URLs configured yet";
+
+      liveGrid.innerHTML = "";
+      if (!allCameras.length) {
+        liveGrid.innerHTML = '<p class="text-sm text-on-surface-variant">No camera configuration is available yet.</p>';
+        return;
+      }
+
+      allCameras.forEach((camera, index) => {
+        const cameraId = camera.id || camera.camera_id || `camera_${index + 1}`;
+        const hasPreviewImage = Boolean(camera.preview_image_url);
+        const hasLiveFeed = Boolean(camera.live_feed_url);
+        const sourceLabel = camera.live_feed_url
+          ? "Live stream URL configured"
+          : camera.preview_image_url
+          ? "Preview image configured"
+          : camera.url
+          ? "Source URL configured"
+          : "Awaiting stream setup";
+        const availabilityChip = hasLiveFeed
+          ? "bg-black text-white"
+          : hasPreviewImage
+          ? "bg-surface-container text-on-surface"
+          : "bg-error-container text-error";
+        const mediaMarkup = hasPreviewImage
+          ? `<img src="${camera.preview_image_url}" alt="${cameraId} preview" class="h-full w-full object-cover" loading="lazy" />`
+          : `<div class="flex h-full min-h-[16rem] items-center justify-center bg-black text-white">
+              <div class="text-center">
+                <span class="material-symbols-outlined text-5xl">videocam_off</span>
+                <p class="mt-4 text-lg font-black tracking-tight">${cameraId}</p>
+                <p class="mt-2 text-xs uppercase tracking-[0.2em] text-white/50">No preview configured</p>
+              </div>
+            </div>`;
+
+        const card = document.createElement("article");
+        card.className = "overflow-hidden bg-surface-container-lowest";
+        card.innerHTML = `
+          <div class="relative">
+            <div class="aspect-[16/10] bg-surface-container">${mediaMarkup}</div>
+            <div class="absolute left-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${availabilityChip}">
+              ${hasLiveFeed ? "Live-ready" : hasPreviewImage ? "Preview-only" : "Config-needed"}
+            </div>
+          </div>
+          <div class="p-6">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera Node</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">${cameraId}</h3>
+                <p class="mt-2 text-sm leading-6 text-on-surface-variant">${camera.location || "No location configured"}</p>
+              </div>
+              <button data-open-camera="${cameraId}" class="shrink-0 border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] transition-colors hover:bg-black hover:text-white">
+                Details
+              </button>
+            </div>
+            <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div class="bg-surface-container-low p-4">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Feed Status</p>
+                <p class="mt-2 text-sm font-semibold">${sourceLabel}</p>
+              </div>
+              <div class="bg-surface-container-low p-4">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Preferred Transport</p>
+                <p class="mt-2 text-sm font-semibold">${camera.live_feed_type || (hasLiveFeed ? "stream" : hasPreviewImage ? "image" : "not set")}</p>
+              </div>
+            </div>
+            <div class="mt-4 space-y-2 text-xs text-on-surface-variant">
+              <div><span class="font-semibold text-on-surface">Source:</span> ${camera.url || "—"}</div>
+              <div><span class="font-semibold text-on-surface">Live URL:</span> ${camera.live_feed_url || "—"}</div>
+              <div><span class="font-semibold text-on-surface">Preview URL:</span> ${camera.preview_image_url || "—"}</div>
+            </div>
+          </div>
+        `;
+        liveGrid.appendChild(card);
+      });
+
+      liveGrid.querySelectorAll("[data-open-camera]").forEach((button) => {
+        button.addEventListener("click", () => openCameraDetail(button.dataset.openCamera));
+      });
+    }
+
     async function loadViolationLog() {
       const { type, camera, search } = state.violationLogFilters;
       const params = {
@@ -1025,6 +1152,8 @@
         { label: "Target FPS",         value: cfg.target_fps != null ? cfg.target_fps : "Default" },
         { label: "Location",           value: cfg.location || "—" },
         { label: "Source URL",         value: cfg.url || "—" },
+        { label: "Live Feed URL",      value: cfg.live_feed_url || "—" },
+        { label: "Preview Image",      value: cfg.preview_image_url || "—" },
       ];
       const configList = document.getElementById("cd-config-list");
       configList.innerHTML = "";
@@ -1197,6 +1326,7 @@
 
         renderOverview();
         renderCameras();
+        renderLiveFeeds();
         renderViolations();
         renderSpeedDistribution();
         state.violationLog.page = 1;
