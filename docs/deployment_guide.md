@@ -58,6 +58,17 @@ Set camera-specific profiles in [config/cameras.yaml](/Users/a2.0/Desktop/Road-U
 defaults:
   pixels_per_meter: 25.0
   speed_limit_kmh: 60.0
+  speed_tolerance_kmh: 0.0
+  severe_speed_delta_kmh: 20.0
+  speed_reset_delta_kmh: 5.0
+  stopped_speed_threshold_kmh: 3.0
+  stopped_duration_seconds: 20
+  stopped_resume_speed_kmh: 8.0
+  max_motorcycle_riders: 2
+  rider_association_window_seconds: 2.0
+  rider_horizontal_margin_ratio: 0.35
+  rider_upper_margin_ratio: 0.75
+  rider_lower_margin_ratio: 0.25
 
 cameras:
   - id: recam_01
@@ -65,12 +76,20 @@ cameras:
     target_fps: 15
     pixels_per_meter: 21.0
     speed_limit_kmh: 40.0
+    speed_tolerance_kmh: 2.0
+    severe_speed_delta_kmh: 15.0
+    stopped_duration_seconds: 12
+    max_motorcycle_riders: 2
 
   - id: recam_02
     location: school_zone
     target_fps: 12
     pixels_per_meter: 18.5
     speed_limit_kmh: 30.0
+    speed_tolerance_kmh: 1.0
+    severe_speed_delta_kmh: 10.0
+    stopped_duration_seconds: 10
+    max_motorcycle_riders: 2
 ```
 
 ## 3. Configure environment files
@@ -94,6 +113,33 @@ Important variables:
 - `DATABASE_URL`
 - `CAMERA_ID`
 - `EDGE_SOURCE`
+- `DEFAULT_SPEED_TOLERANCE_KMH`
+- `SEVERE_SPEED_DELTA_KMH`
+- `SPEED_RESET_DELTA_KMH`
+- `STOPPED_SPEED_THRESHOLD_KMH`
+- `STOPPED_DURATION_SECONDS`
+- `STOPPED_RESUME_SPEED_KMH`
+- `MAX_MOTORCYCLE_RIDERS`
+- `RIDER_ASSOCIATION_WINDOW_SECONDS`
+- `RIDER_HORIZONTAL_MARGIN_RATIO`
+- `RIDER_UPPER_MARGIN_RATIO`
+- `RIDER_LOWER_MARGIN_RATIO`
+
+## Violation tuning fields
+
+You can override violation thresholds per camera in `config/cameras.yaml`.
+
+- `speed_tolerance_kmh`: tolerance before a speed violation triggers
+- `severe_speed_delta_kmh`: extra speed above threshold to mark severe speeding
+- `speed_reset_delta_kmh`: amount below threshold required before the same object can trigger again
+- `stopped_speed_threshold_kmh`: maximum speed still treated as stationary
+- `stopped_duration_seconds`: how long a vehicle must remain stopped before a violation is emitted
+- `stopped_resume_speed_kmh`: speed above which a stopped state resets
+- `max_motorcycle_riders`: maximum allowed riders on a motorcycle
+- `rider_association_window_seconds`: maximum timestamp gap for rider-to-motorcycle association
+- `rider_horizontal_margin_ratio`: horizontal expansion around a motorcycle when linking riders
+- `rider_upper_margin_ratio`: how far above the motorcycle a rider center may be
+- `rider_lower_margin_ratio`: how far below the motorcycle a rider center may be
 
 ## 4. Bring up the central server
 

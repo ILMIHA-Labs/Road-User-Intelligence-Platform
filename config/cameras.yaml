@@ -1,6 +1,18 @@
 defaults:
   pixels_per_meter: 25.0
   speed_limit_kmh: 60.0
+  speed_tolerance_kmh: 0.0
+  severe_speed_delta_kmh: 20.0
+  speed_reset_delta_kmh: 5.0
+  stopped_speed_threshold_kmh: 3.0
+  stopped_duration_seconds: 20
+  stopped_resume_speed_kmh: 8.0
+  state_ttl_seconds: 120
+  max_motorcycle_riders: 2
+  rider_association_window_seconds: 2.0
+  rider_horizontal_margin_ratio: 0.35
+  rider_upper_margin_ratio: 0.75
+  rider_lower_margin_ratio: 0.25
 
 cameras:
   - id: sample_video_01
@@ -9,3 +21,7 @@ cameras:
     target_fps: 15
     pixels_per_meter: 22.5
     speed_limit_kmh: 50.0
+    speed_tolerance_kmh: 2.0
+    severe_speed_delta_kmh: 18.0
+    stopped_duration_seconds: 15
+    max_motorcycle_riders: 2
