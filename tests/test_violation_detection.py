@@ -119,6 +119,60 @@ class TestViolationDetection(unittest.TestCase):
         )
         self.assertIn("stopped_vehicle_violation", engine.evaluate_violations(obj_id))
 
+    def test_stop_line_violation(self):
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            stop_line_min_speed_kmh=5.0,
+            zones=[
+                {
+                    "id": "north_stop_line",
+                    "category": "stop_line",
+                    "points": [[100.0, 180.0], [220.0, 180.0], [220.0, 230.0], [100.0, 230.0]],
+                }
+            ],
+        )
+
+        obj_id = 55
+        engine.update_state(
+            obj_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_stop",
+                "bbox": [120.0, 140.0, 200.0, 200.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        engine.update_state(
+            obj_id,
+            speed_event={"speed_kmh": 12.0, "timestamp": "2025-01-01T10:00:00Z"},
+        )
+        self.assertIn("stop_line_violation", engine.evaluate_violations(obj_id))
+        self.assertEqual(engine.object_states[obj_id]["stop_line_zone_id"], "north_stop_line")
+
+        self.assertEqual(engine.evaluate_violations(obj_id), [])
+
+        engine.update_state(
+            obj_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_stop",
+                "bbox": [240.0, 140.0, 320.0, 200.0],
+                "timestamp": "2025-01-01T10:00:01Z",
+            },
+        )
+        self.assertEqual(engine.evaluate_violations(obj_id), [])
+
+        engine.update_state(
+            obj_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_stop",
+                "bbox": [120.0, 150.0, 200.0, 205.0],
+                "timestamp": "2025-01-01T10:00:02Z",
+            },
+        )
+        self.assertIn("stop_line_violation", engine.evaluate_violations(obj_id))
+
         engine.update_state(
             obj_id,
             speed_event={"speed_kmh": 0.2, "timestamp": "2025-01-01T10:00:31Z"},
@@ -129,7 +183,7 @@ class TestViolationDetection(unittest.TestCase):
             obj_id,
             speed_event={"speed_kmh": 12.0, "timestamp": "2025-01-01T10:00:40Z"},
         )
-        self.assertEqual(engine.evaluate_violations(obj_id), [])
+        self.assertIn("stop_line_violation", engine.evaluate_violations(obj_id))
 
         engine.update_state(
             obj_id,
@@ -142,6 +196,63 @@ class TestViolationDetection(unittest.TestCase):
             speed_event={"speed_kmh": 0.0, "timestamp": "2025-01-01T10:01:35Z"},
         )
         self.assertIn("stopped_vehicle_violation", engine.evaluate_violations(obj_id))
+
+    def test_pedestrian_crossing_violation(self):
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            pedestrian_crossing_min_speed_kmh=5.0,
+            pedestrian_crossing_window_seconds=2.0,
+            zones=[
+                {
+                    "id": "school_crossing",
+                    "category": "pedestrian_crossing",
+                    "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                }
+            ],
+        )
+
+        vehicle_id = 56
+        pedestrian_id = 57
+        engine.update_state(
+            vehicle_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_cross",
+                "bbox": [120.0, 180.0, 220.0, 260.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        engine.update_state(
+            vehicle_id,
+            speed_event={"speed_kmh": 14.0, "timestamp": "2025-01-01T10:00:00Z"},
+        )
+        engine.update_state(
+            pedestrian_id,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": "cam_cross",
+                "bbox": [150.0, 220.0, 190.0, 300.0],
+                "timestamp": "2025-01-01T10:00:01Z",
+            },
+        )
+
+        self.assertIn("pedestrian_crossing_violation", engine.evaluate_violations(vehicle_id))
+        self.assertEqual(
+            engine.object_states[vehicle_id]["pedestrian_crossing_zone_id"],
+            "school_crossing",
+        )
+        self.assertEqual(engine.evaluate_violations(vehicle_id), [])
+
+        engine.update_state(
+            pedestrian_id,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": "cam_cross",
+                "bbox": [300.0, 220.0, 340.0, 300.0],
+                "timestamp": "2025-01-01T10:00:05Z",
+            },
+        )
+        self.assertEqual(engine.evaluate_violations(vehicle_id), [])
 
     def test_multiple_riders_violation(self):
         engine = ViolationRulesEngine(
@@ -270,6 +381,136 @@ class TestViolationDetection(unittest.TestCase):
         violation_types = {payload["violation_type"] for payload in published_payloads}
         self.assertIn("multiple_riders_violation", violation_types)
 
+    def test_service_emits_stop_line_violation_from_detection_and_speed(self):
+        service = ViolationDetectionService(
+            broker_host="localhost",
+            broker_port=1883,
+            speed_limit=60.0,
+            stop_line_min_speed_kmh=5.0,
+            camera_profiles={
+                "cam_stop": {
+                    "zones": [
+                        {
+                            "id": "north_stop_line",
+                            "category": "stop_line",
+                            "points": [[100.0, 180.0], [220.0, 180.0], [220.0, 230.0], [100.0, 230.0]],
+                        }
+                    ]
+                }
+            },
+        )
+        service.client = FakeMQTTClient()
+
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_stop",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 90,
+                    "class": "car",
+                    "helmet_status": "unknown",
+                    "bbox": [120.0, 140.0, 200.0, 200.0],
+                    "confidence": 0.92,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/speeds",
+                {
+                    "camera_id": "cam_stop",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 90,
+                    "speed_kmh": 12.0,
+                    "source": "edge",
+                },
+            ),
+        )
+
+        published_payloads = [json.loads(payload) for _, payload in service.client.published]
+        violation_types = {payload["violation_type"] for payload in published_payloads}
+        self.assertIn("stop_line_violation", violation_types)
+
+    def test_service_emits_pedestrian_crossing_violation_from_detection_flow(self):
+        service = ViolationDetectionService(
+            broker_host="localhost",
+            broker_port=1883,
+            speed_limit=60.0,
+            pedestrian_crossing_min_speed_kmh=5.0,
+            pedestrian_crossing_window_seconds=2.0,
+            camera_profiles={
+                "cam_cross": {
+                    "zones": [
+                        {
+                            "id": "school_crossing",
+                            "category": "pedestrian_crossing",
+                            "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                        }
+                    ]
+                }
+            },
+        )
+        service.client = FakeMQTTClient()
+
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_cross",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 91,
+                    "class": "car",
+                    "helmet_status": "unknown",
+                    "bbox": [120.0, 180.0, 220.0, 260.0],
+                    "confidence": 0.95,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/speeds",
+                {
+                    "camera_id": "cam_cross",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 91,
+                    "speed_kmh": 15.0,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_cross",
+                    "timestamp": "2025-01-01T10:00:01Z",
+                    "object_id": 92,
+                    "class": "pedestrian",
+                    "helmet_status": "unknown",
+                    "bbox": [150.0, 220.0, 190.0, 300.0],
+                    "confidence": 0.96,
+                    "source": "edge",
+                },
+            ),
+        )
+
+        published_payloads = [json.loads(payload) for _, payload in service.client.published]
+        violation_types = {payload["violation_type"] for payload in published_payloads}
+        self.assertIn("pedestrian_crossing_violation", violation_types)
+
     def test_service_uses_per_camera_speed_limit(self):
         service = ViolationDetectionService(
             broker_host="localhost",
@@ -313,6 +554,21 @@ class TestViolationDetection(unittest.TestCase):
                     "rider_upper_margin_ratio": 0.9,
                     "rider_lower_margin_ratio": 0.2,
                     "state_ttl_seconds": 45,
+                    "stop_line_min_speed_kmh": 7.0,
+                    "pedestrian_crossing_min_speed_kmh": 9.0,
+                    "pedestrian_crossing_window_seconds": 3.5,
+                    "zones": [
+                        {
+                            "id": "north_stop_line",
+                            "category": "stop_line",
+                            "points": [[100.0, 180.0], [220.0, 180.0], [220.0, 230.0], [100.0, 230.0]],
+                        },
+                        {
+                            "id": "school_crossing",
+                            "category": "pedestrian_crossing",
+                            "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                        }
+                    ],
                 }
             },
         )
@@ -331,6 +587,10 @@ class TestViolationDetection(unittest.TestCase):
         self.assertEqual(school_zone_engine.rider_upper_margin_ratio, 0.9)
         self.assertEqual(school_zone_engine.rider_lower_margin_ratio, 0.2)
         self.assertEqual(school_zone_engine.state_ttl_seconds, 45)
+        self.assertEqual(school_zone_engine.stop_line_min_speed_kmh, 7.0)
+        self.assertEqual(school_zone_engine.pedestrian_crossing_min_speed_kmh, 9.0)
+        self.assertEqual(school_zone_engine.pedestrian_crossing_window_seconds, 3.5)
+        self.assertEqual(len(school_zone_engine.zones), 2)
 
 if __name__ == '__main__':
     unittest.main()

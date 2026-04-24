@@ -556,6 +556,16 @@
         chip: "bg-amber-200 text-black",
         description: "Vehicle stayed effectively stationary longer than allowed."
       },
+      stop_line_violation: {
+        label: "Stop Line",
+        chip: "bg-orange-200 text-orange-950",
+        description: "Vehicle crossed into a configured stop-line zone while still moving."
+      },
+      pedestrian_crossing_violation: {
+        label: "Pedestrian Crossing",
+        chip: "bg-lime-200 text-lime-950",
+        description: "Moving vehicle entered a configured crossing zone while a pedestrian was present."
+      },
       multiple_riders_violation: {
         label: "Multiple Riders",
         chip: "bg-sky-200 text-sky-950",
@@ -618,6 +628,7 @@
       ["rider_horizontal_margin_ratio", "Rider Horizontal Margin"],
       ["rider_upper_margin_ratio", "Rider Upper Margin"],
       ["rider_lower_margin_ratio", "Rider Lower Margin"],
+      ["zones", "Configured Zones"],
       ["live_feed_type", "Live Feed Type"],
       ["live_feed_url", "Live Feed URL"],
       ["preview_image_url", "Preview Image URL"],
@@ -643,6 +654,9 @@
 
     function formatConfigValue(key, value) {
       if (value === null || value === undefined || value === "") return "—";
+      if (key === "zones" && Array.isArray(value)) {
+        return `${value.length} zone${value.length !== 1 ? "s" : ""}`;
+      }
       if (typeof value === "number") {
         if (key.endsWith("_kmh")) return `${value} km/h`;
         if (key === "pixels_per_meter") return `${value} px/m`;
@@ -1048,6 +1062,7 @@
         const overrides = CONFIG_FIELDS.filter(([key]) =>
           defaults[key] !== undefined && camera[key] !== undefined && camera[key] !== defaults[key]
         );
+        const zones = Array.isArray(camera.zones) ? camera.zones : [];
         const card = document.createElement("article");
         card.className = "border border-black/5 bg-surface-container-low p-6";
         card.innerHTML = `
@@ -1080,6 +1095,27 @@
               })
               .join("")}
           </dl>
+          ${
+            zones.length
+              ? `
+                <div class="mt-5 border-t border-black/5 pt-5">
+                  <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Zone Map</p>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    ${zones
+                      .map(
+                        (zone) => `
+                          <span class="inline-flex items-center gap-2 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-on-surface">
+                            ${zone.label}
+                            <span class="text-on-surface-variant">${zone.category}</span>
+                          </span>
+                        `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `
+              : ""
+          }
         `;
         cameraGrid.appendChild(card);
       });

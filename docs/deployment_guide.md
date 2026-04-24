@@ -69,6 +69,9 @@ defaults:
   rider_horizontal_margin_ratio: 0.35
   rider_upper_margin_ratio: 0.75
   rider_lower_margin_ratio: 0.25
+  stop_line_min_speed_kmh: 5.0
+  pedestrian_crossing_min_speed_kmh: 5.0
+  pedestrian_crossing_window_seconds: 2.0
 
 cameras:
   - id: recam_01
@@ -80,6 +83,18 @@ cameras:
     severe_speed_delta_kmh: 15.0
     stopped_duration_seconds: 12
     max_motorcycle_riders: 2
+    stop_line_min_speed_kmh: 6.0
+    pedestrian_crossing_min_speed_kmh: 8.0
+    zones:
+      - id: north_stop_line
+        label: North Stop Line
+        type: polygon
+        category: stop_line
+        points:
+          - [120, 250]
+          - [420, 250]
+          - [420, 280]
+          - [120, 280]
 
   - id: recam_02
     location: school_zone
@@ -90,6 +105,16 @@ cameras:
     severe_speed_delta_kmh: 10.0
     stopped_duration_seconds: 10
     max_motorcycle_riders: 2
+    zones:
+      - id: school_crossing
+        label: School Crossing
+        type: polygon
+        category: pedestrian_crossing
+        points:
+          - [160, 300]
+          - [460, 300]
+          - [460, 380]
+          - [160, 380]
 ```
 
 ## 3. Configure environment files
@@ -140,6 +165,22 @@ You can override violation thresholds per camera in `config/cameras.yaml`.
 - `rider_horizontal_margin_ratio`: horizontal expansion around a motorcycle when linking riders
 - `rider_upper_margin_ratio`: how far above the motorcycle a rider center may be
 - `rider_lower_margin_ratio`: how far below the motorcycle a rider center may be
+- `stop_line_min_speed_kmh`: minimum speed required before entering a stop-line zone is treated as a violation
+- `pedestrian_crossing_min_speed_kmh`: minimum vehicle speed required before entering a crossing zone is treated as a violation
+- `pedestrian_crossing_window_seconds`: maximum timestamp gap allowed between a pedestrian and vehicle in the same crossing zone
+
+## Zone configuration fields
+
+You can now attach zone geometry to each camera profile so future location-based rules have a stable contract.
+
+- `zones`: list of polygon zones for a camera
+- `zones[].id`: machine-friendly zone identifier
+- `zones[].label`: human-friendly name for dashboard and operations
+- `zones[].type`: currently `polygon`
+- `zones[].category`: semantic meaning such as `stop_line`, `pedestrian_crossing`, or `restricted_lane`
+- `zones[].points`: list of image-space `[x, y]` points in camera pixel coordinates
+
+For MVP, zones are configuration groundwork only. They are visible in the dashboard config view and ready for future zone-aware violations.
 
 ## 4. Bring up the central server
 

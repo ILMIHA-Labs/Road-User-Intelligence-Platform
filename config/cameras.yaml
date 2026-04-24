@@ -13,6 +13,10 @@ defaults:
   rider_horizontal_margin_ratio: 0.35
   rider_upper_margin_ratio: 0.75
   rider_lower_margin_ratio: 0.25
+  stop_line_min_speed_kmh: 5.0
+  pedestrian_crossing_min_speed_kmh: 5.0
+  pedestrian_crossing_window_seconds: 2.0
+  zones: []
 
 cameras:
   - id: sample_video_01
@@ -27,3 +31,24 @@ cameras:
     severe_speed_delta_kmh: 18.0
     stopped_duration_seconds: 15
     max_motorcycle_riders: 2
+    stop_line_min_speed_kmh: 6.0
+    pedestrian_crossing_min_speed_kmh: 8.0
+    zones:
+      - id: school_crossing
+        label: School Crossing
+        type: polygon
+        category: pedestrian_crossing
+        points:
+          - [180, 250]
+          - [420, 250]
+          - [420, 330]
+          - [180, 330]
+      - id: north_stop_line
+        label: North Stop Line
+        type: polygon
+        category: stop_line
+        points:
+          - [150, 220]
+          - [450, 220]
+          - [450, 245]
+          - [150, 245]

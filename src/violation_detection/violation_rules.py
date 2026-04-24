@@ -20,6 +20,25 @@ def _parse_timestamp(value):
     return None
 
 
+def _point_in_polygon(point, polygon):
+    if len(point) != 2 or len(polygon) < 3:
+        return False
+
+    x, y = point
+    inside = False
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        intersects = ((yi > y) != (yj > y)) and (
+            x < (xj - xi) * (y - yi) / ((yj - yi) or 1e-9) + xi
+        )
+        if intersects:
+            inside = not inside
+        j = i
+    return inside
+
+
 class ViolationRulesEngine:
     """
     Evaluates business rules to detect safety violations based on object state.
@@ -42,6 +61,13 @@ class ViolationRulesEngine:
         rider_horizontal_margin_ratio=0.35,
         rider_upper_margin_ratio=0.75,
         rider_lower_margin_ratio=0.25,
+        zones=None,
+        stop_line_min_speed_kmh=5.0,
+        stop_line_vehicle_classes=None,
+        pedestrian_crossing_min_speed_kmh=5.0,
+        pedestrian_crossing_window_seconds=2.0,
+        pedestrian_crossing_vehicle_classes=None,
+        pedestrian_classes=None,
     ):
         self.speed_limit_kmh = speed_limit_kmh
         self.speed_tolerance_kmh = speed_tolerance_kmh
@@ -63,15 +89,84 @@ class ViolationRulesEngine:
         self.rider_horizontal_margin_ratio = rider_horizontal_margin_ratio
         self.rider_upper_margin_ratio = rider_upper_margin_ratio
         self.rider_lower_margin_ratio = rider_lower_margin_ratio
+        self.zones = zones or []
+        self.stop_line_min_speed_kmh = stop_line_min_speed_kmh
+        self.stop_line_vehicle_classes = set(
+            stop_line_vehicle_classes or {"car", "bus", "truck", "motorcycle"}
+        )
+        self.pedestrian_crossing_min_speed_kmh = pedestrian_crossing_min_speed_kmh
+        self.pedestrian_crossing_window_seconds = pedestrian_crossing_window_seconds
+        self.pedestrian_crossing_vehicle_classes = set(
+            pedestrian_crossing_vehicle_classes or {"car", "bus", "truck", "motorcycle"}
+        )
+        self.pedestrian_classes = set(pedestrian_classes or {"pedestrian"})
         # A simple state cache: object_id -> dict of properties
         self.object_states = {}
 
-    def _is_recent_pair(self, state_a, state_b):
+    def _bbox_bottom_center(self, bbox):
+        if len(bbox) != 4:
+            return None
+        x1, _, x2, y2 = bbox
+        return [float((x1 + x2) / 2.0), float(y2)]
+
+    def _matching_zones(self, category, point):
+        if point is None:
+            return []
+        matches = []
+        for zone in self.zones:
+            if zone.get("category") != category:
+                continue
+            if _point_in_polygon(point, zone.get("points", [])):
+                matches.append(zone)
+        return matches
+
+    def _is_recent_pair_with_window(self, state_a, state_b, window_seconds):
         ts_a = _parse_timestamp(state_a.get("last_seen"))
         ts_b = _parse_timestamp(state_b.get("last_seen"))
         if ts_a is None or ts_b is None:
             return False
-        return abs((ts_a - ts_b).total_seconds()) <= self.rider_association_window_seconds
+        return abs((ts_a - ts_b).total_seconds()) <= window_seconds
+
+    def _is_recent_pair(self, state_a, state_b):
+        return self._is_recent_pair_with_window(
+            state_a,
+            state_b,
+            self.rider_association_window_seconds,
+        )
+
+    def _pedestrian_crossing_matches(self, vehicle_object_id):
+        vehicle_state = self.object_states.get(vehicle_object_id)
+        if not vehicle_state:
+            return []
+        if vehicle_state.get("class") not in self.pedestrian_crossing_vehicle_classes:
+            return []
+        if vehicle_state.get("speed_kmh", 0.0) < self.pedestrian_crossing_min_speed_kmh:
+            return []
+
+        vehicle_point = self._bbox_bottom_center(vehicle_state.get("bbox") or [])
+        matching_vehicle_zones = self._matching_zones("pedestrian_crossing", vehicle_point)
+        if not matching_vehicle_zones:
+            return []
+
+        zone_ids = {zone.get("id") for zone in matching_vehicle_zones}
+        camera_id = vehicle_state.get("camera_id")
+        active_matches = []
+        for state in self.object_states.values():
+            if state.get("class") not in self.pedestrian_classes:
+                continue
+            if state.get("camera_id") != camera_id:
+                continue
+            if not self._is_recent_pair_with_window(
+                vehicle_state, state, self.pedestrian_crossing_window_seconds
+            ):
+                continue
+            pedestrian_point = self._bbox_bottom_center(state.get("bbox") or [])
+            crossing_zones = self._matching_zones("pedestrian_crossing", pedestrian_point)
+            for zone in crossing_zones:
+                if zone.get("id") in zone_ids:
+                    active_matches.append(zone)
+                    break
+        return active_matches
 
     def _is_pedestrian_on_motorcycle(self, motorcycle_state, pedestrian_state):
         mbox = motorcycle_state.get("bbox") or []
@@ -167,6 +262,13 @@ class ViolationRulesEngine:
             best_match_id = self._best_motorcycle_match(object_id)
             if best_match_id is not None:
                 related_ids.add(best_match_id)
+            for candidate_id, candidate_state in self.object_states.items():
+                if candidate_state.get("class") not in self.pedestrian_crossing_vehicle_classes:
+                    continue
+                if candidate_state.get("camera_id") != state.get("camera_id"):
+                    continue
+                if self._pedestrian_crossing_matches(candidate_id):
+                    related_ids.add(candidate_id)
         return list(related_ids)
 
     def cleanup_stale_states(self, now=None):
@@ -212,6 +314,8 @@ class ViolationRulesEngine:
                  "stopped_since": None,
                  "stopped_vehicle_violation_triggered": False,
                  "multiple_riders_violation_triggered": False,
+                 "stop_line_violation_triggered": False,
+                 "pedestrian_crossing_violation_triggered": False,
              }
              
         state = self.object_states[object_id]
@@ -308,9 +412,31 @@ class ViolationRulesEngine:
             state["stopped_since"] = None
             state["stopped_vehicle_violation_triggered"] = False
 
-        # Rule 5: Zebra Crossing Violation (MVP simple stub)
-        # We would ideally check if a pedestrian is in a designated polygonal zone, 
-        # and if a fast-moving vehicle intersects the pedestrian's path. We'll leave it as a stub for MVP.
+        # Rule 5: Stop Line Violation
+        stop_line_matches = []
+        if state["class"] in self.stop_line_vehicle_classes and current_speed >= self.stop_line_min_speed_kmh:
+            anchor_point = self._bbox_bottom_center(state.get("bbox") or [])
+            stop_line_matches = self._matching_zones("stop_line", anchor_point)
+
+        if stop_line_matches:
+            if not state.get("stop_line_violation_triggered", False):
+                violations.append("stop_line_violation")
+                state["stop_line_violation_triggered"] = True
+                state["stop_line_zone_id"] = stop_line_matches[0].get("id")
+        else:
+            state["stop_line_violation_triggered"] = False
+            state["stop_line_zone_id"] = None
+
+        # Rule 6: Pedestrian Crossing Violation
+        crossing_matches = self._pedestrian_crossing_matches(object_id)
+        if crossing_matches:
+            if not state.get("pedestrian_crossing_violation_triggered", False):
+                violations.append("pedestrian_crossing_violation")
+                state["pedestrian_crossing_violation_triggered"] = True
+                state["pedestrian_crossing_zone_id"] = crossing_matches[0].get("id")
+        else:
+            state["pedestrian_crossing_violation_triggered"] = False
+            state["pedestrian_crossing_zone_id"] = None
         
         return violations
         

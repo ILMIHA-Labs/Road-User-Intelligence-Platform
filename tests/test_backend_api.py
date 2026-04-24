@@ -52,6 +52,7 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(first_camera["id"], "sample_video_01")
         self.assertIn("speed_limit_kmh", first_camera)
         self.assertIn("max_motorcycle_riders", first_camera)
+        self.assertIn("zones", first_camera)
 
     def test_create_detection(self):
         payload = {

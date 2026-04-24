@@ -11,6 +11,7 @@ from starlette.staticfiles import StaticFiles
 
 from . import models, schemas
 from .database import engine, get_db, init_db
+from common.camera_config import normalize_zone_definitions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("BackendAPI")
@@ -42,7 +43,11 @@ def get_cameras_config():
         return {"defaults": {}, "cameras": []}
     defaults = raw.get("defaults", {})
     cameras = raw.get("cameras", [])
-    merged = [{**defaults, **cam} for cam in cameras]
+    merged = []
+    for cam in cameras:
+        profile = {**defaults, **cam}
+        profile["zones"] = normalize_zone_definitions(profile.get("zones"))
+        merged.append(profile)
     return {"defaults": defaults, "cameras": merged}
 
 

@@ -20,6 +20,34 @@ def load_cameras(config_path: str) -> List[dict]:
     return load_camera_config(config_path).get("cameras", [])
 
 
+def normalize_zone_definitions(zones: Optional[List[dict]]) -> List[dict]:
+    normalized = []
+    for index, zone in enumerate(zones or []):
+        if not isinstance(zone, dict):
+            continue
+        points = []
+        for point in zone.get("points", []):
+            if (
+                isinstance(point, (list, tuple))
+                and len(point) == 2
+                and all(isinstance(value, (int, float)) for value in point)
+            ):
+                points.append([float(point[0]), float(point[1])])
+        if len(points) < 3:
+            continue
+        zone_id = zone.get("id") or f"zone_{index + 1}"
+        normalized.append(
+            {
+                "id": zone_id,
+                "label": zone.get("label", zone_id.replace("_", " ").title()),
+                "type": zone.get("type", "polygon"),
+                "category": zone.get("category", "custom"),
+                "points": points,
+            }
+        )
+    return normalized
+
+
 def build_camera_profile_map(config_path: Optional[str]) -> Dict[str, dict]:
     if not config_path:
         return {}
@@ -33,8 +61,10 @@ def build_camera_profile_map(config_path: Optional[str]) -> Dict[str, dict]:
         camera_id = camera.get("id")
         if not camera_id:
             continue
-        profiles[camera_id] = {
+        merged = {
             **defaults,
             **camera,
         }
+        merged["zones"] = normalize_zone_definitions(merged.get("zones"))
+        profiles[camera_id] = merged
     return profiles

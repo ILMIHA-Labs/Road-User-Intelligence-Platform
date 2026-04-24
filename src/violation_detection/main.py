@@ -36,6 +36,9 @@ class ViolationDetectionService:
         rider_upper_margin_ratio=0.75,
         rider_lower_margin_ratio=0.25,
         state_ttl_seconds=120,
+        stop_line_min_speed_kmh=5.0,
+        pedestrian_crossing_min_speed_kmh=5.0,
+        pedestrian_crossing_window_seconds=2.0,
     ):
         self.broker_host = broker_host
         self.broker_port = broker_port
@@ -53,6 +56,9 @@ class ViolationDetectionService:
         self.default_rider_upper_margin_ratio = rider_upper_margin_ratio
         self.default_rider_lower_margin_ratio = rider_lower_margin_ratio
         self.default_state_ttl_seconds = state_ttl_seconds
+        self.default_stop_line_min_speed_kmh = stop_line_min_speed_kmh
+        self.default_pedestrian_crossing_min_speed_kmh = pedestrian_crossing_min_speed_kmh
+        self.default_pedestrian_crossing_window_seconds = pedestrian_crossing_window_seconds
         self.engines = {}
         
         self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
@@ -110,6 +116,18 @@ class ViolationDetectionService:
         state_ttl_seconds = camera_profile.get(
             "state_ttl_seconds", self.default_state_ttl_seconds
         )
+        stop_line_min_speed_kmh = camera_profile.get(
+            "stop_line_min_speed_kmh", self.default_stop_line_min_speed_kmh
+        )
+        pedestrian_crossing_min_speed_kmh = camera_profile.get(
+            "pedestrian_crossing_min_speed_kmh",
+            self.default_pedestrian_crossing_min_speed_kmh,
+        )
+        pedestrian_crossing_window_seconds = camera_profile.get(
+            "pedestrian_crossing_window_seconds",
+            self.default_pedestrian_crossing_window_seconds,
+        )
+        zones = camera_profile.get("zones", [])
         engine = ViolationRulesEngine(
             speed_limit_kmh=speed_limit,
             speed_tolerance_kmh=speed_tolerance_kmh,
@@ -124,6 +142,10 @@ class ViolationDetectionService:
             rider_upper_margin_ratio=rider_upper_margin_ratio,
             rider_lower_margin_ratio=rider_lower_margin_ratio,
             state_ttl_seconds=state_ttl_seconds,
+            zones=zones,
+            stop_line_min_speed_kmh=stop_line_min_speed_kmh,
+            pedestrian_crossing_min_speed_kmh=pedestrian_crossing_min_speed_kmh,
+            pedestrian_crossing_window_seconds=pedestrian_crossing_window_seconds,
         )
         self.engines[camera_id] = engine
         logger.info(
@@ -279,6 +301,24 @@ def main():
         help="How far below the motorcycle box a rider center can be and still count as associated",
     )
     parser.add_argument(
+        "--stop-line-min-speed",
+        type=float,
+        default=float(os.getenv("STOP_LINE_MIN_SPEED_KMH", "5.0")),
+        help="Minimum speed required before entering a configured stop-line zone is treated as a violation",
+    )
+    parser.add_argument(
+        "--pedestrian-crossing-min-speed",
+        type=float,
+        default=float(os.getenv("PEDESTRIAN_CROSSING_MIN_SPEED_KMH", "5.0")),
+        help="Minimum vehicle speed required before entering a pedestrian-crossing zone is treated as a violation",
+    )
+    parser.add_argument(
+        "--pedestrian-crossing-window-seconds",
+        type=float,
+        default=float(os.getenv("PEDESTRIAN_CROSSING_WINDOW_SECONDS", "2.0")),
+        help="Maximum timestamp gap allowed between a pedestrian and vehicle in the same crossing zone",
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
@@ -303,6 +343,9 @@ def main():
         rider_upper_margin_ratio=args.rider_upper_margin_ratio,
         rider_lower_margin_ratio=args.rider_lower_margin_ratio,
         state_ttl_seconds=args.state_ttl_seconds,
+        stop_line_min_speed_kmh=args.stop_line_min_speed,
+        pedestrian_crossing_min_speed_kmh=args.pedestrian_crossing_min_speed,
+        pedestrian_crossing_window_seconds=args.pedestrian_crossing_window_seconds,
     )
     service.run()
 
