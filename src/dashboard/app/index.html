@@ -212,6 +212,27 @@
             </p>
           </article>
         </section>
+
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-7">
+            <div class="mb-5 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Zone Enforcement</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Location-Based Violations</h3>
+              </div>
+              <span id="zone-violation-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="zone-violation-summary" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-5">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Why It Matters</p>
+            <h3 class="mt-3 text-2xl font-black tracking-tight">From speed checks to scene awareness</h3>
+            <p class="mt-3 text-sm leading-6 text-white/70">
+              Zone rules add camera context to the MVP. Instead of only reacting to object state, the platform can now flag where risky behavior happens, such as stop-line crossings and active pedestrian-conflict moments.
+            </p>
+            <div id="zone-violation-note" class="mt-5 space-y-2 text-[11px] leading-5 text-white/55"></div>
+          </article>
+        </section>
       </section>
 
       <section id="cameras-view" data-view="cameras" class="hidden space-y-8">
@@ -516,6 +537,29 @@
 
         </div>
 
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-5">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <h3 class="text-xl font-black tracking-tight">Zone-Based Violations</h3>
+                <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Crossing and stop-line enforcement</p>
+              </div>
+              <span id="vl-zone-count-label" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="vl-zone-bars" class="space-y-4"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-7">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <h3 class="text-xl font-black tracking-tight">Behavioral Violations</h3>
+                <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">Speed, helmet, rider-count, stoppage</p>
+              </div>
+              <span id="vl-behavior-count-label" class="text-[10px] uppercase tracking-[0.2em] text-white/40"></span>
+            </div>
+            <div id="vl-behavior-bars" class="space-y-4"></div>
+          </article>
+        </section>
+
         <!-- Speed Distribution -->
         <section class="bg-surface-container-lowest p-8">
           <div class="mb-6 flex items-end justify-between">
@@ -650,6 +694,13 @@
         chip: "bg-black text-white",
         description: "Violation captured by the current rules engine."
       };
+    }
+
+    function getViolationFamily(type) {
+      if (["stop_line_violation", "pedestrian_crossing_violation"].includes(type)) {
+        return "zone";
+      }
+      return "behavior";
     }
 
     function formatConfigValue(key, value) {
@@ -846,6 +897,51 @@
         `;
         coverage.appendChild(card);
       });
+
+      const zoneSummary = document.getElementById("zone-violation-summary");
+      const zoneCount = document.getElementById("zone-violation-count");
+      const zoneNote = document.getElementById("zone-violation-note");
+      const zoneViolations = state.violations.filter((item) => getViolationFamily(item.violation_type) === "zone");
+      zoneSummary.innerHTML = "";
+      zoneNote.innerHTML = "";
+      const zoneTotal = zoneViolations.reduce((sum, item) => sum + item.count, 0);
+      zoneCount.textContent = zoneViolations.length
+        ? `${zoneTotal} event${zoneTotal !== 1 ? "s" : ""} across ${zoneViolations.length} rule${zoneViolations.length !== 1 ? "s" : ""}`
+        : "No zone-based violations in current scope";
+
+      if (!zoneViolations.length) {
+        zoneSummary.innerHTML = '<p class="text-sm text-on-surface-variant">No zone-based violations recorded in the current scope.</p>';
+        zoneNote.innerHTML = '<p>Configured zones are ready, but nothing in the filtered window crossed a monitored stop line or active crossing.</p>';
+      } else {
+        zoneViolations
+          .sort((a, b) => b.count - a.count)
+          .forEach((item) => {
+            const meta = getViolationMeta(item.violation_type);
+            const card = document.createElement("div");
+            card.className = "border border-black/5 bg-surface-container-low p-5";
+            card.innerHTML = `
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">
+                    ${meta.label}
+                  </span>
+                  <p class="mt-3 text-sm leading-6 text-on-surface-variant">${meta.description}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Count</p>
+                  <p class="mt-1 text-3xl font-black tracking-tight">${item.count}</p>
+                </div>
+              </div>
+            `;
+            zoneSummary.appendChild(card);
+          });
+
+        const activeCameras = state.byCamera.filter((camera) => camera.violations > 0).length;
+        zoneNote.innerHTML = `
+          <p>${zoneTotal} zone-aware violation${zoneTotal !== 1 ? "s" : ""} recorded in the current scope.</p>
+          <p>${activeCameras} camera${activeCameras !== 1 ? "s" : ""} currently show persisted enforcement activity.</p>
+        `;
+      }
     }
 
     function renderCameras() {
@@ -1222,6 +1318,69 @@
         });
       }
 
+      const zoneBars = document.getElementById("vl-zone-bars");
+      const behaviorBars = document.getElementById("vl-behavior-bars");
+      const zoneLabel = document.getElementById("vl-zone-count-label");
+      const behaviorLabel = document.getElementById("vl-behavior-count-label");
+      const zoneTypes = sorted.filter((item) => getViolationFamily(item.violation_type) === "zone");
+      const behaviorTypes = sorted.filter((item) => getViolationFamily(item.violation_type) === "behavior");
+
+      const renderSegmentBars = (container, items, theme) => {
+        container.innerHTML = "";
+        if (!items.length) {
+          container.innerHTML = `<p class="text-sm ${theme.emptyClass}">${theme.emptyText}</p>`;
+          return;
+        }
+        const maxCount = Math.max(...items.map((item) => item.count), 1);
+        items.forEach((item, idx) => {
+          const meta = getViolationMeta(item.violation_type);
+          const width = (item.count / maxCount) * 100;
+          const block = document.createElement("div");
+          block.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums ${theme.indexClass}">${String(idx + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] ${theme.labelClass}">${meta.label}</span>
+              </div>
+              <span class="text-sm font-black tabular-nums ${theme.valueClass}">${item.count.toLocaleString()}</span>
+            </div>
+            <p class="mb-2 text-[11px] leading-5 ${theme.descClass}">${meta.description}</p>
+            <div class="relative h-1.5 ${theme.trackClass} overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full ${theme.fillClass}" style="width:${width}%"></div>
+            </div>
+          `;
+          container.appendChild(block);
+        });
+      };
+
+      zoneLabel.textContent = zoneTypes.length
+        ? `${zoneTypes.reduce((sum, item) => sum + item.count, 0)} total`
+        : "No zone alerts";
+      behaviorLabel.textContent = behaviorTypes.length
+        ? `${behaviorTypes.reduce((sum, item) => sum + item.count, 0)} total`
+        : "No behavioral alerts";
+
+      renderSegmentBars(zoneBars, zoneTypes, {
+        emptyClass: "text-on-surface-variant",
+        emptyText: "No zone-based violations in the current scope.",
+        indexClass: "text-on-surface-variant",
+        labelClass: "text-on-surface",
+        valueClass: "text-on-surface",
+        descClass: "text-on-surface-variant",
+        trackClass: "bg-surface-container",
+        fillClass: "bg-black",
+      });
+      renderSegmentBars(behaviorBars, behaviorTypes, {
+        emptyClass: "text-white/50",
+        emptyText: "No behavioral violations in the current scope.",
+        indexClass: "text-white/30",
+        labelClass: "text-white",
+        valueClass: "text-white",
+        descClass: "text-white/55",
+        trackClass: "bg-white/10",
+        fillClass: "bg-white",
+      });
+
       // By-camera bars (white panel)
       const camBars = document.getElementById("vl-camera-bars");
       camBars.innerHTML = "";
@@ -1271,9 +1430,14 @@
           <td class="px-6 py-5 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
           <td class="px-6 py-5 text-xs font-mono font-semibold">${v.camera_id}</td>
           <td class="px-6 py-5">
-            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">
-              ${meta.label}
-            </span>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">
+                ${meta.label}
+              </span>
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${getViolationFamily(v.violation_type) === "zone" ? "bg-black text-white" : "bg-surface-container text-on-surface"}">
+                ${getViolationFamily(v.violation_type) === "zone" ? "Zone" : "Behavior"}
+              </span>
+            </div>
             <p class="mt-1 text-[11px] leading-5 text-on-surface-variant">${meta.description}</p>
           </td>
           <td class="px-6 py-5 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
@@ -1417,7 +1581,12 @@
         tr.innerHTML = `
           <td class="px-4 py-3 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
           <td class="px-4 py-3">
-            <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">${meta.label}</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">${meta.label}</span>
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${getViolationFamily(v.violation_type) === "zone" ? "bg-black text-white" : "bg-surface-container text-on-surface"}">
+                ${getViolationFamily(v.violation_type) === "zone" ? "Zone" : "Behavior"}
+              </span>
+            </div>
             <p class="mt-1 text-[11px] leading-5 text-on-surface-variant">${meta.description}</p>
           </td>
           <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
