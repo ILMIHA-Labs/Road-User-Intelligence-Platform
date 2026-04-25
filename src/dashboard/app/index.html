@@ -362,7 +362,7 @@
             </div>
             <span id="cd-live-status" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Waiting for snapshot</span>
           </div>
-          <div id="cd-live-preview-shell" class="aspect-[16/9] overflow-hidden bg-black">
+          <div id="cd-live-preview-shell" class="relative aspect-[16/9] overflow-hidden bg-black">
             <div id="cd-live-preview-empty" class="flex h-full items-center justify-center text-center text-white/60">
               <div>
                 <span class="material-symbols-outlined text-5xl">videocam_off</span>
@@ -370,6 +370,7 @@
               </div>
             </div>
             <img id="cd-live-preview" alt="Live camera preview" class="hidden h-full w-full object-cover" />
+            <div id="cd-live-overlay" class="pointer-events-none absolute inset-0 hidden"></div>
           </div>
         </section>
 
@@ -739,6 +740,49 @@
       return `${value}`;
     }
 
+    function getZoneCategoryStyle(category) {
+      if (category === "stop_line") {
+        return { stroke: "#f97316", fill: "rgba(249, 115, 22, 0.16)" };
+      }
+      if (category === "pedestrian_crossing") {
+        return { stroke: "#84cc16", fill: "rgba(132, 204, 22, 0.16)" };
+      }
+      if (category === "restricted_lane") {
+        return { stroke: "#38bdf8", fill: "rgba(56, 189, 248, 0.16)" };
+      }
+      return { stroke: "#ffffff", fill: "rgba(255, 255, 255, 0.12)" };
+    }
+
+    function buildZoneOverlayMarkup(camera) {
+      const zones = Array.isArray(camera?.zones) ? camera.zones : [];
+      if (!zones.length) return "";
+
+      const allPoints = zones.flatMap((zone) => zone.points || []);
+      const maxX = Math.max(...allPoints.map((point) => point[0]), 1);
+      const maxY = Math.max(...allPoints.map((point) => point[1]), 1);
+
+      const polygons = zones.map((zone) => {
+        const style = getZoneCategoryStyle(zone.category);
+        const points = (zone.points || []).map((point) => point.join(",")).join(" ");
+        const anchor = zone.points?.[0] || [0, 0];
+        return `
+          <g>
+            <polygon points="${points}" fill="${style.fill}" stroke="${style.stroke}" stroke-width="6" vector-effect="non-scaling-stroke"></polygon>
+            <rect x="${anchor[0]}" y="${Math.max(anchor[1] - 28, 0)}" width="${Math.max(zone.label.length * 10, 90)}" height="24" rx="2" fill="rgba(0,0,0,0.72)"></rect>
+            <text x="${anchor[0] + 8}" y="${Math.max(anchor[1] - 12, 14)}" fill="#ffffff" font-size="18" font-weight="700">${zone.label}</text>
+          </g>
+        `;
+      }).join("");
+
+      return `
+        <div class="absolute inset-0">
+          <svg viewBox="0 0 ${maxX} ${maxY}" preserveAspectRatio="none" class="h-full w-full">
+            ${polygons}
+          </svg>
+        </div>
+      `;
+    }
+
     function setActiveView(viewName) {
       state.activeView = viewName;
       document.querySelectorAll("[data-view]").forEach((section) => {
@@ -772,6 +816,32 @@
         snapshot_url: null,
         updated_at: null,
       };
+    }
+
+    function getHealthMeta(health) {
+      if (health === "online") {
+        return {
+          chip: "bg-emerald-200 text-emerald-950",
+          label: "Online",
+        };
+      }
+      if (health === "idle") {
+        return {
+          chip: "bg-amber-200 text-amber-950",
+          label: "Idle",
+        };
+      }
+      return {
+        chip: "bg-error-container text-error",
+        label: "Offline",
+      };
+    }
+
+    function formatRelativeSeconds(seconds) {
+      if (seconds === null || seconds === undefined) return "No recent activity";
+      if (seconds < 60) return `${seconds}s ago`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      return `${Math.floor(seconds / 3600)}h ago`;
     }
 
     async function loadJson(url) {
@@ -1009,6 +1079,8 @@
         const sPct = total ? Math.round((camera.speeds / total) * 100) : 0;
         const vPct = total ? 100 - dPct - sPct : 0;
         const violationRate = total ? ((camera.violations / total) * 100).toFixed(1) : "0.0";
+        const liveState = getLiveFeedState(camera.camera_id);
+        const healthMeta = getHealthMeta(liveState.health);
         const severityLabel = camera.violations === 0
           ? "<span class=\"bg-surface-container text-on-surface-variant px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]\">Clean</span>"
           : camera.violations < 5
@@ -1027,10 +1099,17 @@
                 <p class="mt-1 text-2xl font-black tracking-tighter">${camera.camera_id}</p>
               </div>
               <div class="text-right">
-                ${severityLabel}
+                <div class="flex justify-end gap-2">
+                  ${severityLabel}
+                  <span class="${healthMeta.chip} px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]">${healthMeta.label}</span>
+                </div>
                 <p class="mt-2 text-[10px] text-white/40">Violation rate</p>
                 <p class="text-lg font-black tabular-nums">${violationRate}%</p>
               </div>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-3 text-[10px] uppercase tracking-[0.15em] text-white/40">
+              <div>Last activity ${formatRelativeSeconds(liveState.activity_age_seconds)}</div>
+              <div class="text-right">Snapshot ${formatRelativeSeconds(liveState.snapshot_age_seconds)}</div>
             </div>
             <div class="mt-5">
               <p class="mb-1.5 text-[9px] uppercase tracking-[0.2em] text-white/30">Event mix</p>
@@ -1093,6 +1172,7 @@
         const cameraId = camera.id || camera.camera_id || `camera_${index + 1}`;
         const liveState = getLiveFeedState(cameraId);
         const hasSnapshot = Boolean(liveState.snapshot_available);
+        const healthMeta = getHealthMeta(liveState.health);
         const sourceLabel = hasSnapshot
           ? "Live snapshot stream available"
           : camera.preview_image_url
@@ -1121,9 +1201,15 @@
         card.className = "overflow-hidden bg-surface-container-lowest";
         card.innerHTML = `
           <div class="relative">
-            <div class="aspect-[16/10] bg-surface-container">${mediaMarkup}</div>
+            <div class="relative aspect-[16/10] bg-surface-container">
+              ${mediaMarkup}
+              ${buildZoneOverlayMarkup(camera)}
+            </div>
             <div class="absolute left-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${availabilityChip}">
               ${hasSnapshot ? "Live-ready" : camera.preview_image_url ? "Preview-only" : "Config-needed"}
+            </div>
+            <div class="absolute right-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${healthMeta.chip}">
+              ${healthMeta.label}
             </div>
           </div>
           <div class="p-6">
@@ -1147,11 +1233,20 @@
                 <p class="mt-2 text-sm font-semibold">${hasSnapshot ? "snapshot" : camera.live_feed_type || (camera.preview_image_url ? "image" : "not set")}</p>
               </div>
             </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              ${(camera.zones || []).map((zone) => `
+                <span class="inline-flex items-center gap-2 bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em]">
+                  ${zone.label}
+                  <span class="text-on-surface-variant">${zone.category}</span>
+                </span>
+              `).join("")}
+            </div>
             <div class="mt-4 space-y-2 text-xs text-on-surface-variant">
               <div><span class="font-semibold text-on-surface">Source:</span> ${camera.url || "—"}</div>
               <div><span class="font-semibold text-on-surface">Live URL:</span> ${hasSnapshot ? liveSnapshotUrl(cameraId) : (camera.live_feed_url || "—")}</div>
               <div><span class="font-semibold text-on-surface">Preview URL:</span> ${camera.preview_image_url || "—"}</div>
-              <div><span class="font-semibold text-on-surface">Updated:</span> ${liveState.updated_at ? formatTimestamp(liveState.updated_at) : "—"}</div>
+              <div><span class="font-semibold text-on-surface">Snapshot age:</span> ${formatRelativeSeconds(liveState.snapshot_age_seconds)}</div>
+              <div><span class="font-semibold text-on-surface">Last activity:</span> ${formatRelativeSeconds(liveState.activity_age_seconds)}</div>
             </div>
           </div>
         `;
@@ -1546,6 +1641,8 @@
       document.getElementById("cd-speed-limit").textContent =
         cfg.speed_limit_kmh != null ? cfg.speed_limit_kmh : "—";
       renderCameraDetailLivePreview(cameraId);
+      const liveState = getLiveFeedState(cameraId);
+      const healthMeta = getHealthMeta(liveState.health);
 
       // Config list
       const configFields = [
@@ -1556,6 +1653,9 @@
         { label: "Source URL",         value: cfg.url || "—" },
         { label: "Live Feed URL",      value: cfg.live_feed_url || "—" },
         { label: "Preview Image",      value: cfg.preview_image_url || "—" },
+        { label: "Health",             value: healthMeta.label },
+        { label: "Last Activity",      value: formatRelativeSeconds(liveState.activity_age_seconds) },
+        { label: "Snapshot Age",       value: formatRelativeSeconds(liveState.snapshot_age_seconds) },
       ];
       const configList = document.getElementById("cd-config-list");
       configList.innerHTML = "";
@@ -1596,6 +1696,10 @@
       const img = document.getElementById("cd-live-preview");
       const empty = document.getElementById("cd-live-preview-empty");
       const status = document.getElementById("cd-live-status");
+      const overlay = document.getElementById("cd-live-overlay");
+      const camera = state.cameraConfigs.find((item) => item.id === cameraId) || {};
+      overlay.innerHTML = buildZoneOverlayMarkup(camera);
+      overlay.classList.toggle("hidden", !(camera.zones || []).length);
       if (!liveState.snapshot_available) {
         img.classList.add("hidden");
         img.removeAttribute("src");
@@ -1607,8 +1711,8 @@
       img.classList.remove("hidden");
       empty.classList.add("hidden");
       status.textContent = liveState.updated_at
-        ? `Updated ${formatTimestamp(liveState.updated_at)}`
-        : "Live snapshot available";
+        ? `${getHealthMeta(liveState.health).label} • Updated ${formatTimestamp(liveState.snapshot_updated_at || liveState.updated_at)}`
+        : `${getHealthMeta(liveState.health).label} • Live snapshot available`;
     }
 
     function refreshVisibleLiveSnapshots() {

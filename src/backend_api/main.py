@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
@@ -58,6 +58,69 @@ def _live_snapshot_path(camera_id: str) -> Path:
     return _LIVE_FRAMES_DIR / camera_id / "latest.jpg"
 
 
+def _serialize_dt(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
+def _camera_health_snapshot(camera_id: str, db: Session):
+    snapshot_path = _live_snapshot_path(camera_id)
+    snapshot_available = snapshot_path.exists()
+    snapshot_updated_at = None
+    snapshot_age_seconds = None
+    snapshot_fresh = False
+
+    if snapshot_available:
+        snapshot_updated = datetime.fromtimestamp(snapshot_path.stat().st_mtime, tz=timezone.utc)
+        snapshot_updated_at = snapshot_updated.isoformat()
+        snapshot_age_seconds = max(0, int((datetime.now(timezone.utc) - snapshot_updated).total_seconds()))
+        snapshot_fresh = snapshot_age_seconds <= 10
+
+    last_detection = db.query(func.max(models.DBDetection.timestamp)).filter(
+        models.DBDetection.camera_id == camera_id
+    ).scalar()
+    last_speed = db.query(func.max(models.DBSpeed.timestamp)).filter(
+        models.DBSpeed.camera_id == camera_id
+    ).scalar()
+    last_violation = db.query(func.max(models.DBViolation.timestamp)).filter(
+        models.DBViolation.camera_id == camera_id
+    ).scalar()
+
+    recent_activity = [value for value in (last_detection, last_speed, last_violation) if value is not None]
+    last_activity = max(recent_activity) if recent_activity else None
+    last_activity_iso = _serialize_dt(last_activity)
+    activity_age_seconds = None
+    if last_activity is not None:
+        if last_activity.tzinfo is None:
+            last_activity = last_activity.replace(tzinfo=timezone.utc)
+        activity_age_seconds = max(0, int((datetime.now(timezone.utc) - last_activity).total_seconds()))
+
+    if snapshot_fresh or (activity_age_seconds is not None and activity_age_seconds <= 15):
+        health = "online"
+    elif snapshot_available or last_activity_iso:
+        health = "idle"
+    else:
+        health = "offline"
+
+    return {
+        "camera_id": camera_id,
+        "snapshot_available": snapshot_available,
+        "snapshot_url": f"/live/cameras/{camera_id}/snapshot" if snapshot_available else None,
+        "snapshot_updated_at": snapshot_updated_at,
+        "snapshot_age_seconds": snapshot_age_seconds,
+        "snapshot_fresh": snapshot_fresh,
+        "last_detection_at": _serialize_dt(last_detection),
+        "last_speed_at": _serialize_dt(last_speed),
+        "last_violation_at": _serialize_dt(last_violation),
+        "last_activity_at": last_activity_iso,
+        "activity_age_seconds": activity_age_seconds,
+        "health": health,
+    }
+
+
 def _read_camera_profiles():
     try:
         with open(_CAMERAS_CONFIG_PATH, "r") as f:
@@ -75,47 +138,20 @@ def _read_camera_profiles():
 
 
 @app.get("/live/cameras")
-def get_live_camera_statuses():
+def get_live_camera_statuses(db: Session = Depends(get_db)):
     _, cameras = _read_camera_profiles()
     statuses = []
     for camera in cameras:
         camera_id = camera.get("id")
         if not camera_id:
             continue
-        snapshot_path = _live_snapshot_path(camera_id)
-        snapshot_available = snapshot_path.exists()
-        updated_at = (
-            datetime.fromtimestamp(snapshot_path.stat().st_mtime).isoformat()
-            if snapshot_available
-            else None
-        )
-        statuses.append(
-            {
-                "camera_id": camera_id,
-                "snapshot_available": snapshot_available,
-                "snapshot_url": f"/live/cameras/{camera_id}/snapshot" if snapshot_available else None,
-                "updated_at": updated_at,
-            }
-        )
+        statuses.append(_camera_health_snapshot(camera_id, db))
     return {"cameras": statuses}
 
 
 @app.get("/live/cameras/{camera_id}")
-def get_live_camera_status(camera_id: str):
-    snapshot_path = _live_snapshot_path(camera_id)
-    if not snapshot_path.exists():
-        return {
-            "camera_id": camera_id,
-            "snapshot_available": False,
-            "snapshot_url": None,
-            "updated_at": None,
-        }
-    return {
-        "camera_id": camera_id,
-        "snapshot_available": True,
-        "snapshot_url": f"/live/cameras/{camera_id}/snapshot",
-        "updated_at": datetime.fromtimestamp(snapshot_path.stat().st_mtime).isoformat(),
-    }
+def get_live_camera_status(camera_id: str, db: Session = Depends(get_db)):
+    return _camera_health_snapshot(camera_id, db)
 
 
 @app.get("/live/cameras/{camera_id}/snapshot")

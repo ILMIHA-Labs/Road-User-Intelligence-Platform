@@ -67,6 +67,16 @@ class TestBackendAPI(unittest.TestCase):
         camera_dir.mkdir(parents=True, exist_ok=True)
         snapshot_path = camera_dir / "latest.jpg"
         snapshot_path.write_bytes(b"\xff\xd8\xff\xd9")
+        self.client.post("/detections", json={
+            "camera_id": "sample_video_01",
+            "timestamp": "2023-10-27T10:00:00Z",
+            "object_id": 1,
+            "class": "car",
+            "helmet_status": "unknown",
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
 
         response = self.client.get("/live/cameras")
         self.assertEqual(response.status_code, 200)
@@ -74,6 +84,9 @@ class TestBackendAPI(unittest.TestCase):
         sample_status = next(item for item in data["cameras"] if item["camera_id"] == "sample_video_01")
         self.assertTrue(sample_status["snapshot_available"])
         self.assertEqual(sample_status["snapshot_url"], "/live/cameras/sample_video_01/snapshot")
+        self.assertIn("health", sample_status)
+        self.assertIn("last_detection_at", sample_status)
+        self.assertIn("snapshot_age_seconds", sample_status)
 
         detail_response = self.client.get("/live/cameras/sample_video_01")
         self.assertEqual(detail_response.status_code, 200)
