@@ -2,10 +2,13 @@ import unittest
 from fastapi.testclient import TestClient
 import sys
 import os
+import tempfile
+from pathlib import Path
 
 # Ensure src is in the path for importing backend_api
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
+import backend_api.main as backend_main
 from backend_api.database import init_db
 from backend_api.main import app, engine
 from backend_api.models import Base
@@ -24,11 +27,16 @@ class TestBackendAPI(unittest.TestCase):
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
         init_db()
+        self.live_preview_tmp = tempfile.TemporaryDirectory()
+        self.original_live_frames_dir = backend_main._LIVE_FRAMES_DIR
+        backend_main._LIVE_FRAMES_DIR = Path(self.live_preview_tmp.name)
         self.client_cm = TestClient(app)
         self.client = self.client_cm.__enter__()
 
     def tearDown(self):
         self.client_cm.__exit__(None, None, None)
+        backend_main._LIVE_FRAMES_DIR = self.original_live_frames_dir
+        self.live_preview_tmp.cleanup()
         Base.metadata.drop_all(bind=engine)
 
     def test_read_root(self):
@@ -53,6 +61,31 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("speed_limit_kmh", first_camera)
         self.assertIn("max_motorcycle_riders", first_camera)
         self.assertIn("zones", first_camera)
+
+    def test_live_camera_snapshot_endpoints(self):
+        camera_dir = Path(self.live_preview_tmp.name) / "sample_video_01"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_path = camera_dir / "latest.jpg"
+        snapshot_path.write_bytes(b"\xff\xd8\xff\xd9")
+
+        response = self.client.get("/live/cameras")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        sample_status = next(item for item in data["cameras"] if item["camera_id"] == "sample_video_01")
+        self.assertTrue(sample_status["snapshot_available"])
+        self.assertEqual(sample_status["snapshot_url"], "/live/cameras/sample_video_01/snapshot")
+
+        detail_response = self.client.get("/live/cameras/sample_video_01")
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertTrue(detail_response.json()["snapshot_available"])
+
+        image_response = self.client.get("/live/cameras/sample_video_01/snapshot")
+        self.assertEqual(image_response.status_code, 200)
+        self.assertEqual(image_response.headers["content-type"], "image/jpeg")
+
+    def test_live_camera_snapshot_missing_returns_404(self):
+        response = self.client.get("/live/cameras/missing_cam/snapshot")
+        self.assertEqual(response.status_code, 404)
 
     def test_create_detection(self):
         payload = {

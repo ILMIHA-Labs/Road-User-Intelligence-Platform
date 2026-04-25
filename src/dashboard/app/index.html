@@ -265,9 +265,9 @@
           </article>
           <article class="bg-surface-container-lowest p-8 xl:col-span-2">
             <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Live Feed Status</p>
-            <p class="mt-3 text-2xl font-black tracking-tight">Dashboard groundwork is ready</p>
+            <p class="mt-3 text-2xl font-black tracking-tight">Real-time snapshot previews are active</p>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant">
-              This page uses camera config to surface feed metadata now, and it can embed live streams later when cameras expose RTSP, HLS, MJPEG, or proxied WebRTC endpoints.
+              The dashboard now refreshes backend-served camera snapshots for a practical MVP live view. A full video transport like MJPEG, HLS, or WebRTC can still come later.
             </p>
           </article>
         </div>
@@ -353,6 +353,25 @@
             </div>
           </div>
         </div>
+
+        <section class="bg-surface-container-lowest p-6">
+          <div class="mb-5 flex items-center justify-between">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Live Snapshot</p>
+              <h3 class="mt-1 text-2xl font-black tracking-tight">Current Camera Preview</h3>
+            </div>
+            <span id="cd-live-status" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Waiting for snapshot</span>
+          </div>
+          <div id="cd-live-preview-shell" class="aspect-[16/9] overflow-hidden bg-black">
+            <div id="cd-live-preview-empty" class="flex h-full items-center justify-center text-center text-white/60">
+              <div>
+                <span class="material-symbols-outlined text-5xl">videocam_off</span>
+                <p class="mt-3 text-sm uppercase tracking-[0.2em]">No live snapshot available</p>
+              </div>
+            </div>
+            <img id="cd-live-preview" alt="Live camera preview" class="hidden h-full w-full object-cover" />
+          </div>
+        </section>
 
         <!-- 4-metric row -->
         <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -644,6 +663,7 @@
       speedDist: [],
       cameraDefaults: {},
       cameraConfigs: [],
+      liveFeeds: {},
       recent: { detections: [], speeds: [], violations: [] },
       violationLog: { items: [], total: 0, page: 1, pages: 0, pageSize: 25 },
       violationLogFilters: { type: "", camera: "", search: "" },
@@ -651,7 +671,9 @@
         cameraId: "",
         start: "",
         end: ""
-      }
+      },
+      activeView: "overview",
+      currentCameraDetailId: null,
     };
 
     const CONFIG_FIELDS = [
@@ -718,6 +740,7 @@
     }
 
     function setActiveView(viewName) {
+      state.activeView = viewName;
       document.querySelectorAll("[data-view]").forEach((section) => {
         section.classList.toggle("hidden", section.dataset.view !== viewName);
       });
@@ -732,6 +755,23 @@
         button.classList.toggle("text-black", isActive);
         button.classList.toggle("text-on-surface-variant", !isActive);
       });
+    }
+
+    function liveSnapshotUrl(cameraId) {
+      return `/live/cameras/${encodeURIComponent(cameraId)}/snapshot`;
+    }
+
+    function liveSnapshotUrlWithCacheBust(cameraId) {
+      return `${liveSnapshotUrl(cameraId)}?ts=${Date.now()}`;
+    }
+
+    function getLiveFeedState(cameraId) {
+      return state.liveFeeds[cameraId] || {
+        camera_id: cameraId,
+        snapshot_available: false,
+        snapshot_url: null,
+        updated_at: null,
+      };
     }
 
     async function loadJson(url) {
@@ -1032,16 +1072,16 @@
       const allCameras = state.cameraConfigs.length
         ? state.cameraConfigs
         : state.byCamera.map((camera) => ({ id: camera.camera_id }));
-      const configuredFeeds = allCameras.filter((camera) =>
-        camera.live_feed_url || camera.preview_image_url || camera.url
-      );
-      const readyFeeds = allCameras.filter((camera) => camera.live_feed_url || camera.preview_image_url);
+      const readyFeeds = allCameras.filter((camera) => {
+        const cameraId = camera.id || camera.camera_id;
+        return getLiveFeedState(cameraId).snapshot_available;
+      });
 
       document.getElementById("live-camera-count").textContent = allCameras.length.toLocaleString();
       document.getElementById("live-ready-count").textContent = readyFeeds.length.toLocaleString();
-      document.getElementById("live-feed-caption").textContent = configuredFeeds.length
-        ? `${configuredFeeds.length} feed${configuredFeeds.length !== 1 ? "s" : ""} with source metadata`
-        : "No feed URLs configured yet";
+      document.getElementById("live-feed-caption").textContent = readyFeeds.length
+        ? `${readyFeeds.length} live snapshot feed${readyFeeds.length !== 1 ? "s" : ""} available`
+        : "No live snapshots available yet";
 
       liveGrid.innerHTML = "";
       if (!allCameras.length) {
@@ -1051,21 +1091,23 @@
 
       allCameras.forEach((camera, index) => {
         const cameraId = camera.id || camera.camera_id || `camera_${index + 1}`;
-        const hasPreviewImage = Boolean(camera.preview_image_url);
-        const hasLiveFeed = Boolean(camera.live_feed_url);
-        const sourceLabel = camera.live_feed_url
-          ? "Live stream URL configured"
+        const liveState = getLiveFeedState(cameraId);
+        const hasSnapshot = Boolean(liveState.snapshot_available);
+        const sourceLabel = hasSnapshot
+          ? "Live snapshot stream available"
           : camera.preview_image_url
-          ? "Preview image configured"
+          ? "Static preview image configured"
           : camera.url
-          ? "Source URL configured"
+          ? "Camera source configured"
           : "Awaiting stream setup";
-        const availabilityChip = hasLiveFeed
+        const availabilityChip = hasSnapshot
           ? "bg-black text-white"
-          : hasPreviewImage
+          : camera.preview_image_url
           ? "bg-surface-container text-on-surface"
           : "bg-error-container text-error";
-        const mediaMarkup = hasPreviewImage
+        const mediaMarkup = hasSnapshot
+          ? `<img data-live-snapshot="${cameraId}" src="${liveSnapshotUrlWithCacheBust(cameraId)}" alt="${cameraId} live preview" class="h-full w-full object-cover" loading="lazy" />`
+          : camera.preview_image_url
           ? `<img src="${camera.preview_image_url}" alt="${cameraId} preview" class="h-full w-full object-cover" loading="lazy" />`
           : `<div class="flex h-full min-h-[16rem] items-center justify-center bg-black text-white">
               <div class="text-center">
@@ -1081,7 +1123,7 @@
           <div class="relative">
             <div class="aspect-[16/10] bg-surface-container">${mediaMarkup}</div>
             <div class="absolute left-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${availabilityChip}">
-              ${hasLiveFeed ? "Live-ready" : hasPreviewImage ? "Preview-only" : "Config-needed"}
+              ${hasSnapshot ? "Live-ready" : camera.preview_image_url ? "Preview-only" : "Config-needed"}
             </div>
           </div>
           <div class="p-6">
@@ -1102,13 +1144,14 @@
               </div>
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Preferred Transport</p>
-                <p class="mt-2 text-sm font-semibold">${camera.live_feed_type || (hasLiveFeed ? "stream" : hasPreviewImage ? "image" : "not set")}</p>
+                <p class="mt-2 text-sm font-semibold">${hasSnapshot ? "snapshot" : camera.live_feed_type || (camera.preview_image_url ? "image" : "not set")}</p>
               </div>
             </div>
             <div class="mt-4 space-y-2 text-xs text-on-surface-variant">
               <div><span class="font-semibold text-on-surface">Source:</span> ${camera.url || "—"}</div>
-              <div><span class="font-semibold text-on-surface">Live URL:</span> ${camera.live_feed_url || "—"}</div>
+              <div><span class="font-semibold text-on-surface">Live URL:</span> ${hasSnapshot ? liveSnapshotUrl(cameraId) : (camera.live_feed_url || "—")}</div>
               <div><span class="font-semibold text-on-surface">Preview URL:</span> ${camera.preview_image_url || "—"}</div>
+              <div><span class="font-semibold text-on-surface">Updated:</span> ${liveState.updated_at ? formatTimestamp(liveState.updated_at) : "—"}</div>
             </div>
           </div>
         `;
@@ -1490,6 +1533,7 @@
 
     async function openCameraDetail(cameraId) {
       setActiveView("camera-detail");
+      state.currentCameraDetailId = cameraId;
 
       // Header
       document.getElementById("camera-detail-breadcrumb").textContent = cameraId;
@@ -1501,6 +1545,7 @@
         cfg.location ? `Location: ${cfg.location}` : "No location configured";
       document.getElementById("cd-speed-limit").textContent =
         cfg.speed_limit_kmh != null ? cfg.speed_limit_kmh : "—";
+      renderCameraDetailLivePreview(cameraId);
 
       // Config list
       const configFields = [
@@ -1543,6 +1588,37 @@
         renderCameraDetailBreakdown(breakdown.violations || []);
       } catch (err) {
         console.error("Camera detail fetch failed", err);
+      }
+    }
+
+    function renderCameraDetailLivePreview(cameraId) {
+      const liveState = getLiveFeedState(cameraId);
+      const img = document.getElementById("cd-live-preview");
+      const empty = document.getElementById("cd-live-preview-empty");
+      const status = document.getElementById("cd-live-status");
+      if (!liveState.snapshot_available) {
+        img.classList.add("hidden");
+        img.removeAttribute("src");
+        empty.classList.remove("hidden");
+        status.textContent = "Waiting for snapshot";
+        return;
+      }
+      img.src = liveSnapshotUrlWithCacheBust(cameraId);
+      img.classList.remove("hidden");
+      empty.classList.add("hidden");
+      status.textContent = liveState.updated_at
+        ? `Updated ${formatTimestamp(liveState.updated_at)}`
+        : "Live snapshot available";
+    }
+
+    function refreshVisibleLiveSnapshots() {
+      if (state.activeView === "live") {
+        document.querySelectorAll("[data-live-snapshot]").forEach((img) => {
+          img.src = liveSnapshotUrlWithCacheBust(img.dataset.liveSnapshot);
+        });
+      }
+      if (state.activeView === "camera-detail" && state.currentCameraDetailId) {
+        renderCameraDetailLivePreview(state.currentCameraDetailId);
       }
     }
 
@@ -1670,13 +1746,14 @@
           start: normalizeDateInput(state.filters.start),
           end: normalizeDateInput(state.filters.end)
         };
-        const [summary, byCamera, violations, recent, speedDist, cameraConfigs] = await Promise.all([
+        const [summary, byCamera, violations, recent, speedDist, cameraConfigs, liveFeeds] = await Promise.all([
           loadJson(`/analytics/summary${buildQuery(filterParams)}`),
           loadJson(`/analytics/by-camera${buildQuery({ start: filterParams.start, end: filterParams.end })}`),
           loadJson(`/analytics/violations${buildQuery(filterParams)}`),
           loadJson(`/events/recent${buildQuery({ ...filterParams, limit: 20 })}`),
           loadJson(`/analytics/speed-distribution${buildQuery(filterParams)}`),
-          loadJson(`/cameras/config`)
+          loadJson(`/cameras/config`),
+          loadJson(`/live/cameras`)
         ]);
 
         state.summary = summary;
@@ -1686,6 +1763,7 @@
         state.speedDist = speedDist.buckets || [];
         state.cameraDefaults = cameraConfigs.defaults || {};
         state.cameraConfigs = cameraConfigs.cameras || [];
+        state.liveFeeds = Object.fromEntries((liveFeeds.cameras || []).map((camera) => [camera.camera_id, camera]));
 
         renderOverview();
         renderCameras();
@@ -1693,6 +1771,9 @@
         renderConfigs();
         renderViolations();
         renderSpeedDistribution();
+        if (state.activeView === "camera-detail" && state.currentCameraDetailId) {
+          renderCameraDetailLivePreview(state.currentCameraDetailId);
+        }
         state.violationLog.page = 1;
         await loadViolationLog();
         document.getElementById("last-updated").textContent = new Date().toLocaleString();
@@ -1741,6 +1822,7 @@
     setActiveView("overview");
     syncFilterInputs();
     refreshDashboard();
+    setInterval(refreshVisibleLiveSnapshots, 3000);
   </script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -7,6 +8,7 @@ import yaml
 from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy import func, case
 from sqlalchemy.orm import Session
+from starlette.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
 from . import models, schemas
@@ -19,6 +21,7 @@ logger = logging.getLogger("BackendAPI")
 app = FastAPI(title="Road User Intelligence Platform API")
 
 _CAMERAS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "cameras.yaml"
+_LIVE_FRAMES_DIR = Path(os.getenv("LIVE_PREVIEW_DIR", str(Path(__file__).resolve().parents[2] / "artifacts" / "live_frames")))
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
 if dashboard_dir.exists():
@@ -49,6 +52,78 @@ def get_cameras_config():
         profile["zones"] = normalize_zone_definitions(profile.get("zones"))
         merged.append(profile)
     return {"defaults": defaults, "cameras": merged}
+
+
+def _live_snapshot_path(camera_id: str) -> Path:
+    return _LIVE_FRAMES_DIR / camera_id / "latest.jpg"
+
+
+def _read_camera_profiles():
+    try:
+        with open(_CAMERAS_CONFIG_PATH, "r") as f:
+            raw = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        return {}, []
+    defaults = raw.get("defaults", {})
+    cameras = raw.get("cameras", [])
+    merged = []
+    for cam in cameras:
+        profile = {**defaults, **cam}
+        profile["zones"] = normalize_zone_definitions(profile.get("zones"))
+        merged.append(profile)
+    return defaults, merged
+
+
+@app.get("/live/cameras")
+def get_live_camera_statuses():
+    _, cameras = _read_camera_profiles()
+    statuses = []
+    for camera in cameras:
+        camera_id = camera.get("id")
+        if not camera_id:
+            continue
+        snapshot_path = _live_snapshot_path(camera_id)
+        snapshot_available = snapshot_path.exists()
+        updated_at = (
+            datetime.fromtimestamp(snapshot_path.stat().st_mtime).isoformat()
+            if snapshot_available
+            else None
+        )
+        statuses.append(
+            {
+                "camera_id": camera_id,
+                "snapshot_available": snapshot_available,
+                "snapshot_url": f"/live/cameras/{camera_id}/snapshot" if snapshot_available else None,
+                "updated_at": updated_at,
+            }
+        )
+    return {"cameras": statuses}
+
+
+@app.get("/live/cameras/{camera_id}")
+def get_live_camera_status(camera_id: str):
+    snapshot_path = _live_snapshot_path(camera_id)
+    if not snapshot_path.exists():
+        return {
+            "camera_id": camera_id,
+            "snapshot_available": False,
+            "snapshot_url": None,
+            "updated_at": None,
+        }
+    return {
+        "camera_id": camera_id,
+        "snapshot_available": True,
+        "snapshot_url": f"/live/cameras/{camera_id}/snapshot",
+        "updated_at": datetime.fromtimestamp(snapshot_path.stat().st_mtime).isoformat(),
+    }
+
+
+@app.get("/live/cameras/{camera_id}/snapshot")
+def get_live_camera_snapshot(camera_id: str):
+    snapshot_path = _live_snapshot_path(camera_id)
+    if not snapshot_path.exists():
+        raise HTTPException(status_code=404, detail="No live snapshot available")
+    return FileResponse(snapshot_path, media_type="image/jpeg")
 
 
 def _apply_time_filters(query, model, start: datetime = None, end: datetime = None):

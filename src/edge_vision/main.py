@@ -5,6 +5,7 @@ import cv2
 import time
 from camera_capture import CameraCapture
 from detection import EdgeDetector
+from live_preview import LivePreviewWriter
 from publisher import MQTTPublisher
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -49,12 +50,29 @@ def main():
         default=_env_flag("EDGE_SHOW_VIDEO", False),
         help="Show video feed",
     )
+    parser.add_argument(
+        "--live-preview-dir",
+        type=str,
+        default=os.getenv("LIVE_PREVIEW_DIR", "artifacts/live_frames"),
+        help="Directory used to publish latest annotated camera snapshots for the dashboard",
+    )
+    parser.add_argument(
+        "--live-preview-interval",
+        type=float,
+        default=float(os.getenv("LIVE_PREVIEW_INTERVAL_SECONDS", "1.0")),
+        help="Seconds between live preview snapshot writes",
+    )
     args = parser.parse_args()
 
     # Initialize components
     capture = CameraCapture(args.source)
     detector = EdgeDetector()
     publisher = MQTTPublisher(broker_host=args.broker, broker_port=args.port)
+    preview_writer = LivePreviewWriter(
+        base_dir=args.live_preview_dir,
+        interval_seconds=args.live_preview_interval,
+        enabled=True,
+    )
 
     if not capture.connect():
         logger.error("Exiting due to capture failure.")
@@ -74,6 +92,7 @@ def main():
                 
             results, annotated_frame, counts = detector.detect_and_track(frame)
             published = publisher.publish_detections(args.camera_id, frame_number, results)
+            preview_writer.write_frame(args.camera_id, annotated_frame)
             
             fps = 1.0 / (time.time() - start_time)
             if frame_number % 30 == 0:
