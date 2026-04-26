@@ -1,8 +1,10 @@
 import logging
 import math
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from fastapi import FastAPI, Depends, HTTPException, Query
@@ -22,6 +24,12 @@ app = FastAPI(title="Road User Intelligence Platform API")
 
 _CAMERAS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "cameras.yaml"
 _LIVE_FRAMES_DIR = Path(os.getenv("LIVE_PREVIEW_DIR", str(Path(__file__).resolve().parents[2] / "artifacts" / "live_frames")))
+_VIOLATION_EVIDENCE_DIR = Path(
+    os.getenv(
+        "VIOLATION_EVIDENCE_DIR",
+        str(Path(__file__).resolve().parents[2] / "artifacts" / "violation_evidence"),
+    )
+)
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
 if dashboard_dir.exists():
@@ -56,6 +64,37 @@ def get_cameras_config():
 
 def _live_snapshot_path(camera_id: str) -> Path:
     return _LIVE_FRAMES_DIR / camera_id / "latest.jpg"
+
+
+def _violation_evidence_path(camera_id: str, violation_id: int, violation_type: str, timestamp: datetime) -> Path:
+    safe_type = violation_type.replace("/", "_").replace(" ", "_")
+    ts_label = timestamp.strftime("%Y%m%dT%H%M%S")
+    return _VIOLATION_EVIDENCE_DIR / camera_id / f"{ts_label}_{safe_type}_{violation_id}.jpg"
+
+
+def _capture_violation_evidence(db_violation: models.DBViolation) -> Optional[str]:
+    source_path = _live_snapshot_path(db_violation.camera_id)
+    if not source_path.exists():
+        return None
+
+    evidence_path = _violation_evidence_path(
+        camera_id=db_violation.camera_id,
+        violation_id=db_violation.id,
+        violation_type=db_violation.violation_type,
+        timestamp=db_violation.timestamp,
+    )
+    evidence_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, evidence_path)
+    return str(evidence_path)
+
+
+def _violation_evidence_url(row: models.DBViolation) -> Optional[str]:
+    if not row.evidence_image_path:
+        return None
+    evidence_path = Path(row.evidence_image_path)
+    if not evidence_path.exists():
+        return None
+    return f"/violations/{row.id}/evidence"
 
 
 def _serialize_dt(value):
@@ -162,6 +201,18 @@ def get_live_camera_snapshot(camera_id: str):
     return FileResponse(snapshot_path, media_type="image/jpeg")
 
 
+@app.get("/violations/{violation_id}/evidence")
+def get_violation_evidence(violation_id: int, db: Session = Depends(get_db)):
+    row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
+    if row is None or not row.evidence_image_path:
+        raise HTTPException(status_code=404, detail="No evidence available")
+
+    evidence_path = Path(row.evidence_image_path)
+    if not evidence_path.exists():
+        raise HTTPException(status_code=404, detail="No evidence available")
+    return FileResponse(evidence_path, media_type="image/jpeg")
+
+
 def _apply_time_filters(query, model, start: datetime = None, end: datetime = None):
     if start is not None:
         query = query.filter(model.timestamp >= start)
@@ -206,6 +257,9 @@ def create_violation(event: schemas.ViolationEvent, db: Session = Depends(get_db
     db_violation = models.DBViolation(**event.model_dump())
     db.add(db_violation)
     try:
+        db.commit()
+        db.refresh(db_violation)
+        db_violation.evidence_image_path = _capture_violation_evidence(db_violation)
         db.commit()
     except Exception as e:
         db.rollback()
@@ -383,10 +437,12 @@ def get_recent_events(
         ],
         "violations": [
             {
+                "id": row.id,
                 "violation_type": row.violation_type,
                 "object_id": row.object_id,
                 "camera_id": row.camera_id,
                 "timestamp": row.timestamp,
+                "evidence_url": _violation_evidence_url(row),
             }
             for row in violations
         ],
@@ -474,6 +530,7 @@ def get_violations_log(
                 "object_id": row.object_id,
                 "camera_id": row.camera_id,
                 "timestamp": row.timestamp,
+                "evidence_url": _violation_evidence_url(row),
             }
             for row in rows
         ],

@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from .models import Base
 import os
@@ -14,6 +14,18 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _ensure_runtime_columns()
+
+
+def _ensure_runtime_columns():
+    inspector = inspect(engine)
+    if "violations" not in inspector.get_table_names():
+        return
+
+    violation_columns = {column["name"] for column in inspector.get_columns("violations")}
+    if "evidence_image_path" not in violation_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE violations ADD COLUMN evidence_image_path VARCHAR"))
 
 def get_db():
     db = SessionLocal()

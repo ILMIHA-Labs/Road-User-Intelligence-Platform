@@ -28,15 +28,20 @@ class TestBackendAPI(unittest.TestCase):
         Base.metadata.create_all(bind=engine)
         init_db()
         self.live_preview_tmp = tempfile.TemporaryDirectory()
+        self.evidence_tmp = tempfile.TemporaryDirectory()
         self.original_live_frames_dir = backend_main._LIVE_FRAMES_DIR
+        self.original_violation_evidence_dir = backend_main._VIOLATION_EVIDENCE_DIR
         backend_main._LIVE_FRAMES_DIR = Path(self.live_preview_tmp.name)
+        backend_main._VIOLATION_EVIDENCE_DIR = Path(self.evidence_tmp.name)
         self.client_cm = TestClient(app)
         self.client = self.client_cm.__enter__()
 
     def tearDown(self):
         self.client_cm.__exit__(None, None, None)
         backend_main._LIVE_FRAMES_DIR = self.original_live_frames_dir
+        backend_main._VIOLATION_EVIDENCE_DIR = self.original_violation_evidence_dir
         self.live_preview_tmp.cleanup()
+        self.evidence_tmp.cleanup()
         Base.metadata.drop_all(bind=engine)
 
     def test_read_root(self):
@@ -135,6 +140,47 @@ class TestBackendAPI(unittest.TestCase):
         }
         response = self.client.post("/violations", json=payload)
         self.assertEqual(response.status_code, 201)
+
+    def test_violation_evidence_is_captured_and_served(self):
+        camera_dir = Path(self.live_preview_tmp.name) / "test_cam"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+
+        response = self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 99,
+            "camera_id": "test_cam",
+            "timestamp": "2023-10-27T10:00:02Z",
+        })
+        self.assertEqual(response.status_code, 201)
+
+        recent_response = self.client.get("/events/recent?camera_id=test_cam")
+        self.assertEqual(recent_response.status_code, 200)
+        recent_data = recent_response.json()
+        self.assertEqual(len(recent_data["violations"]), 1)
+        evidence_url = recent_data["violations"][0]["evidence_url"]
+        self.assertTrue(evidence_url)
+
+        evidence_response = self.client.get(evidence_url)
+        self.assertEqual(evidence_response.status_code, 200)
+        self.assertEqual(evidence_response.headers["content-type"], "image/jpeg")
+
+    def test_violation_log_returns_evidence_url_when_available(self):
+        camera_dir = Path(self.live_preview_tmp.name) / "cam_recent"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 1,
+            "camera_id": "cam_recent",
+            "timestamp": "2023-10-27T10:00:02Z",
+        })
+
+        response = self.client.get("/violations/log?camera_id=cam_recent")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data["items"]), 1)
+        self.assertTrue(data["items"][0]["evidence_url"])
 
     def test_analytics_by_camera(self):
         self.client.post("/detections", json={

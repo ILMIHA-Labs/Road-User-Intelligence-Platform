@@ -38,6 +38,7 @@ class DBViolation(Base):
     object_id = Column(Integer, index=True)
     camera_id = Column(String, index=True)
     timestamp = Column(DateTime, index=True)
+    evidence_image_path = Column(String, nullable=True)
 
 class DBTrajectory(Base):
     __tablename__ = "trajectories"
