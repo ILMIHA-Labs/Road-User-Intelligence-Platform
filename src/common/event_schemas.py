@@ -36,18 +36,31 @@ class ViolationEvent(PlatformEvent):
     timestamp: datetime
 
 
+class CrossingEvent(PlatformEvent):
+    camera_id: str
+    line_id: str
+    line_label: str
+    object_id: int
+    class_name: str = Field(alias="class")
+    direction: str
+    timestamp: datetime
+    frame_number: Optional[int] = None
+    source: str = "edge"
+
+
 class TrajectoryEvent(PlatformEvent):
     object_id: int
     trajectory: List[List[float]]
     prediction_timestamp: datetime
 
 
-EventModel = Union[DetectionEvent, SpeedEvent, ViolationEvent, TrajectoryEvent]
+EventModel = Union[DetectionEvent, SpeedEvent, ViolationEvent, CrossingEvent, TrajectoryEvent]
 
 MQTT_TOPIC_TO_SCHEMA: Dict[str, Type[PlatformEvent]] = {
     "camera/detections": DetectionEvent,
     "camera/speeds": SpeedEvent,
     "camera/violations": ViolationEvent,
+    "camera/crossings": CrossingEvent,
     "camera/trajectories": TrajectoryEvent,
 }
 

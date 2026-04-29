@@ -5,7 +5,7 @@ import unittest
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-from common.event_schemas import DetectionEvent, SpeedEvent, dump_event, parse_event_for_topic
+from common.event_schemas import CrossingEvent, DetectionEvent, SpeedEvent, dump_event, parse_event_for_topic
 
 
 class TestEventSchemas(unittest.TestCase):
@@ -46,6 +46,24 @@ class TestEventSchemas(unittest.TestCase):
         )
         self.assertIsInstance(event, SpeedEvent)
         self.assertEqual(event.source, "edge")
+
+    def test_crossing_round_trip_uses_aliases(self):
+        event = CrossingEvent(
+            camera_id="cam-1",
+            line_id="gate_1",
+            line_label="Gate 1",
+            object_id=7,
+            class_name="car",
+            direction="a_to_b",
+            timestamp="2025-01-01T12:00:00+00:00",
+            frame_number=4,
+        )
+
+        payload = dump_event(event)
+        self.assertEqual(payload["class"], "car")
+        reparsed = parse_event_for_topic("camera/crossings", json.dumps(payload))
+        self.assertIsInstance(reparsed, CrossingEvent)
+        self.assertEqual(reparsed.direction, "a_to_b")
 
 
 if __name__ == "__main__":

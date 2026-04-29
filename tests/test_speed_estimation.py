@@ -45,6 +45,20 @@ class TestSpeedEstimation(unittest.TestCase):
         speed3 = calc.update_position(obj_id, t3, [20150, 100, 20250, 200])
         self.assertEqual(speed3, 200.0) # Our outlier cap
 
+    def test_speed_outlier_ignore_mode(self):
+        calib = CameraCalibration(pixels_per_meter=20.0)
+        calc = SpeedCalculator(
+            calibration=calib,
+            history_size=3,
+            max_speed_kmh=80.0,
+            outlier_mode="ignore",
+        )
+
+        t1 = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc).isoformat()
+        t2 = datetime(2025, 1, 1, 12, 0, 1, tzinfo=timezone.utc).isoformat()
+        self.assertIsNone(calc.update_position(1, t1, [50, 100, 150, 200]))
+        self.assertIsNone(calc.update_position(1, t2, [2050, 100, 2150, 200]))
+
     def test_service_uses_per_camera_calibration(self):
         service = SpeedEstimationService(
             broker_host="localhost",

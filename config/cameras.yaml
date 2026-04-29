@@ -17,8 +17,24 @@ defaults:
   pedestrian_crossing_min_speed_kmh: 5.0
   pedestrian_crossing_window_seconds: 2.0
   zones: []
+  counting_lines: []
 
 cameras:
+  - id: recam_01
+    url: recamera-node-red
+    location: reCamera_192.168.0.100
+    target_fps: 5
+    live_feed_type: recamera_ws
+    live_feed_url: ws://192.168.0.100:8090
+    pixels_per_meter: 25.0
+    speed_limit_kmh: 50.0
+    speed_tolerance_kmh: 2.0
+    speed_history_size: 8
+    speed_max_kmh: 80.0
+    speed_min_time_delta_seconds: 0.2
+    speed_smoothing_alpha: 0.35
+    speed_outlier_mode: ignore
+
   - id: sample_video_01
     url: ../data/sample.mp4
     location: test_intersection
@@ -33,6 +49,12 @@ cameras:
     max_motorcycle_riders: 2
     stop_line_min_speed_kmh: 6.0
     pedestrian_crossing_min_speed_kmh: 8.0
+    counting_lines:
+      - id: corridor_flow
+        label: Corridor Flow
+        points:
+          - [220, 180]
+          - [220, 360]
     zones:
       - id: school_crossing
         label: School Crossing
@@ -43,6 +65,15 @@ cameras:
           - [420, 250]
           - [420, 330]
           - [180, 330]
+      - id: zebra_crossing_demo
+        label: Zebra Crossing
+        type: polygon
+        category: zebra_crossing
+        points:
+          - [300, 260]
+          - [520, 260]
+          - [520, 340]
+          - [300, 340]
       - id: north_stop_line
         label: North Stop Line
         type: polygon

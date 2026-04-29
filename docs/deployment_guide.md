@@ -115,6 +115,15 @@ cameras:
           - [460, 300]
           - [460, 380]
           - [160, 380]
+      - id: zebra_crossing_demo
+        label: Zebra Crossing
+        type: polygon
+        category: zebra_crossing
+        points:
+          - [220, 300]
+          - [520, 300]
+          - [520, 370]
+          - [220, 370]
 ```
 
 ## 3. Configure environment files
@@ -177,7 +186,7 @@ You can now attach zone geometry to each camera profile so future location-based
 - `zones[].id`: machine-friendly zone identifier
 - `zones[].label`: human-friendly name for dashboard and operations
 - `zones[].type`: currently `polygon`
-- `zones[].category`: semantic meaning such as `stop_line`, `pedestrian_crossing`, or `restricted_lane`
+- `zones[].category`: semantic meaning such as `stop_line`, `pedestrian_crossing`, `zebra_crossing`, or `restricted_lane`
 - `zones[].points`: list of image-space `[x, y]` points in camera pixel coordinates
 
 For MVP, zones are configuration groundwork only. They are visible in the dashboard config view and ready for future zone-aware violations.

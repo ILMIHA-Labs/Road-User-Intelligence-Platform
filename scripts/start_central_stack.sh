@@ -29,9 +29,13 @@ lsof -ti :1883 | xargs kill -9 2>/dev/null || true
 lsof -ti :8000 | xargs kill -9 2>/dev/null || true
 
 mkdir -p logs
+cat > logs/mosquitto.conf <<'MOSQUITTO_CONF'
+listener 1883 0.0.0.0
+allow_anonymous true
+MOSQUITTO_CONF
 
 echo "Starting MQTT broker on 1883..."
-mosquitto -p 1883 > logs/mqtt.log 2>&1 &
+mosquitto -c logs/mosquitto.conf > logs/mqtt.log 2>&1 &
 MQTT_PID=$!
 sleep 2
 

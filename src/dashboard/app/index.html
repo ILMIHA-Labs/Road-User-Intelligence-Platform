@@ -143,7 +143,7 @@
       </div>
 
       <section id="overview-view" data-view="overview" class="space-y-8">
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-5">
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detections Logged</p>
             <div>
@@ -163,6 +163,13 @@
             <div>
               <p id="total-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
               <p class="mt-2 text-xs text-on-surface-variant">Detected safety and traffic violations</p>
+            </div>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Crossings Logged</p>
+            <div>
+              <p id="total-crossings" class="text-5xl font-black tracking-tighter">0</p>
+              <p class="mt-2 text-xs text-on-surface-variant">Directional line-crossing events persisted</p>
             </div>
           </article>
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
@@ -214,6 +221,29 @@
         </section>
 
         <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-5">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Directional Flow</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Crossing Directions</h3>
+              </div>
+              <span id="crossing-direction-total" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="crossing-direction-bars" class="space-y-4"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-7">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Top Counting Lines</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Line Activity</h3>
+              </div>
+              <span id="crossing-line-total" class="text-[10px] uppercase tracking-[0.2em] text-white/40"></span>
+            </div>
+            <div id="crossing-line-bars" class="space-y-4"></div>
+          </article>
+        </section>
+
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
           <article class="bg-surface-container-lowest p-8 xl:col-span-7">
             <div class="mb-5 flex items-center justify-between">
               <div>
@@ -236,7 +266,7 @@
       </section>
 
       <section id="cameras-view" data-view="cameras" class="hidden space-y-8">
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
           <article class="bg-surface-container-lowest p-8">
             <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Observed Cameras</p>
             <p id="camera-overview-count" class="mt-3 text-6xl font-black tracking-tighter">0</p>
@@ -248,6 +278,10 @@
           <article class="bg-surface-container-lowest p-8">
             <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Camera Violations</p>
             <p id="camera-total-violations" class="mt-3 text-6xl font-black tracking-tighter text-error">0</p>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Crossings</p>
+            <p id="camera-total-crossings" class="mt-3 text-6xl font-black tracking-tighter">0</p>
           </article>
         </div>
         <div id="camera-cards" class="grid grid-cols-1 gap-8 lg:grid-cols-2 xl:grid-cols-3"></div>
@@ -370,12 +404,13 @@
               </div>
             </div>
             <img id="cd-live-preview" alt="Live camera preview" class="hidden h-full w-full object-cover" />
+            <video id="cd-live-video" class="hidden h-full w-full bg-black object-cover" autoplay muted playsinline controls></video>
             <div id="cd-live-overlay" class="pointer-events-none absolute inset-0 hidden"></div>
           </div>
         </section>
 
         <!-- 4-metric row -->
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detections</p>
             <p id="cd-detections" class="text-5xl font-black tracking-tighter">0</p>
@@ -387,6 +422,10 @@
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
             <p id="cd-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
+          </article>
+          <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Crossings</p>
+            <p id="cd-crossings" class="text-5xl font-black tracking-tighter">0</p>
           </article>
           <article class="metric-card flex flex-col justify-between bg-black p-6 text-white">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Speed Limit</p>
@@ -415,6 +454,15 @@
               </div>
               <div id="cd-violation-breakdown" class="space-y-4">
                 <p class="text-sm text-white/50">No violations for this camera.</p>
+              </div>
+            </section>
+
+            <section class="bg-surface-container-lowest p-6">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Crossing Breakdown</h3>
+              </div>
+              <div id="cd-crossing-breakdown" class="space-y-4">
+                <p class="text-sm text-on-surface-variant">No crossing events for this camera.</p>
               </div>
             </section>
           </div>
@@ -460,6 +508,27 @@
                     </tr>
                   </thead>
                   <tbody id="cd-violations-table"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="bg-surface-container-lowest p-6">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-lg font-black tracking-tight">Recent Crossings</h3>
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Latest 20 records</p>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-left">
+                  <thead>
+                    <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                      <th class="px-4 py-3">Timestamp</th>
+                      <th class="px-4 py-3">Line</th>
+                      <th class="px-4 py-3">Class</th>
+                      <th class="px-4 py-3">Direction</th>
+                      <th class="px-4 py-3">Object ID</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cd-crossings-table"></tbody>
                 </table>
               </div>
             </section>
@@ -631,6 +700,11 @@
         chip: "bg-lime-200 text-lime-950",
         description: "Moving vehicle entered a configured crossing zone while a pedestrian was present."
       },
+      zebra_crossing_violation: {
+        label: "Zebra Crossing",
+        chip: "bg-emerald-200 text-emerald-950",
+        description: "Moving vehicle entered a configured zebra crossing zone while a pedestrian was present."
+      },
       multiple_riders_violation: {
         label: "Multiple Riders",
         chip: "bg-sky-200 text-sky-950",
@@ -662,11 +736,12 @@
       summary: null,
       byCamera: [],
       violations: [],
+      crossings: { total_crossings: 0, directions: [], classes: [], lines: [] },
       speedDist: [],
       cameraDefaults: {},
       cameraConfigs: [],
       liveFeeds: {},
-      recent: { detections: [], speeds: [], violations: [] },
+      recent: { detections: [], speeds: [], violations: [], crossings: [] },
       violationLog: { items: [], total: 0, page: 1, pages: 0, pageSize: 25 },
       violationLogFilters: { type: "", camera: "", search: "" },
       filters: {
@@ -676,7 +751,10 @@
       },
       activeView: "overview",
       currentCameraDetailId: null,
+      isRefreshing: false,
     };
+
+    const LIVE_REFRESH_INTERVAL_MS = 5000;
 
     const CONFIG_FIELDS = [
       ["location", "Location"],
@@ -697,6 +775,7 @@
       ["rider_upper_margin_ratio", "Rider Upper Margin"],
       ["rider_lower_margin_ratio", "Rider Lower Margin"],
       ["zones", "Configured Zones"],
+      ["counting_lines", "Counting Lines"],
       ["live_feed_type", "Live Feed Type"],
       ["live_feed_url", "Live Feed URL"],
       ["preview_image_url", "Preview Image URL"],
@@ -721,7 +800,7 @@
     }
 
     function getViolationFamily(type) {
-      if (["stop_line_violation", "pedestrian_crossing_violation"].includes(type)) {
+      if (["stop_line_violation", "pedestrian_crossing_violation", "zebra_crossing_violation"].includes(type)) {
         return "zone";
       }
       return "behavior";
@@ -731,6 +810,9 @@
       if (value === null || value === undefined || value === "") return "—";
       if (key === "zones" && Array.isArray(value)) {
         return `${value.length} zone${value.length !== 1 ? "s" : ""}`;
+      }
+      if (key === "counting_lines" && Array.isArray(value)) {
+        return `${value.length} line${value.length !== 1 ? "s" : ""}`;
       }
       if (typeof value === "number") {
         if (key.endsWith("_kmh")) return `${value} km/h`;
@@ -748,17 +830,33 @@
       if (category === "pedestrian_crossing") {
         return { stroke: "#84cc16", fill: "rgba(132, 204, 22, 0.16)" };
       }
+      if (category === "zebra_crossing") {
+        return { stroke: "#10b981", fill: "rgba(16, 185, 129, 0.16)" };
+      }
       if (category === "restricted_lane") {
         return { stroke: "#38bdf8", fill: "rgba(56, 189, 248, 0.16)" };
       }
       return { stroke: "#ffffff", fill: "rgba(255, 255, 255, 0.12)" };
     }
 
-    function buildZoneOverlayMarkup(camera) {
-      const zones = Array.isArray(camera?.zones) ? camera.zones : [];
-      if (!zones.length) return "";
+    function getCountingLineStyle(index) {
+      const palette = [
+        { stroke: "#38bdf8", badge: "rgba(8, 47, 73, 0.82)" },
+        { stroke: "#f472b6", badge: "rgba(80, 7, 36, 0.82)" },
+        { stroke: "#facc15", badge: "rgba(66, 32, 6, 0.82)" },
+      ];
+      return palette[index % palette.length];
+    }
 
-      const allPoints = zones.flatMap((zone) => zone.points || []);
+    function buildCameraOverlayMarkup(camera) {
+      const zones = Array.isArray(camera?.zones) ? camera.zones : [];
+      const lines = Array.isArray(camera?.counting_lines) ? camera.counting_lines : [];
+      if (!zones.length && !lines.length) return "";
+
+      const allPoints = [
+        ...zones.flatMap((zone) => zone.points || []),
+        ...lines.flatMap((line) => line.points || []),
+      ];
       const maxX = Math.max(...allPoints.map((point) => point[0]), 1);
       const maxY = Math.max(...allPoints.map((point) => point[1]), 1);
 
@@ -775,13 +873,38 @@
         `;
       }).join("");
 
+      const lineMarkup = lines.map((line, index) => {
+        const style = getCountingLineStyle(index);
+        const [[x1, y1], [x2, y2]] = line.points || [[0, 0], [0, 0]];
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const labelWidth = Math.max(line.label.length * 10, 96);
+        return `
+          <g>
+            <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${style.stroke}" stroke-width="8" stroke-linecap="round" vector-effect="non-scaling-stroke" stroke-dasharray="20 12"></line>
+            <circle cx="${x1}" cy="${y1}" r="8" fill="${style.stroke}"></circle>
+            <circle cx="${x2}" cy="${y2}" r="8" fill="${style.stroke}"></circle>
+            <rect x="${Math.max(mx - labelWidth / 2, 0)}" y="${Math.max(my - 38, 0)}" width="${labelWidth}" height="24" rx="2" fill="${style.badge}"></rect>
+            <text x="${Math.max(mx - labelWidth / 2, 0) + 8}" y="${Math.max(my - 22, 14)}" fill="#ffffff" font-size="18" font-weight="700">${line.label}</text>
+          </g>
+        `;
+      }).join("");
+
       return `
         <div class="absolute inset-0">
           <svg viewBox="0 0 ${maxX} ${maxY}" preserveAspectRatio="none" class="h-full w-full">
             ${polygons}
+            ${lineMarkup}
           </svg>
         </div>
       `;
+    }
+
+    function formatDirectionLabel(direction) {
+      if (!direction) return "—";
+      if (direction === "a_to_b") return "A → B";
+      if (direction === "b_to_a") return "B → A";
+      return direction;
     }
 
     function setActiveView(viewName) {
@@ -802,12 +925,68 @@
       });
     }
 
+    function renderActiveView() {
+      if (state.activeView === "overview") {
+        renderOverview();
+        renderSpeedDistribution();
+      } else if (state.activeView === "cameras") {
+        renderCameras();
+      } else if (state.activeView === "live") {
+        if (document.querySelector("#live-feed-grid [data-recamera-stream]")) {
+          refreshLiveFeedMetaOnly();
+        } else {
+          renderLiveFeeds();
+        }
+      } else if (state.activeView === "configs") {
+        renderConfigs();
+      } else if (state.activeView === "violations") {
+        renderViolations();
+        renderViolationLogTable();
+        renderViolationPagination();
+      } else if (state.activeView === "camera-detail" && state.currentCameraDetailId) {
+        renderCameraDetailLivePreview(state.currentCameraDetailId);
+      }
+    }
+
+    function switchView(viewName) {
+      setActiveView(viewName);
+      renderActiveView();
+      if (viewName === "violations" && !state.isRefreshing) {
+        loadViolationLog();
+      }
+    }
+
+    function refreshCurrentView() {
+      return refreshDashboard({ loadViolationLog: state.activeView === "violations" });
+    }
+
     function liveSnapshotUrl(cameraId) {
       return `/live/cameras/${encodeURIComponent(cameraId)}/snapshot`;
     }
 
     function liveSnapshotUrlWithCacheBust(cameraId) {
       return `${liveSnapshotUrl(cameraId)}?ts=${Date.now()}`;
+    }
+
+    function isVideoFeed(camera) {
+      return Boolean(camera.live_feed_url) && ["video", "mp4", "webm", "hls"].includes(String(camera.live_feed_type || "").toLowerCase());
+    }
+
+    function isReCameraWebSocketFeed(camera) {
+      return Boolean(camera.live_feed_url) && ["recamera_ws", "websocket", "ws"].includes(String(camera.live_feed_type || "").toLowerCase());
+    }
+
+    function recameraStreamMarkup(cameraId, streamUrl) {
+      return `
+        <div class="recamera-stream relative h-full w-full bg-black" data-recamera-stream="${cameraId}" data-stream-url="${streamUrl}">
+          <svg class="h-full w-full" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid meet" aria-label="${cameraId} live video">
+            <image class="recamera-stream-image" x="0" y="0" width="1920" height="1080"></image>
+          </svg>
+          <div class="recamera-stream-status absolute bottom-3 left-3 bg-black/70 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-white/80">
+            Connecting
+          </div>
+        </div>
+      `;
     }
 
     function getLiveFeedState(cameraId) {
@@ -907,6 +1086,7 @@
       document.getElementById("total-detections").textContent = summary.total_detections_logged ?? 0;
       document.getElementById("total-speeds").textContent = summary.total_speeds_logged ?? 0;
       document.getElementById("total-violations").textContent = summary.total_violations_logged ?? 0;
+      document.getElementById("total-crossings").textContent = summary.total_crossings_logged ?? 0;
       document.getElementById("camera-count").textContent = state.byCamera.length;
       populateCameraOptions();
       updateScopeLabel();
@@ -917,7 +1097,7 @@
         cameraSummary.innerHTML = '<p class="text-sm text-on-surface-variant">No camera activity available yet.</p>';
       } else {
         state.byCamera.forEach((camera) => {
-          const total = camera.detections + camera.speeds + camera.violations;
+          const total = camera.detections + camera.speeds + camera.violations + (camera.crossings || 0);
           const row = document.createElement("div");
           row.className = "bg-surface-container-low p-5 cursor-pointer hover:bg-surface-container transition-colors";
           row.addEventListener("click", () => { setActiveView("cameras"); openCameraDetail(camera.camera_id); });
@@ -931,6 +1111,7 @@
                 <div>Detections ${camera.detections}</div>
                 <div>Speeds ${camera.speeds}</div>
                 <div>Violations ${camera.violations}</div>
+                <div>Crossings ${camera.crossings || 0}</div>
               </div>
             </div>
             <div class="h-2 bg-white">
@@ -1053,16 +1234,80 @@
           <p>${activeCameras} camera${activeCameras !== 1 ? "s" : ""} currently show persisted enforcement activity.</p>
         `;
       }
+
+      const directionBars = document.getElementById("crossing-direction-bars");
+      const directionTotal = document.getElementById("crossing-direction-total");
+      const lineBars = document.getElementById("crossing-line-bars");
+      const lineTotal = document.getElementById("crossing-line-total");
+      const directionItems = state.crossings?.directions || [];
+      const lineItems = state.crossings?.lines || [];
+      const crossingTotal = state.crossings?.total_crossings || 0;
+      directionBars.innerHTML = "";
+      lineBars.innerHTML = "";
+      directionTotal.textContent = crossingTotal ? `${crossingTotal.toLocaleString()} events` : "No flow events";
+      lineTotal.textContent = lineItems.length ? `${lineItems.length} line${lineItems.length !== 1 ? "s" : ""}` : "";
+
+      if (!directionItems.length) {
+        directionBars.innerHTML = '<p class="text-sm text-on-surface-variant">No directional crossings in the current scope.</p>';
+      } else {
+        const maxDirection = Math.max(...directionItems.map((item) => item.count), 1);
+        directionItems.forEach((item, index) => {
+          const width = (item.count / maxDirection) * 100;
+          const row = document.createElement("div");
+          row.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-on-surface-variant">${String(index + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em]">${formatDirectionLabel(item.direction)}</span>
+              </div>
+              <span class="text-sm font-black tabular-nums">${item.count}</span>
+            </div>
+            <div class="relative h-1.5 bg-surface-container overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-black" style="width:${width}%"></div>
+            </div>
+          `;
+          directionBars.appendChild(row);
+        });
+      }
+
+      if (!lineItems.length) {
+        lineBars.innerHTML = '<p class="text-sm text-white/50">No counting lines have produced crossings in the current scope.</p>';
+      } else {
+        const maxLine = Math.max(...lineItems.map((item) => item.count), 1);
+        lineItems.slice(0, 5).forEach((item, index) => {
+          const width = (item.count / maxLine) * 100;
+          const directions = Object.entries(item.directions || {})
+            .map(([direction, count]) => `${formatDirectionLabel(direction)} ${count}`)
+            .join(" • ");
+          const row = document.createElement("div");
+          row.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-white/30">${String(index + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em] text-white">${item.line_label}</span>
+              </div>
+              <span class="text-sm font-black tabular-nums text-white">${item.count}</span>
+            </div>
+            <p class="mb-2 text-[11px] leading-5 text-white/55">${directions || "Directional breakdown unavailable"}</p>
+            <div class="relative h-1.5 bg-white/10 overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${width}%"></div>
+            </div>
+          `;
+          lineBars.appendChild(row);
+        });
+      }
     }
 
     function renderCameras() {
       document.getElementById("camera-overview-count").textContent = state.byCamera.length;
       const topCamera = [...state.byCamera].sort((a, b) =>
-        (b.detections + b.speeds + b.violations) - (a.detections + a.speeds + a.violations)
+        (b.detections + b.speeds + b.violations + (b.crossings || 0)) - (a.detections + a.speeds + a.violations + (a.crossings || 0))
       )[0];
       document.getElementById("camera-top-name").textContent = topCamera ? topCamera.camera_id : "No data";
       document.getElementById("camera-total-violations").textContent =
         state.byCamera.reduce((sum, camera) => sum + camera.violations, 0);
+      document.getElementById("camera-total-crossings").textContent =
+        state.byCamera.reduce((sum, camera) => sum + (camera.crossings || 0), 0);
 
       const cards = document.getElementById("camera-cards");
       cards.innerHTML = "";
@@ -1072,13 +1317,14 @@
       }
 
       const ranked = [...state.byCamera].sort(
-        (a, b) => (b.detections + b.speeds + b.violations) - (a.detections + a.speeds + a.violations)
+        (a, b) => (b.detections + b.speeds + b.violations + (b.crossings || 0)) - (a.detections + a.speeds + a.violations + (a.crossings || 0))
       );
       ranked.forEach((camera, index) => {
-        const total = camera.detections + camera.speeds + camera.violations;
+        const total = camera.detections + camera.speeds + camera.violations + (camera.crossings || 0);
         const dPct = total ? Math.round((camera.detections / total) * 100) : 0;
         const sPct = total ? Math.round((camera.speeds / total) * 100) : 0;
-        const vPct = total ? 100 - dPct - sPct : 0;
+        const cPct = total ? Math.round(((camera.crossings || 0) / total) * 100) : 0;
+        const vPct = total ? Math.max(0, 100 - dPct - sPct - cPct) : 0;
         const violationRate = total ? ((camera.violations / total) * 100).toFixed(1) : "0.0";
         const liveState = getLiveFeedState(camera.camera_id);
         const healthMeta = getHealthMeta(liveState.health);
@@ -1117,17 +1363,19 @@
               <div class="flex h-1.5 overflow-hidden gap-0.5">
                 <div class="bar-fill h-full bg-white" style="width:${dPct}%" title="Detections"></div>
                 <div class="bar-fill h-full bg-white/50" style="width:${sPct}%" title="Speeds"></div>
+                <div class="bar-fill h-full bg-sky-400" style="width:${cPct}%" title="Crossings"></div>
                 <div class="bar-fill h-full bg-error" style="width:${vPct}%" title="Violations"></div>
               </div>
               <div class="mt-2 flex gap-4 text-[9px] uppercase tracking-[0.15em] text-white/40">
                 <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-white"></span>Det</span>
                 <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-white/50"></span>Spd</span>
+                <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-sky-400"></span>Xing</span>
                 <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-error"></span>Vio</span>
               </div>
             </div>
           </div>
           <div class="p-6">
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Detections</p>
                 <p class="mt-2 text-2xl font-black tracking-tighter">${camera.detections.toLocaleString()}</p>
@@ -1139,6 +1387,10 @@
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
                 <p class="mt-2 text-2xl font-black tracking-tighter text-error">${camera.violations.toLocaleString()}</p>
+              </div>
+              <div class="bg-surface-container-low p-4">
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Crossings</p>
+                <p class="mt-2 text-2xl font-black tracking-tighter">${(camera.crossings || 0).toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -1154,15 +1406,18 @@
         : state.byCamera.map((camera) => ({ id: camera.camera_id }));
       const readyFeeds = allCameras.filter((camera) => {
         const cameraId = camera.id || camera.camera_id;
-        return getLiveFeedState(cameraId).snapshot_available;
+        return getLiveFeedState(cameraId).snapshot_available || Boolean(camera.live_feed_url);
       });
 
       document.getElementById("live-camera-count").textContent = allCameras.length.toLocaleString();
       document.getElementById("live-ready-count").textContent = readyFeeds.length.toLocaleString();
       document.getElementById("live-feed-caption").textContent = readyFeeds.length
-        ? `${readyFeeds.length} live snapshot feed${readyFeeds.length !== 1 ? "s" : ""} available`
-        : "No live snapshots available yet";
+        ? `${readyFeeds.length} live feed${readyFeeds.length !== 1 ? "s" : ""} available`
+        : "No live feeds available yet";
 
+      liveGrid.querySelectorAll("[data-recamera-stream]").forEach((node) => {
+        if (typeof node._stopReCameraStream === "function") node._stopReCameraStream();
+      });
       liveGrid.innerHTML = "";
       if (!allCameras.length) {
         liveGrid.innerHTML = '<p class="text-sm text-on-surface-variant">No camera configuration is available yet.</p>';
@@ -1173,9 +1428,12 @@
         const cameraId = camera.id || camera.camera_id || `camera_${index + 1}`;
         const liveState = getLiveFeedState(cameraId);
         const hasSnapshot = Boolean(liveState.snapshot_available);
+        const hasStream = Boolean(camera.live_feed_url);
         const healthMeta = getHealthMeta(liveState.health);
         const sourceLabel = hasSnapshot
           ? "Live snapshot stream available"
+          : hasStream
+          ? "Live stream URL configured"
           : camera.preview_image_url
           ? "Static preview image configured"
           : camera.url
@@ -1183,11 +1441,19 @@
           : "Awaiting stream setup";
         const availabilityChip = hasSnapshot
           ? "bg-black text-white"
+          : hasStream
+          ? "bg-emerald-200 text-emerald-950"
           : camera.preview_image_url
           ? "bg-surface-container text-on-surface"
           : "bg-error-container text-error";
         const mediaMarkup = hasSnapshot
           ? `<img data-live-snapshot="${cameraId}" src="${liveSnapshotUrlWithCacheBust(cameraId)}" alt="${cameraId} live preview" class="h-full w-full object-cover" loading="lazy" />`
+          : isReCameraWebSocketFeed(camera)
+          ? recameraStreamMarkup(cameraId, camera.live_feed_url)
+          : isVideoFeed(camera)
+          ? `<video src="${camera.live_feed_url}" class="h-full w-full bg-black object-cover" autoplay muted playsinline controls></video>`
+          : hasStream
+          ? `<img src="${camera.live_feed_url}" alt="${cameraId} live stream" class="h-full w-full object-cover" loading="lazy" />`
           : camera.preview_image_url
           ? `<img src="${camera.preview_image_url}" alt="${cameraId} preview" class="h-full w-full object-cover" loading="lazy" />`
           : `<div class="flex h-full min-h-[16rem] items-center justify-center bg-black text-white">
@@ -1200,16 +1466,17 @@
 
         const card = document.createElement("article");
         card.className = "overflow-hidden bg-surface-container-lowest";
+        card.dataset.liveCard = cameraId;
         card.innerHTML = `
           <div class="relative">
             <div class="relative aspect-[16/10] bg-surface-container">
               ${mediaMarkup}
-              ${buildZoneOverlayMarkup(camera)}
+              ${buildCameraOverlayMarkup(camera)}
             </div>
             <div class="absolute left-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${availabilityChip}">
-              ${hasSnapshot ? "Live-ready" : camera.preview_image_url ? "Preview-only" : "Config-needed"}
+              ${hasSnapshot ? "Live-ready" : hasStream ? "Stream-ready" : camera.preview_image_url ? "Preview-only" : "Config-needed"}
             </div>
-            <div class="absolute right-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${healthMeta.chip}">
+            <div data-live-health class="absolute right-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${healthMeta.chip}">
               ${healthMeta.label}
             </div>
           </div>
@@ -1231,7 +1498,7 @@
               </div>
               <div class="bg-surface-container-low p-4">
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Preferred Transport</p>
-                <p class="mt-2 text-sm font-semibold">${hasSnapshot ? "snapshot" : camera.live_feed_type || (camera.preview_image_url ? "image" : "not set")}</p>
+                <p class="mt-2 text-sm font-semibold">${hasSnapshot ? "snapshot" : camera.live_feed_type || (hasStream ? "url" : camera.preview_image_url ? "image" : "not set")}</p>
               </div>
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
@@ -1241,21 +1508,61 @@
                   <span class="text-on-surface-variant">${zone.category}</span>
                 </span>
               `).join("")}
+              ${(camera.counting_lines || []).map((line) => `
+                <span class="inline-flex items-center gap-2 bg-sky-100 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-sky-950">
+                  ${line.label}
+                  <span class="text-sky-800">counting line</span>
+                </span>
+              `).join("")}
             </div>
             <div class="mt-4 space-y-2 text-xs text-on-surface-variant">
               <div><span class="font-semibold text-on-surface">Source:</span> ${camera.url || "—"}</div>
               <div><span class="font-semibold text-on-surface">Live URL:</span> ${hasSnapshot ? liveSnapshotUrl(cameraId) : (camera.live_feed_url || "—")}</div>
               <div><span class="font-semibold text-on-surface">Preview URL:</span> ${camera.preview_image_url || "—"}</div>
-              <div><span class="font-semibold text-on-surface">Snapshot age:</span> ${formatRelativeSeconds(liveState.snapshot_age_seconds)}</div>
-              <div><span class="font-semibold text-on-surface">Last activity:</span> ${formatRelativeSeconds(liveState.activity_age_seconds)}</div>
+              <div><span class="font-semibold text-on-surface">Snapshot age:</span> <span data-live-snapshot-age>${formatRelativeSeconds(liveState.snapshot_age_seconds)}</span></div>
+              <div><span class="font-semibold text-on-surface">Last activity:</span> <span data-live-activity>${formatRelativeSeconds(liveState.activity_age_seconds)}</span></div>
             </div>
           </div>
         `;
         liveGrid.appendChild(card);
+        initializeReCameraStreams(card);
       });
 
       liveGrid.querySelectorAll("[data-open-camera]").forEach((button) => {
         button.addEventListener("click", () => openCameraDetail(button.dataset.openCamera));
+      });
+    }
+
+    function refreshLiveFeedMetaOnly() {
+      const allCameras = state.cameraConfigs.length
+        ? state.cameraConfigs
+        : state.byCamera.map((camera) => ({ id: camera.camera_id }));
+      const readyFeeds = allCameras.filter((camera) => {
+        const cameraId = camera.id || camera.camera_id;
+        return getLiveFeedState(cameraId).snapshot_available || Boolean(camera.live_feed_url);
+      });
+
+      document.getElementById("live-camera-count").textContent = allCameras.length.toLocaleString();
+      document.getElementById("live-ready-count").textContent = readyFeeds.length.toLocaleString();
+      document.getElementById("live-feed-caption").textContent = readyFeeds.length
+        ? `${readyFeeds.length} live feed${readyFeeds.length !== 1 ? "s" : ""} available`
+        : "No live feeds available yet";
+
+      allCameras.forEach((camera) => {
+        const cameraId = camera.id || camera.camera_id;
+        const card = document.querySelector(`[data-live-card="${cameraId}"]`);
+        if (!card) return;
+        const liveState = getLiveFeedState(cameraId);
+        const healthMeta = getHealthMeta(liveState.health);
+        const healthChip = card.querySelector("[data-live-health]");
+        const activity = card.querySelector("[data-live-activity]");
+        const snapshotAge = card.querySelector("[data-live-snapshot-age]");
+        if (healthChip) {
+          healthChip.className = `absolute right-4 top-4 inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${healthMeta.chip}`;
+          healthChip.textContent = healthMeta.label;
+        }
+        if (activity) activity.textContent = formatRelativeSeconds(liveState.activity_age_seconds);
+        if (snapshotAge) snapshotAge.textContent = formatRelativeSeconds(liveState.snapshot_age_seconds);
       });
     }
 
@@ -1298,6 +1605,7 @@
           defaults[key] !== undefined && camera[key] !== undefined && camera[key] !== defaults[key]
         );
         const zones = Array.isArray(camera.zones) ? camera.zones : [];
+        const countingLines = Array.isArray(camera.counting_lines) ? camera.counting_lines : [];
         const card = document.createElement("article");
         card.className = "border border-black/5 bg-surface-container-low p-6";
         card.innerHTML = `
@@ -1342,6 +1650,27 @@
                           <span class="inline-flex items-center gap-2 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-on-surface">
                             ${zone.label}
                             <span class="text-on-surface-variant">${zone.category}</span>
+                          </span>
+                        `
+                      )
+                      .join("")}
+                  </div>
+                </div>
+              `
+              : ""
+          }
+          ${
+            countingLines.length
+              ? `
+                <div class="mt-5 border-t border-black/5 pt-5">
+                  <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Counting Lines</p>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    ${countingLines
+                      .map(
+                        (line) => `
+                          <span class="inline-flex items-center gap-2 bg-sky-100 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] text-sky-950">
+                            ${line.label}
+                            <span class="text-sky-800">${(line.classes || []).length} classes</span>
                           </span>
                         `
                       )
@@ -1654,6 +1983,7 @@
         { label: "Speed Limit",        value: cfg.speed_limit_kmh != null ? `${cfg.speed_limit_kmh} km/h` : "Default" },
         { label: "Pixels / Metre",     value: cfg.pixels_per_meter != null ? cfg.pixels_per_meter : "Default" },
         { label: "Target FPS",         value: cfg.target_fps != null ? cfg.target_fps : "Default" },
+        { label: "Counting Lines",     value: Array.isArray(cfg.counting_lines) ? `${cfg.counting_lines.length} configured` : "—" },
         { label: "Location",           value: cfg.location || "—" },
         { label: "Source URL",         value: cfg.url || "—" },
         { label: "Live Feed URL",      value: cfg.live_feed_url || "—" },
@@ -1675,22 +2005,26 @@
       });
 
       // Summary counts (from cached byCamera state)
-      const camStats = state.byCamera.find(c => c.camera_id === cameraId) || { detections: 0, speeds: 0, violations: 0 };
+      const camStats = state.byCamera.find(c => c.camera_id === cameraId) || { detections: 0, speeds: 0, violations: 0, crossings: 0 };
       document.getElementById("cd-detections").textContent = camStats.detections.toLocaleString();
       document.getElementById("cd-speeds").textContent = camStats.speeds.toLocaleString();
       document.getElementById("cd-violations").textContent = camStats.violations.toLocaleString();
+      document.getElementById("cd-crossings").textContent = (camStats.crossings || 0).toLocaleString();
 
       // Fetch per-camera recent events + violation breakdown in parallel
       try {
         const q = buildQuery({ camera_id: cameraId, limit: 20 });
-        const [recent, breakdown] = await Promise.all([
+        const [recent, breakdown, crossingAnalytics] = await Promise.all([
           loadJson(`/events/recent${q}`),
           loadJson(`/analytics/violations${buildQuery({ camera_id: cameraId })}`),
+          loadJson(`/analytics/crossings${buildQuery({ camera_id: cameraId })}`),
         ]);
 
         renderCameraDetailDetections(recent.detections || []);
         renderCameraDetailViolations(recent.violations || []);
+        renderCameraDetailCrossings(recent.crossings || []);
         renderCameraDetailBreakdown(breakdown.violations || []);
+        renderCameraDetailCrossingBreakdown(crossingAnalytics.lines || []);
       } catch (err) {
         console.error("Camera detail fetch failed", err);
       }
@@ -1699,15 +2033,51 @@
     function renderCameraDetailLivePreview(cameraId) {
       const liveState = getLiveFeedState(cameraId);
       const img = document.getElementById("cd-live-preview");
+      const video = document.getElementById("cd-live-video");
       const empty = document.getElementById("cd-live-preview-empty");
       const status = document.getElementById("cd-live-status");
       const overlay = document.getElementById("cd-live-overlay");
       const camera = state.cameraConfigs.find((item) => item.id === cameraId) || {};
-      overlay.innerHTML = buildZoneOverlayMarkup(camera);
-      overlay.classList.toggle("hidden", !(camera.zones || []).length);
+      const shell = document.getElementById("cd-live-preview-shell");
+      if (isReCameraWebSocketFeed(camera) && shell.querySelector("[data-recamera-stream]")) {
+        status.textContent = `${getHealthMeta(liveState.health).label} • Live video stream`;
+        return;
+      }
+      shell.querySelectorAll("[data-recamera-stream]").forEach((node) => {
+        if (typeof node._stopReCameraStream === "function") node._stopReCameraStream();
+      });
+      shell.querySelectorAll("[data-recamera-stream]").forEach((node) => node.remove());
+      overlay.innerHTML = buildCameraOverlayMarkup(camera);
+      overlay.classList.toggle("hidden", !((camera.zones || []).length || (camera.counting_lines || []).length));
+      img.classList.add("hidden");
+      video.classList.add("hidden");
+      img.removeAttribute("src");
+      if (!isVideoFeed(camera)) video.removeAttribute("src");
+
       if (!liveState.snapshot_available) {
-        img.classList.add("hidden");
-        img.removeAttribute("src");
+        if (isReCameraWebSocketFeed(camera)) {
+          empty.insertAdjacentHTML("afterend", recameraStreamMarkup(cameraId, camera.live_feed_url));
+          empty.classList.add("hidden");
+          initializeReCameraStreams(shell);
+          status.textContent = `${getHealthMeta(liveState.health).label} • Live video stream`;
+          return;
+        }
+        if (isVideoFeed(camera)) {
+          if (video.getAttribute("src") !== camera.live_feed_url) {
+            video.src = camera.live_feed_url;
+          }
+          video.classList.remove("hidden");
+          empty.classList.add("hidden");
+          status.textContent = `${getHealthMeta(liveState.health).label} • Live stream configured`;
+          return;
+        }
+        if (camera.live_feed_url) {
+          img.src = camera.live_feed_url;
+          img.classList.remove("hidden");
+          empty.classList.add("hidden");
+          status.textContent = `${getHealthMeta(liveState.health).label} • Live image URL configured`;
+          return;
+        }
         empty.classList.remove("hidden");
         status.textContent = "Waiting for snapshot";
         return;
@@ -1727,8 +2097,80 @@
         });
       }
       if (state.activeView === "camera-detail" && state.currentCameraDetailId) {
-        renderCameraDetailLivePreview(state.currentCameraDetailId);
+        const camera = state.cameraConfigs.find((item) => item.id === state.currentCameraDetailId) || {};
+        if (!isReCameraWebSocketFeed(camera)) {
+          renderCameraDetailLivePreview(state.currentCameraDetailId);
+        }
       }
+    }
+
+    function initializeReCameraStreams(root = document) {
+      root.querySelectorAll("[data-recamera-stream]").forEach((container) => {
+        if (container.dataset.initialized === "true") return;
+        container.dataset.initialized = "true";
+
+        const streamUrl = container.dataset.streamUrl;
+        const image = container.querySelector(".recamera-stream-image");
+        const status = container.querySelector(".recamera-stream-status");
+        if (!streamUrl || !image || !status) return;
+
+        let reconnectTimer = null;
+        let socket = null;
+        let stopped = false;
+
+        const setStatus = (value) => {
+          status.textContent = value;
+        };
+
+        const connect = () => {
+          if (stopped) return;
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+          }
+          if (socket) {
+            socket.close();
+            socket = null;
+          }
+
+          setStatus("Connecting");
+          socket = new WebSocket(streamUrl);
+          socket.binaryType = "arraybuffer";
+          container._recameraSocket = socket;
+
+          socket.addEventListener("open", () => setStatus("Live"));
+          socket.addEventListener("message", (event) => {
+            try {
+              const payload = JSON.parse(new TextDecoder().decode(new Uint8Array(event.data)));
+              const data = payload.data || payload;
+              if (!data.image) return;
+              image.setAttribute("href", `data:image/jpeg;base64,${data.image}`);
+              if (Array.isArray(data.resolution) && Number.isFinite(data.resolution[0]) && Number.isFinite(data.resolution[1])) {
+                image.setAttribute("width", data.resolution[0]);
+                image.setAttribute("height", data.resolution[1]);
+                image.ownerSVGElement.setAttribute("viewBox", `0 0 ${data.resolution[0]} ${data.resolution[1]}`);
+              }
+              setStatus("Live");
+            } catch (error) {
+              console.error("reCamera stream frame failed", error);
+              setStatus("Frame error");
+            }
+          });
+          socket.addEventListener("error", () => setStatus("Stream error"));
+          socket.addEventListener("close", () => {
+            if (stopped) return;
+            setStatus("Reconnecting");
+            reconnectTimer = setTimeout(connect, 5000);
+          });
+        };
+
+        container._stopReCameraStream = () => {
+          stopped = true;
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          if (socket) socket.close();
+        };
+        connect();
+      });
     }
 
     function renderCameraDetailDetections(detections) {
@@ -1783,6 +2225,27 @@
       });
     }
 
+    function renderCameraDetailCrossings(crossings) {
+      const tbody = document.getElementById("cd-crossings-table");
+      tbody.innerHTML = "";
+      if (!crossings.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-sm text-on-surface-variant">No crossing records for this camera.</td></tr>';
+        return;
+      }
+      crossings.forEach((crossing, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = idx % 2 === 0 ? "hover:bg-surface-container-low" : "bg-surface-container-low/50 hover:bg-surface-container";
+        tr.innerHTML = `
+          <td class="px-4 py-3 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(crossing.timestamp)}</td>
+          <td class="px-4 py-3 text-xs font-semibold">${crossing.line_label || crossing.line_id}</td>
+          <td class="px-4 py-3"><span class="inline-flex bg-surface-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em]">${crossing.class ?? "—"}</span></td>
+          <td class="px-4 py-3 text-xs font-semibold">${formatDirectionLabel(crossing.direction)}</td>
+          <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${crossing.object_id ?? "—"}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
     function renderCameraDetailBreakdown(violations) {
       const container = document.getElementById("cd-violation-breakdown");
       container.innerHTML = "";
@@ -1812,6 +2275,37 @@
           <p class="mb-2 text-[11px] leading-5 text-white/55">${meta.description}</p>
           <div class="relative h-1.5 bg-white/10 overflow-hidden">
             <div class="bar-fill absolute left-0 top-0 h-full bg-white" style="width:${w}%"></div>
+          </div>
+        `;
+        container.appendChild(block);
+      });
+    }
+
+    function renderCameraDetailCrossingBreakdown(lines) {
+      const container = document.getElementById("cd-crossing-breakdown");
+      container.innerHTML = "";
+      if (!lines.length) {
+        container.innerHTML = '<p class="text-sm text-on-surface-variant">No crossing events for this camera.</p>';
+        return;
+      }
+      const max = Math.max(...lines.map((item) => item.count), 1);
+      lines.forEach((item, idx) => {
+        const width = (item.count / max) * 100;
+        const directions = Object.entries(item.directions || {})
+          .map(([direction, count]) => `${formatDirectionLabel(direction)} ${count}`)
+          .join(" • ");
+        const block = document.createElement("div");
+        block.innerHTML = `
+          <div class="mb-1 flex items-baseline justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-[9px] font-bold tabular-nums text-on-surface-variant">${String(idx + 1).padStart(2, "0")}</span>
+              <span class="text-[10px] font-bold uppercase tracking-[0.15em]">${item.line_label}</span>
+            </div>
+            <span class="text-sm font-black tabular-nums">${item.count}</span>
+          </div>
+          <p class="mb-2 text-[11px] leading-5 text-on-surface-variant">${directions || "No directional data"}</p>
+          <div class="relative h-1.5 bg-surface-container overflow-hidden">
+            <div class="bar-fill absolute left-0 top-0 h-full bg-sky-500" style="width:${width}%"></div>
           </div>
         `;
         container.appendChild(block);
@@ -1851,17 +2345,30 @@
       });
     }
 
-    async function refreshDashboard() {
+    async function refreshDashboard(options = {}) {
+      const {
+        resetViolationLogPage = false,
+        silent = false,
+        loadViolationLog: shouldLoadViolationLog = state.activeView === "violations",
+      } = options;
+      if (state.isRefreshing) return;
+      state.isRefreshing = true;
+      const refreshButton = document.getElementById("refresh-button");
+      if (!silent) {
+        refreshButton.disabled = true;
+        refreshButton.textContent = "Syncing";
+      }
       try {
         const filterParams = {
           camera_id: state.filters.cameraId,
           start: normalizeDateInput(state.filters.start),
           end: normalizeDateInput(state.filters.end)
         };
-        const [summary, byCamera, violations, recent, speedDist, cameraConfigs, liveFeeds] = await Promise.all([
+        const [summary, byCamera, violations, crossings, recent, speedDist, cameraConfigs, liveFeeds] = await Promise.all([
           loadJson(`/analytics/summary${buildQuery(filterParams)}`),
           loadJson(`/analytics/by-camera${buildQuery({ start: filterParams.start, end: filterParams.end })}`),
           loadJson(`/analytics/violations${buildQuery(filterParams)}`),
+          loadJson(`/analytics/crossings${buildQuery(filterParams)}`),
           loadJson(`/events/recent${buildQuery({ ...filterParams, limit: 20 })}`),
           loadJson(`/analytics/speed-distribution${buildQuery(filterParams)}`),
           loadJson(`/cameras/config`),
@@ -1871,35 +2378,37 @@
         state.summary = summary;
         state.byCamera = byCamera.cameras || [];
         state.violations = violations.violations || [];
+        state.crossings = crossings || { total_crossings: 0, directions: [], classes: [], lines: [] };
         state.recent = recent;
         state.speedDist = speedDist.buckets || [];
         state.cameraDefaults = cameraConfigs.defaults || {};
         state.cameraConfigs = cameraConfigs.cameras || [];
         state.liveFeeds = Object.fromEntries((liveFeeds.cameras || []).map((camera) => [camera.camera_id, camera]));
-
-        renderOverview();
-        renderCameras();
-        renderLiveFeeds();
-        renderConfigs();
-        renderViolations();
-        renderSpeedDistribution();
-        if (state.activeView === "camera-detail" && state.currentCameraDetailId) {
-          renderCameraDetailLivePreview(state.currentCameraDetailId);
+        if (resetViolationLogPage) {
+          state.violationLog.page = 1;
         }
-        state.violationLog.page = 1;
-        await loadViolationLog();
+        renderActiveView();
+        if (shouldLoadViolationLog) {
+          await loadViolationLog();
+        }
         document.getElementById("last-updated").textContent = new Date().toLocaleString();
       } catch (error) {
         console.error(error);
         document.getElementById("last-updated").textContent = "Dashboard sync failed";
+      } finally {
+        state.isRefreshing = false;
+        if (!silent) {
+          refreshButton.disabled = false;
+          refreshButton.textContent = "Refresh Data";
+        }
       }
     }
 
     document.querySelectorAll("[data-view-button]").forEach((button) => {
-      button.addEventListener("click", () => setActiveView(button.dataset.viewButton));
+      button.addEventListener("click", () => switchView(button.dataset.viewButton));
     });
-    document.getElementById("camera-detail-back").addEventListener("click", () => setActiveView("cameras"));
-    document.getElementById("refresh-button").addEventListener("click", refreshDashboard);
+    document.getElementById("camera-detail-back").addEventListener("click", () => switchView("cameras"));
+    document.getElementById("refresh-button").addEventListener("click", () => refreshCurrentView());
 
     document.getElementById("vl-apply").addEventListener("click", () => {
       state.violationLogFilters.type   = document.getElementById("vl-type-filter").value;
@@ -1923,17 +2432,22 @@
       state.filters.cameraId = document.getElementById("camera-filter").value;
       state.filters.start = document.getElementById("start-filter").value;
       state.filters.end = document.getElementById("end-filter").value;
-      refreshDashboard();
+      refreshDashboard({ resetViolationLogPage: true });
     });
     document.getElementById("clear-filters").addEventListener("click", () => {
       state.filters = { cameraId: "", start: "", end: "" };
       syncFilterInputs();
-      refreshDashboard();
+      refreshDashboard({ resetViolationLogPage: true });
     });
 
     setActiveView("overview");
     syncFilterInputs();
-    refreshDashboard();
+    refreshDashboard({ resetViolationLogPage: true });
+    setInterval(() => {
+      if (!document.hidden) {
+        refreshDashboard({ silent: true });
+      }
+    }, LIVE_REFRESH_INTERVAL_MS);
     setInterval(refreshVisibleLiveSnapshots, 3000);
   </script>
 </body>

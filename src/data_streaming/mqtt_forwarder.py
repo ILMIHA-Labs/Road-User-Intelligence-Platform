@@ -24,6 +24,7 @@ class MQTTForwarder:
             "camera/detections": "/detections",
             "camera/speeds": "/speeds",
             "camera/violations": "/violations",
+            "camera/crossings": "/crossings",
             "camera/trajectories": "/trajectories"
         }
         

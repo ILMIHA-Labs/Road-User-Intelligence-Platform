@@ -36,8 +36,16 @@ class SpeedEstimationService:
         pixels_per_meter = self.camera_profiles.get(camera_id, {}).get(
             "pixels_per_meter", self.default_pixels_per_meter
         )
+        profile = self.camera_profiles.get(camera_id, {})
         calibration = CameraCalibration(pixels_per_meter=pixels_per_meter)
-        calculator = SpeedCalculator(calibration=calibration)
+        calculator = SpeedCalculator(
+            calibration=calibration,
+            history_size=int(profile.get("speed_history_size", 5)),
+            max_speed_kmh=float(profile.get("speed_max_kmh", 200.0)),
+            min_time_delta_seconds=float(profile.get("speed_min_time_delta_seconds", 0.0)),
+            smoothing_alpha=float(profile.get("speed_smoothing_alpha", 1.0)),
+            outlier_mode=profile.get("speed_outlier_mode", "cap"),
+        )
         self.calculators[camera_id] = calculator
         logger.info(
             f"Initialized speed estimator for {camera_id} with {pixels_per_meter} pixels/meter"

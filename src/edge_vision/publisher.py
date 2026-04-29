@@ -2,15 +2,22 @@ import paho.mqtt.client as mqtt
 import json
 import logging
 from datetime import datetime, timezone
-from common.event_schemas import DetectionEvent, dump_event
+from common.event_schemas import CrossingEvent, DetectionEvent, dump_event
 
 logger = logging.getLogger(__name__)
 
 class MQTTPublisher:
-    def __init__(self, broker_host="localhost", broker_port=1883, topic="camera/detections"):
+    def __init__(
+        self,
+        broker_host="localhost",
+        broker_port=1883,
+        topic="camera/detections",
+        crossing_topic="camera/crossings",
+    ):
         self.broker_host = broker_host
         self.broker_port = broker_port
         self.topic = topic
+        self.crossing_topic = crossing_topic
         self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
 
     def connect(self):
@@ -67,4 +74,13 @@ class MQTTPublisher:
             self.client.publish(self.topic, json.dumps(dump_event(event)))
             published_count += 1
             
+        return published_count
+
+    def publish_crossings(self, events):
+        published_count = 0
+        for event in events:
+            if not isinstance(event, CrossingEvent):
+                continue
+            self.client.publish(self.crossing_topic, json.dumps(dump_event(event)))
+            published_count += 1
         return published_count

@@ -46,3 +46,17 @@ class DBTrajectory(Base):
     object_id = Column(Integer, index=True)
     trajectory = Column(JSON) # Store array of points
     prediction_timestamp = Column(DateTime, index=True)
+
+
+class DBCrossing(Base):
+    __tablename__ = "crossings"
+    id = Column(Integer, primary_key=True, index=True)
+    camera_id = Column(String, index=True)
+    line_id = Column(String, index=True)
+    line_label = Column(String)
+    object_id = Column(Integer, index=True)
+    class_name = Column("class", String, index=True)
+    direction = Column(String, index=True)
+    timestamp = Column(DateTime, index=True)
+    frame_number = Column(Integer, nullable=True)
+    source = Column(String)

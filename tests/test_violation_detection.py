@@ -243,6 +243,52 @@ class TestViolationDetection(unittest.TestCase):
         )
         self.assertEqual(engine.evaluate_violations(vehicle_id), [])
 
+    def test_zebra_crossing_violation(self):
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            pedestrian_crossing_min_speed_kmh=5.0,
+            pedestrian_crossing_window_seconds=2.0,
+            zones=[
+                {
+                    "id": "zebra_demo",
+                    "category": "zebra_crossing",
+                    "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                }
+            ],
+        )
+
+        vehicle_id = 58
+        pedestrian_id = 59
+        engine.update_state(
+            vehicle_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_zebra",
+                "bbox": [120.0, 180.0, 220.0, 260.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        engine.update_state(
+            vehicle_id,
+            speed_event={"speed_kmh": 14.0, "timestamp": "2025-01-01T10:00:00Z"},
+        )
+        engine.update_state(
+            pedestrian_id,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": "cam_zebra",
+                "bbox": [150.0, 220.0, 190.0, 300.0],
+                "timestamp": "2025-01-01T10:00:01Z",
+            },
+        )
+
+        self.assertIn("zebra_crossing_violation", engine.evaluate_violations(vehicle_id))
+        self.assertEqual(
+            engine.object_states[vehicle_id]["zebra_crossing_zone_id"],
+            "zebra_demo",
+        )
+        self.assertEqual(engine.evaluate_violations(vehicle_id), [])
+
         engine.update_state(
             pedestrian_id,
             detection_event={
@@ -510,6 +556,80 @@ class TestViolationDetection(unittest.TestCase):
         published_payloads = [json.loads(payload) for _, payload in service.client.published]
         violation_types = {payload["violation_type"] for payload in published_payloads}
         self.assertIn("pedestrian_crossing_violation", violation_types)
+
+    def test_service_emits_zebra_crossing_violation_from_detection_flow(self):
+        service = ViolationDetectionService(
+            broker_host="localhost",
+            broker_port=1883,
+            speed_limit=60.0,
+            pedestrian_crossing_min_speed_kmh=5.0,
+            pedestrian_crossing_window_seconds=2.0,
+            camera_profiles={
+                "cam_zebra": {
+                    "zones": [
+                        {
+                            "id": "zebra_demo",
+                            "category": "zebra_crossing",
+                            "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                        }
+                    ]
+                }
+            },
+        )
+        service.client = FakeMQTTClient()
+
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_zebra",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 93,
+                    "class": "car",
+                    "helmet_status": "unknown",
+                    "bbox": [120.0, 180.0, 220.0, 260.0],
+                    "confidence": 0.95,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/speeds",
+                {
+                    "camera_id": "cam_zebra",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 93,
+                    "speed_kmh": 15.0,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_zebra",
+                    "timestamp": "2025-01-01T10:00:01Z",
+                    "object_id": 94,
+                    "class": "pedestrian",
+                    "helmet_status": "unknown",
+                    "bbox": [150.0, 220.0, 190.0, 300.0],
+                    "confidence": 0.96,
+                    "source": "edge",
+                },
+            ),
+        )
+
+        published_payloads = [json.loads(payload) for _, payload in service.client.published]
+        violation_types = {payload["violation_type"] for payload in published_payloads}
+        self.assertIn("zebra_crossing_violation", violation_types)
 
     def test_service_uses_per_camera_speed_limit(self):
         service = ViolationDetectionService(

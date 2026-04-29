@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "s
 
 from backend_api.database import SessionLocal, init_db
 from backend_api.main import app, engine
-from backend_api.models import Base, DBDetection, DBSpeed, DBViolation
+from backend_api.models import Base, DBCrossing, DBDetection, DBSpeed, DBViolation
 from data_streaming import mqtt_forwarder as mqtt_forwarder_module
 from data_streaming.mqtt_forwarder import MQTTForwarder
 from speed_estimation.main import SpeedEstimationService
@@ -147,6 +147,31 @@ class TestPipelineIntegration(unittest.TestCase):
         self.assertEqual(data["total_detections_logged"], 2)
         self.assertEqual(data["total_speeds_logged"], 1)
         self.assertEqual(data["total_violations_logged"], 2)
+
+    def test_crossing_event_flow_persists_events(self):
+        crossing = {
+            "camera_id": "cam_int",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 101,
+            "class": "motorcycle",
+            "direction": "a_to_b",
+            "timestamp": "2025-01-01T12:00:02+00:00",
+            "frame_number": 3,
+            "source": "edge",
+        }
+
+        self._forward_with_test_client("camera/crossings", crossing)
+
+        with SessionLocal() as db:
+            self.assertEqual(db.query(DBCrossing).count(), 1)
+            saved = db.query(DBCrossing).one()
+            self.assertEqual(saved.line_id, "main_gate")
+            self.assertEqual(saved.direction, "a_to_b")
+
+        summary = self.api_client.get("/analytics/summary")
+        self.assertEqual(summary.status_code, 200)
+        self.assertEqual(summary.json()["total_crossings_logged"], 1)
 
 
 if __name__ == "__main__":

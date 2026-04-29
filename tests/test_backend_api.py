@@ -61,11 +61,11 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("defaults", data)
         self.assertIn("cameras", data)
         self.assertGreaterEqual(len(data["cameras"]), 1)
-        first_camera = data["cameras"][0]
-        self.assertEqual(first_camera["id"], "sample_video_01")
-        self.assertIn("speed_limit_kmh", first_camera)
-        self.assertIn("max_motorcycle_riders", first_camera)
-        self.assertIn("zones", first_camera)
+        sample_camera = next(camera for camera in data["cameras"] if camera["id"] == "sample_video_01")
+        self.assertIn("speed_limit_kmh", sample_camera)
+        self.assertIn("max_motorcycle_riders", sample_camera)
+        self.assertIn("zones", sample_camera)
+        self.assertIn("counting_lines", sample_camera)
 
     def test_live_camera_snapshot_endpoints(self):
         camera_dir = Path(self.live_preview_tmp.name) / "sample_video_01"
@@ -141,6 +141,21 @@ class TestBackendAPI(unittest.TestCase):
         response = self.client.post("/violations", json=payload)
         self.assertEqual(response.status_code, 201)
 
+    def test_create_crossing(self):
+        payload = {
+            "camera_id": "test_cam",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 99,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:02Z",
+            "frame_number": 9,
+            "source": "edge",
+        }
+        response = self.client.post("/crossings", json=payload)
+        self.assertEqual(response.status_code, 201)
+
     def test_violation_evidence_is_captured_and_served(self):
         camera_dir = Path(self.live_preview_tmp.name) / "test_cam"
         camera_dir.mkdir(parents=True, exist_ok=True)
@@ -206,6 +221,16 @@ class TestBackendAPI(unittest.TestCase):
             "camera_id": "cam_b",
             "timestamp": "2023-10-27T10:00:02Z",
         })
+        self.client.post("/crossings", json={
+            "camera_id": "cam_a",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 1,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:03Z",
+            "source": "edge",
+        })
 
         response = self.client.get("/analytics/by-camera")
         self.assertEqual(response.status_code, 200)
@@ -214,7 +239,37 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(cameras["cam_a"]["detections"], 1)
         self.assertEqual(cameras["cam_a"]["speeds"], 1)
         self.assertEqual(cameras["cam_a"]["violations"], 0)
+        self.assertEqual(cameras["cam_a"]["crossings"], 1)
         self.assertEqual(cameras["cam_b"]["violations"], 1)
+
+    def test_crossing_analytics(self):
+        self.client.post("/crossings", json={
+            "camera_id": "cam_a",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 1,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:02Z",
+            "source": "edge",
+        })
+        self.client.post("/crossings", json={
+            "camera_id": "cam_a",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 2,
+            "class": "pedestrian",
+            "direction": "b_to_a",
+            "timestamp": "2023-10-27T10:00:03Z",
+            "source": "edge",
+        })
+
+        response = self.client.get("/analytics/crossings?camera_id=cam_a")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["total_crossings"], 2)
+        self.assertEqual(len(data["lines"]), 1)
+        self.assertEqual(data["lines"][0]["line_id"], "main_gate")
 
     def test_analytics_violation_breakdown(self):
         self.client.post("/violations", json={
@@ -267,6 +322,16 @@ class TestBackendAPI(unittest.TestCase):
             "camera_id": "cam_recent",
             "timestamp": "2023-10-27T10:00:02Z",
         })
+        self.client.post("/crossings", json={
+            "camera_id": "cam_recent",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 1,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:03Z",
+            "source": "edge",
+        })
 
         response = self.client.get("/events/recent?camera_id=cam_recent&limit=5")
         self.assertEqual(response.status_code, 200)
@@ -274,6 +339,7 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(len(data["detections"]), 1)
         self.assertEqual(len(data["speeds"]), 1)
         self.assertEqual(len(data["violations"]), 1)
+        self.assertEqual(len(data["crossings"]), 1)
         self.assertEqual(data["detections"][0]["class"], "car")
 
     def test_recent_events_support_time_filters(self):
@@ -346,6 +412,7 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("total_detections_logged", data)
         self.assertEqual(data["total_detections_logged"], 1)
         self.assertEqual(data["total_speeds_logged"], 0)
+        self.assertEqual(data["total_crossings_logged"], 0)
         self.assertIn("total_speeds_logged", data)
 
 if __name__ == '__main__':

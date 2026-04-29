@@ -15,7 +15,7 @@ from starlette.staticfiles import StaticFiles
 
 from . import models, schemas
 from .database import engine, get_db, init_db
-from common.camera_config import normalize_zone_definitions
+from common.camera_config import normalize_counting_line_definitions, normalize_zone_definitions
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("BackendAPI")
@@ -58,6 +58,7 @@ def get_cameras_config():
     for cam in cameras:
         profile = {**defaults, **cam}
         profile["zones"] = normalize_zone_definitions(profile.get("zones"))
+        profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
         merged.append(profile)
     return {"defaults": defaults, "cameras": merged}
 
@@ -127,8 +128,11 @@ def _camera_health_snapshot(camera_id: str, db: Session):
     last_violation = db.query(func.max(models.DBViolation.timestamp)).filter(
         models.DBViolation.camera_id == camera_id
     ).scalar()
+    last_crossing = db.query(func.max(models.DBCrossing.timestamp)).filter(
+        models.DBCrossing.camera_id == camera_id
+    ).scalar()
 
-    recent_activity = [value for value in (last_detection, last_speed, last_violation) if value is not None]
+    recent_activity = [value for value in (last_detection, last_speed, last_violation, last_crossing) if value is not None]
     last_activity = max(recent_activity) if recent_activity else None
     last_activity_iso = _serialize_dt(last_activity)
     activity_age_seconds = None
@@ -154,6 +158,7 @@ def _camera_health_snapshot(camera_id: str, db: Session):
         "last_detection_at": _serialize_dt(last_detection),
         "last_speed_at": _serialize_dt(last_speed),
         "last_violation_at": _serialize_dt(last_violation),
+        "last_crossing_at": _serialize_dt(last_crossing),
         "last_activity_at": last_activity_iso,
         "activity_age_seconds": activity_age_seconds,
         "health": health,
@@ -172,6 +177,7 @@ def _read_camera_profiles():
     for cam in cameras:
         profile = {**defaults, **cam}
         profile["zones"] = normalize_zone_definitions(profile.get("zones"))
+        profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
         merged.append(profile)
     return defaults, merged
 
@@ -279,6 +285,21 @@ def create_trajectory(event: schemas.TrajectoryEvent, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail="Database Error")
     return {"message": "Trajectory stored"}
 
+
+@app.post("/crossings", status_code=201)
+def create_crossing(event: schemas.CrossingEvent, db: Session = Depends(get_db)):
+    data = event.model_dump()
+    data["class_name"] = event.class_name
+    db_crossing = models.DBCrossing(**data)
+    db.add(db_crossing)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to insert crossing: {e}")
+        raise HTTPException(status_code=500, detail="Database Error")
+    return {"message": "Crossing stored"}
+
 @app.get("/analytics/summary")
 def get_analytics_summary(
     camera_id: str = Query(default=None),
@@ -298,9 +319,14 @@ def get_analytics_summary(
     speed_query = _apply_camera_filter(speed_query, models.DBSpeed, camera_id)
     speed_query = _apply_time_filters(speed_query, models.DBSpeed, start, end)
 
+    crossing_query = db.query(models.DBCrossing)
+    crossing_query = _apply_camera_filter(crossing_query, models.DBCrossing, camera_id)
+    crossing_query = _apply_time_filters(crossing_query, models.DBCrossing, start, end)
+
     detections = detection_query.count()
     violations = violation_query.count()
     speeds = speed_query.count()
+    crossings = crossing_query.count()
     
     return {
         "camera_id": camera_id,
@@ -308,7 +334,8 @@ def get_analytics_summary(
         "end": end,
         "total_detections_logged": detections,
         "total_speeds_logged": speeds,
-        "total_violations_logged": violations
+        "total_violations_logged": violations,
+        "total_crossings_logged": crossings,
     }
 
 
@@ -338,17 +365,26 @@ def get_analytics_by_camera(
     )
     violation_query = _apply_time_filters(violation_query, models.DBViolation, start, end)
     violation_rows = violation_query.group_by(models.DBViolation.camera_id).all()
+    crossing_query = db.query(
+        models.DBCrossing.camera_id,
+        func.count(models.DBCrossing.id).label("crossings"),
+    )
+    crossing_query = _apply_time_filters(crossing_query, models.DBCrossing, start, end)
+    crossing_rows = crossing_query.group_by(models.DBCrossing.camera_id).all()
 
     summary = {}
     for row in detection_rows:
-        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0})
+        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0, "crossings": 0})
         summary[row.camera_id]["detections"] = row.detections
     for row in speed_rows:
-        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0})
+        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0, "crossings": 0})
         summary[row.camera_id]["speeds"] = row.speeds
     for row in violation_rows:
-        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0})
+        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0, "crossings": 0})
         summary[row.camera_id]["violations"] = row.violations
+    for row in crossing_rows:
+        summary.setdefault(row.camera_id, {"camera_id": row.camera_id, "detections": 0, "speeds": 0, "violations": 0, "crossings": 0})
+        summary[row.camera_id]["crossings"] = row.crossings
 
     return {
         "start": start,
@@ -383,6 +419,69 @@ def get_violation_breakdown(
     }
 
 
+@app.get("/analytics/crossings")
+def get_crossing_analytics(
+    camera_id: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.DBCrossing)
+    query = _apply_camera_filter(query, models.DBCrossing, camera_id)
+    query = _apply_time_filters(query, models.DBCrossing, start, end)
+
+    direction_rows = (
+        query.with_entities(models.DBCrossing.direction, func.count(models.DBCrossing.id).label("count"))
+        .group_by(models.DBCrossing.direction)
+        .all()
+    )
+    class_rows = (
+        query.with_entities(models.DBCrossing.class_name, func.count(models.DBCrossing.id).label("count"))
+        .group_by(models.DBCrossing.class_name)
+        .all()
+    )
+    line_rows = (
+        query.with_entities(
+            models.DBCrossing.line_id,
+            models.DBCrossing.line_label,
+            models.DBCrossing.direction,
+            func.count(models.DBCrossing.id).label("count"),
+        )
+        .group_by(models.DBCrossing.line_id, models.DBCrossing.line_label, models.DBCrossing.direction)
+        .all()
+    )
+
+    lines = {}
+    for row in line_rows:
+        line = lines.setdefault(
+            row.line_id,
+            {
+                "line_id": row.line_id,
+                "line_label": row.line_label,
+                "count": 0,
+                "directions": {},
+            },
+        )
+        line["directions"][row.direction] = row.count
+        line["count"] += row.count
+
+    return {
+        "camera_id": camera_id,
+        "start": start,
+        "end": end,
+        "total_crossings": query.count(),
+        "directions": [
+            {"direction": row.direction, "count": row.count}
+            for row in direction_rows
+        ],
+        "classes": [
+            {"class": row.class_name, "count": row.count}
+            for row in class_rows
+        ],
+        "lines": sorted(lines.values(), key=lambda item: (-item["count"], item["line_id"])),
+    }
+
+
 @app.get("/events/recent")
 def get_recent_events(
     camera_id: str = Query(default=None),
@@ -406,6 +505,10 @@ def get_recent_events(
     violations_query = _apply_camera_filter(violations_query, models.DBViolation, camera_id)
     violations_query = _apply_time_filters(violations_query, models.DBViolation, start, end)
     violations = violations_query.order_by(models.DBViolation.timestamp.desc()).offset(offset).limit(limit).all()
+    crossings_query = db.query(models.DBCrossing)
+    crossings_query = _apply_camera_filter(crossings_query, models.DBCrossing, camera_id)
+    crossings_query = _apply_time_filters(crossings_query, models.DBCrossing, start, end)
+    crossings = crossings_query.order_by(models.DBCrossing.timestamp.desc()).offset(offset).limit(limit).all()
 
     return {
         "camera_id": camera_id,
@@ -445,6 +548,21 @@ def get_recent_events(
                 "evidence_url": _violation_evidence_url(row),
             }
             for row in violations
+        ],
+        "crossings": [
+            {
+                "id": row.id,
+                "camera_id": row.camera_id,
+                "line_id": row.line_id,
+                "line_label": row.line_label,
+                "object_id": row.object_id,
+                "class": row.class_name,
+                "direction": row.direction,
+                "timestamp": row.timestamp,
+                "frame_number": row.frame_number,
+                "source": row.source,
+            }
+            for row in crossings
         ],
     }
 

@@ -134,7 +134,7 @@ class ViolationRulesEngine:
             self.rider_association_window_seconds,
         )
 
-    def _pedestrian_crossing_matches(self, vehicle_object_id):
+    def _crossing_matches(self, vehicle_object_id, category):
         vehicle_state = self.object_states.get(vehicle_object_id)
         if not vehicle_state:
             return []
@@ -144,7 +144,7 @@ class ViolationRulesEngine:
             return []
 
         vehicle_point = self._bbox_bottom_center(vehicle_state.get("bbox") or [])
-        matching_vehicle_zones = self._matching_zones("pedestrian_crossing", vehicle_point)
+        matching_vehicle_zones = self._matching_zones(category, vehicle_point)
         if not matching_vehicle_zones:
             return []
 
@@ -161,12 +161,18 @@ class ViolationRulesEngine:
             ):
                 continue
             pedestrian_point = self._bbox_bottom_center(state.get("bbox") or [])
-            crossing_zones = self._matching_zones("pedestrian_crossing", pedestrian_point)
+            crossing_zones = self._matching_zones(category, pedestrian_point)
             for zone in crossing_zones:
                 if zone.get("id") in zone_ids:
                     active_matches.append(zone)
                     break
         return active_matches
+
+    def _pedestrian_crossing_matches(self, vehicle_object_id):
+        return self._crossing_matches(vehicle_object_id, "pedestrian_crossing")
+
+    def _zebra_crossing_matches(self, vehicle_object_id):
+        return self._crossing_matches(vehicle_object_id, "zebra_crossing")
 
     def _is_pedestrian_on_motorcycle(self, motorcycle_state, pedestrian_state):
         mbox = motorcycle_state.get("bbox") or []
@@ -267,7 +273,7 @@ class ViolationRulesEngine:
                     continue
                 if candidate_state.get("camera_id") != state.get("camera_id"):
                     continue
-                if self._pedestrian_crossing_matches(candidate_id):
+                if self._pedestrian_crossing_matches(candidate_id) or self._zebra_crossing_matches(candidate_id):
                     related_ids.add(candidate_id)
         return list(related_ids)
 
@@ -316,6 +322,7 @@ class ViolationRulesEngine:
                  "multiple_riders_violation_triggered": False,
                  "stop_line_violation_triggered": False,
                  "pedestrian_crossing_violation_triggered": False,
+                 "zebra_crossing_violation_triggered": False,
              }
              
         state = self.object_states[object_id]
@@ -437,6 +444,17 @@ class ViolationRulesEngine:
         else:
             state["pedestrian_crossing_violation_triggered"] = False
             state["pedestrian_crossing_zone_id"] = None
+
+        # Rule 7: Zebra Crossing Violation
+        zebra_matches = self._zebra_crossing_matches(object_id)
+        if zebra_matches:
+            if not state.get("zebra_crossing_violation_triggered", False):
+                violations.append("zebra_crossing_violation")
+                state["zebra_crossing_violation_triggered"] = True
+                state["zebra_crossing_zone_id"] = zebra_matches[0].get("id")
+        else:
+            state["zebra_crossing_violation_triggered"] = False
+            state["zebra_crossing_zone_id"] = None
         
         return violations
         

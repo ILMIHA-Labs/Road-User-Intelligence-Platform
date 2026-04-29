@@ -70,6 +70,42 @@ cameras:
         self.assertEqual(zone["category"], "pedestrian_crossing")
         self.assertEqual(len(zone["points"]), 4)
 
+    def test_camera_profiles_normalize_counting_lines(self):
+        config_text = """
+defaults:
+  speed_limit_kmh: 60.0
+cameras:
+  - id: cam_line
+    counting_lines:
+      - id: main_gate
+        label: Main Gate
+        points:
+          - [0, 0]
+          - [10, 10]
+      - id: invalid
+        points:
+          - [1, 1]
+          - [2, 2]
+          - [3, 3]
+"""
+
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            f.write(config_text)
+            config_path = f.name
+
+        try:
+            profiles = build_camera_profile_map(config_path)
+        finally:
+            os.remove(config_path)
+
+        self.assertEqual(len(profiles["cam_line"]["counting_lines"]), 1)
+        line = profiles["cam_line"]["counting_lines"][0]
+        self.assertEqual(line["id"], "main_gate")
+        self.assertEqual(line["label"], "Main Gate")
+        self.assertEqual(len(line["points"]), 2)
+        self.assertTrue(line["enabled"])
+        self.assertIn("car", line["classes"])
+
 
 if __name__ == "__main__":
     unittest.main()

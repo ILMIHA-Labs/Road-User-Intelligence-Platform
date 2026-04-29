@@ -1,5 +1,6 @@
 from .event_schemas import (
     MQTT_TOPIC_TO_SCHEMA,
+    CrossingEvent,
     DetectionEvent,
     SpeedEvent,
     TrajectoryEvent,
@@ -13,6 +14,7 @@ from .camera_config import build_camera_profile_map, load_camera_config, load_ca
 __all__ = [
     "build_camera_profile_map",
     "MQTT_TOPIC_TO_SCHEMA",
+    "CrossingEvent",
     "DetectionEvent",
     "SpeedEvent",
     "TrajectoryEvent",

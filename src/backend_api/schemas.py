@@ -1,6 +1,6 @@
 try:
-    from common.event_schemas import DetectionEvent, SpeedEvent, TrajectoryEvent, ViolationEvent
+    from common.event_schemas import CrossingEvent, DetectionEvent, SpeedEvent, TrajectoryEvent, ViolationEvent
 except ImportError:
-    from src.common.event_schemas import DetectionEvent, SpeedEvent, TrajectoryEvent, ViolationEvent
+    from src.common.event_schemas import CrossingEvent, DetectionEvent, SpeedEvent, TrajectoryEvent, ViolationEvent
 
-__all__ = ["DetectionEvent", "SpeedEvent", "ViolationEvent", "TrajectoryEvent"]
+__all__ = ["CrossingEvent", "DetectionEvent", "SpeedEvent", "ViolationEvent", "TrajectoryEvent"]
