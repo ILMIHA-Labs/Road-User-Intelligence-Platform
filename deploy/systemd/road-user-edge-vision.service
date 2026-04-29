@@ -1,0 +1,16 @@
+[Unit]
+Description=Road User Platform Edge Vision
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=roaduser
+WorkingDirectory=/opt/road-user-platform
+EnvironmentFile=/etc/road-user-platform/edge-vision.env
+ExecStart=/opt/road-user-platform/.venv/bin/python /opt/road-user-platform/src/edge_vision/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

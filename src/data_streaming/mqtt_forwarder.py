@@ -1,8 +1,10 @@
 import argparse
 import logging
 import json
+import os
 import requests
 import paho.mqtt.client as mqtt
+from common.event_schemas import dump_event, parse_event_for_topic
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("DataStreamingAgent")
@@ -22,22 +24,23 @@ class MQTTForwarder:
             "camera/detections": "/detections",
             "camera/speeds": "/speeds",
             "camera/violations": "/violations",
+            "camera/crossings": "/crossings",
             "camera/trajectories": "/trajectories"
         }
         
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
 
-    def on_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def on_connect(self, client, userdata, connect_flags, reason_code, properties):
+        if reason_code == 0:
             logger.info(f"Connected to MQTT Broker at {self.broker_host}:{self.broker_port}")
             # Subscribe to all required topics
             topics = [(topic, 0) for topic in self.topic_map.keys()]
             self.client.subscribe(topics)
             logger.info(f"Subscribed to: {list(self.topic_map.keys())}")
         else:
-            logger.error(f"Failed to connect, return code {rc}")
+            logger.error(f"Failed to connect, return code {reason_code}")
 
     def on_message(self, client, userdata, msg):
         topic = msg.topic
@@ -47,14 +50,14 @@ class MQTTForwarder:
             return
             
         try:
-            payload = json.loads(msg.payload.decode('utf-8'))
+            event = parse_event_for_topic(topic, msg.payload)
             
             # Forward the payload to the backend HTTP service
             target_url = f"{self.api_url}{endpoint}"
             
             # In MVP, firing an HTTP POST per message can create overhead
             # A stronger implementation would buffer and batch
-            response = requests.post(target_url, json=payload, timeout=2.0)
+            response = requests.post(target_url, json=dump_event(event), timeout=2.0)
             
             if response.status_code == 201:
                 # Successfully inserted into database
@@ -64,6 +67,8 @@ class MQTTForwarder:
                 
         except json.JSONDecodeError:
             logger.warning(f"Received invalid JSON on topic {topic}")
+        except ValueError as e:
+            logger.warning(f"Received invalid event on topic {topic}: {e}")
         except requests.exceptions.RequestException as e:
             logger.error(f"HTTP request to backend failed: {e}")
         except Exception as e:
@@ -82,9 +87,24 @@ class MQTTForwarder:
 
 def main():
     parser = argparse.ArgumentParser(description="Data Streaming Agent")
-    parser.add_argument("--broker", type=str, default="localhost", help="MQTT broker host")
-    parser.add_argument("--port", type=int, default=1883, help="MQTT broker port")
-    parser.add_argument("--api", type=str, default="http://localhost:8000", help="Backend API base URL")
+    parser.add_argument(
+        "--broker",
+        type=str,
+        default=os.getenv("MQTT_BROKER_HOST", "localhost"),
+        help="MQTT broker host",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("MQTT_BROKER_PORT", "1883")),
+        help="MQTT broker port",
+    )
+    parser.add_argument(
+        "--api",
+        type=str,
+        default=os.getenv("BACKEND_API_URL", "http://localhost:8000"),
+        help="Backend API base URL",
+    )
     args = parser.parse_args()
 
     forwarder = MQTTForwarder(

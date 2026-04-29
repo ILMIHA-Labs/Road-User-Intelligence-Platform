@@ -1,0 +1,16 @@
+[Unit]
+Description=Road User Platform Speed Estimation
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=roaduser
+WorkingDirectory=/opt/road-user-platform
+EnvironmentFile=/etc/road-user-platform/server-common.env
+ExecStart=/opt/road-user-platform/.venv/bin/python /opt/road-user-platform/src/speed_estimation/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

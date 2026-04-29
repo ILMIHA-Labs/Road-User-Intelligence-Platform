@@ -9,11 +9,24 @@ class SpeedCalculator:
     """
     Tracks object positions over time to estimate speed.
     """
-    def __init__(self, calibration, history_size=5):
+    def __init__(
+        self,
+        calibration,
+        history_size=5,
+        max_speed_kmh=200.0,
+        min_time_delta_seconds=0.0,
+        smoothing_alpha=1.0,
+        outlier_mode="cap",
+    ):
         self.calibration = calibration
         self.history_size = history_size
+        self.max_speed_kmh = max_speed_kmh
+        self.min_time_delta_seconds = min_time_delta_seconds
+        self.smoothing_alpha = smoothing_alpha
+        self.outlier_mode = outlier_mode
         # Dictionary mapping object_id to a deque of (timestamp, (x, y)) tuples
         self.tracks = {}
+        self.last_speeds = {}
 
     def update_position(self, object_id, timestamp_iso, bbox):
         """
@@ -50,7 +63,7 @@ class SpeedCalculator:
         new_time, new_pt = history[-1]
 
         time_diff = new_time - old_time
-        if time_diff <= 0:
+        if time_diff <= self.min_time_delta_seconds:
             return None
 
         distance_meters = self.calibration.calculate_distance(old_pt, new_pt)
@@ -61,10 +74,17 @@ class SpeedCalculator:
         # Convert to km/h
         speed_kmh = speed_mps * 3.6
         
-        # Basic outlier filtering: cap to realistic speeds (e.g., 200 km/h)
-        if speed_kmh > 200:
-             logger.debug(f"Cap speed outlier for {object_id}: {speed_kmh:.1f} km/h")
-             speed_kmh = 200.0
+        # Basic outlier filtering: cap or ignore unrealistic speeds.
+        if speed_kmh > self.max_speed_kmh:
+            logger.debug(f"Speed outlier for {object_id}: {speed_kmh:.1f} km/h")
+            if self.outlier_mode == "ignore":
+                return None
+            speed_kmh = self.max_speed_kmh
+
+        previous_speed = self.last_speeds.get(object_id)
+        if previous_speed is not None and self.smoothing_alpha < 1.0:
+            speed_kmh = (self.smoothing_alpha * speed_kmh) + ((1.0 - self.smoothing_alpha) * previous_speed)
+        self.last_speeds[object_id] = speed_kmh
 
         return speed_kmh
 
@@ -80,3 +100,4 @@ class SpeedCalculator:
                 
         for key in keys_to_remove:
             del self.tracks[key]
+            self.last_speeds.pop(key, None)

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cameras | TRAFFIC ANALYTICS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#dadada",
+              "outline-variant": "#c6c6c6",
+              "on-secondary-fixed": "#1b1c1c",
+              "on-tertiary-fixed": "#ffffff",
+              "primary-fixed-dim": "#474747",
+              "on-surface": "#1a1c1c",
+              "surface-container-low": "#f3f3f4",
+              "on-primary-container": "#ffffff",
+              "on-secondary": "#ffffff",
+              "inverse-primary": "#c6c6c6",
+              "secondary-fixed-dim": "#acabab",
+              "primary-fixed": "#5e5e5e",
+              "tertiary": "#3b3b3c",
+              "surface-container": "#eeeeee",
+              "surface": "#f9f9f9",
+              "secondary": "#5f5e5e",
+              "inverse-surface": "#2f3131",
+              "on-tertiary-container": "#ffffff",
+              "surface-bright": "#f9f9f9",
+              "primary-container": "#3b3b3b",
+              "error": "#ba1a1a",
+              "tertiary-fixed-dim": "#464747",
+              "outline": "#777777",
+              "error-container": "#ffdad6",
+              "on-surface-variant": "#474747",
+              "on-secondary-container": "#1b1c1c",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "tertiary-fixed": "#5e5e5e",
+              "surface-container-highest": "#e2e2e2",
+              "secondary-container": "#d6d4d3",
+              "on-tertiary-fixed-variant": "#e3e2e2",
+              "on-tertiary": "#e3e2e2",
+              "tertiary-container": "#747474",
+              "on-secondary-fixed-variant": "#3b3b3b",
+              "surface-variant": "#e2e2e2",
+              "surface-tint": "#5e5e5e",
+              "inverse-on-surface": "#f0f1f1",
+              "background": "#f9f9f9",
+              "on-background": "#1a1c1c",
+              "on-primary": "#e2e2e2",
+              "surface-container-lowest": "#ffffff",
+              "primary": "#000000",
+              "secondary-fixed": "#c8c6c6",
+              "on-primary-fixed": "#ffffff",
+              "on-error-container": "#410002",
+              "on-error": "#ffffff",
+              "surface-container-high": "#e8e8e8"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .editorial-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<nav class="sticky top-0 z-50 flex items-center justify-between px-8 py-4 w-full bg-white/85 dark:bg-black/85 backdrop-blur-xl border-b border-gray-100 dark:border-gray-900">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-black tracking-tighter text-black dark:text-white">TRAFFIC ANALYTICS</span>
+<div class="hidden md:flex items-center gap-6">
+<a class="font-['Inter'] font-medium tracking-tight text-sm text-gray-400 dark:text-zinc-600 hover:text-black dark:hover:text-white transition-colors duration-200" href="#">Global Filters</a>
+<a class="font-['Inter'] font-medium tracking-tight text-sm text-gray-400 dark:text-zinc-600 hover:text-black dark:hover:text-white transition-colors duration-200" href="#">Date Range</a>
+<a class="font-['Inter'] font-medium tracking-tight text-sm text-gray-400 dark:text-zinc-600 hover:text-black dark:hover:text-white transition-colors duration-200" href="#">Export</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-on-primary px-4 py-1.5 text-xs font-bold tracking-tight uppercase hover:opacity-80 transition-opacity">Live View</button>
+<span class="material-symbols-outlined text-on-surface cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface cursor-pointer" data-icon="account_circle">account_circle</span>
+</div>
+</nav>
+<aside class="fixed left-0 top-0 h-full flex flex-col p-6 z-40 bg-gray-50 dark:bg-zinc-950 border-r border-gray-100 dark:border-gray-900 w-64 hidden md:flex">
+<div class="mb-12 pt-16">
+<h2 class="font-['Inter'] label-sm uppercase tracking-widest text-xs font-bold mb-1 text-black dark:text-white">Admin Console</h2>
+<p class="text-[10px] text-gray-500 uppercase tracking-[0.2em]">Regional Traffic Control</p>
+</div>
+<div class="flex flex-col gap-2 flex-grow">
+<a class="flex items-center gap-3 px-4 py-3 text-gray-500 dark:text-zinc-500 font-['Inter'] label-sm uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-zinc-800 transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="dashboard">dashboard</span>
+<span class="text-[11px]">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-black dark:text-white font-bold bg-white dark:bg-black rounded-sm shadow-sm font-['Inter'] label-sm uppercase tracking-widest active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="videocam">videocam</span>
+<span class="text-[11px]">Cameras</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-500 dark:text-zinc-500 font-['Inter'] label-sm uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-zinc-800 transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="report_problem">report_problem</span>
+<span class="text-[11px]">Violations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-gray-500 dark:text-zinc-500 font-['Inter'] label-sm uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-zinc-800 transition-all active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="settings">settings</span>
+<span class="text-[11px]">Settings</span>
+</a>
+</div>
+<button class="mt-8 bg-primary text-on-primary py-3 px-4 text-[10px] font-bold uppercase tracking-[0.2em] mb-8">Generate Report</button>
+<div class="flex flex-col gap-2 border-t border-outline-variant/20 pt-6">
+<a class="flex items-center gap-3 px-4 py-2 text-gray-500 font-['Inter'] label-sm uppercase tracking-widest text-[10px]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="help_outline">help_outline</span>
+<span>Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-gray-500 font-['Inter'] label-sm uppercase tracking-widest text-[10px]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="list_alt">list_alt</span>
+<span>Logs</span>
+</a>
+</div>
+</aside>
+<main class="md:ml-64 p-8 md:p-12 lg:p-16">
+<header class="editorial-grid mb-16 items-end">
+<div class="col-span-12 md:col-start-1 md:col-span-8">
+<span class="label-sm uppercase tracking-[0.3em] text-secondary text-[10px] font-semibold mb-4 block">Visual Surveillance Network</span>
+<h1 class="text-6xl md:text-8xl font-black tracking-tighter leading-none mb-4">CAMERAS</h1>
+<p class="body-md text-on-surface-variant max-w-md leading-relaxed">System-wide monitoring of critical intersections. Real-time telemetry and optical analysis across 24 nodes.</p>
+</div>
+<div class="col-span-12 md:col-span-4 mt-8 md:mt-0 flex gap-12 border-l border-outline-variant/20 pl-8">
+<div>
+<span class="block text-4xl font-black tracking-tighter">24</span>
+<span class="label-sm uppercase tracking-widest text-[10px] text-secondary">Total Nodes</span>
+</div>
+<div>
+<span class="block text-4xl font-black tracking-tighter">23</span>
+<span class="label-sm uppercase tracking-widest text-[10px] text-secondary">Active</span>
+</div>
+<div>
+<span class="block text-4xl font-black tracking-tighter text-error">01</span>
+<span class="label-sm uppercase tracking-widest text-[10px] text-secondary">Issues</span>
+</div>
+</div>
+</header>
+<section class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+<div class="group bg-surface-container-lowest transition-all duration-300">
+<div class="relative aspect-video overflow-hidden bg-black">
+<img alt="Camera 01" class="w-full h-full object-cover grayscale opacity-80 group-hover:scale-105 transition-transform duration-700" data-alt="Monochrome high contrast aerial night shot of a busy urban intersection with car light trails and wet asphalt" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAExHVSb9a5P0wb--K98N8ccfSYeZqS02pXdWdYg-FRGm0pO_vVT74FrAU0rkyEVUj0fjVQFCw5BIGKDehjeuGXwfQyte4dVVkbGTPEmbDlu8gdtHnuCYWHWFWUGmeKiyCmhU-YpntD0RrwKTp_pTLihYCun7hS_oXpz3d8hJK5ZmbWoQKzQwY5tZnoE-TUy2EtsK3ffb_UF9oyrM6w-tY-5omEpyfHWDXSJzHQcflxTCwIcDoyZkkcJnBI3QxG_6QaivUiLXecwM8"/>
+<div class="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-md px-2 py-1">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+<span class="text-[9px] font-bold uppercase tracking-widest text-white">Online</span>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black tracking-tighter text-white bg-primary px-2 py-1">NODE_01</span>
+</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-bold text-lg tracking-tight mb-1">Intersection 4th &amp; Main</h3>
+<p class="text-[10px] text-secondary uppercase tracking-widest">Central District Terminal</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Uptime</span>
+<span class="font-black text-xl tracking-tighter">99.98%</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Data Rate</span>
+<span class="font-black text-xl tracking-tighter">4.2 MB/s</span>
+</div>
+</div>
+<div class="flex gap-2">
+<a class="flex-1 bg-primary text-on-primary py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity text-center" href="{{DATA:SCREEN:SCREEN_5}}">View Full Feed</a>
+<button class="flex-1 border border-outline-variant/30 text-on-surface py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container transition-colors">Calibrate</button>
+</div>
+</div>
+</div>
+<div class="group bg-surface-container-lowest transition-all duration-300">
+<div class="relative aspect-video overflow-hidden bg-black">
+<img alt="Camera 02" class="w-full h-full object-cover grayscale opacity-80 group-hover:scale-105 transition-transform duration-700" data-alt="Grayscale high-angle shot of a wide highway bridge with structured geometric shadows and sparse traffic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBujrGMfwYDU9AgsjA2-YdZ979FpGefpMLywaKbYovItxe7Guii5QeR4USCfkc2zFvC7L1LTcnwN3BxfsvbBeNa6akyd8pXKwjYzplUGR9y4QwgjcHrtBByAip41BFIMQuYTyuvTImX39ySHoo-16aBZDwoofPjtW26JExljeFaPFCuPzqIpN7338Wy0nPSQ5nyyCS08H5-LnvHn2LDXnTMM-cSaYrKZx5gSp1V-L_A4SHjtGpCZlwmH8vg-YeKEbSeaQa-IbLXQtOm"/>
+<div class="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-md px-2 py-1">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+<span class="text-[9px] font-bold uppercase tracking-widest text-white">Recording</span>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black tracking-tighter text-white bg-primary px-2 py-1">NODE_02</span>
+</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-bold text-lg tracking-tight mb-1">Harbor Bridge East</h3>
+<p class="text-[10px] text-secondary uppercase tracking-widest">Maritime Corridor</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Uptime</span>
+<span class="font-black text-xl tracking-tighter">98.42%</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Data Rate</span>
+<span class="font-black text-xl tracking-tighter">6.8 MB/s</span>
+</div>
+</div>
+<div class="flex gap-2">
+<a class="flex-1 bg-primary text-on-primary py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity text-center" href="{{DATA:SCREEN:SCREEN_5}}">View Full Feed</a>
+<button class="flex-1 border border-outline-variant/30 text-on-surface py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container transition-colors">Calibrate</button>
+</div>
+</div>
+</div>
+<div class="group bg-surface-container-lowest transition-all duration-300 border border-error/20">
+<div class="relative aspect-video overflow-hidden bg-black">
+<img alt="Camera 03" class="w-full h-full object-cover grayscale opacity-40 group-hover:scale-105 transition-transform duration-700" data-alt="Dramatically lit monochrome view of a tunnel entrance with stark highlights and deep shadows, technical noise overlay" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBkce-CjH9x5d_yB75vcwQ23H6WvcpivSKJpxlGuXHZZaXPuut_0IKwUW9e1LGMnaF-tlbfJJRKzwHSyDOMsC0RHLJcWpgB-4E3ma0LXbMhnKZprnZuYZirn7xq52mQ6d8Wo5jraW-ESnyySeDx0cHsb-VErPDoAv4iphp8Vn05MnvxQ1yZtX_UV8bITkClANDygcyfcFcLKFrFqmpqRicd0YFfU1rHtvuqDCOP50JsGzGxri9AbTZalxM8QJxBvMijMKTB_NiG2VQk"/>
+<div class="absolute top-4 left-4 flex items-center gap-2 bg-error px-2 py-1">
+<span class="text-[9px] font-bold uppercase tracking-widest text-white">Issue Detected</span>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black tracking-tighter text-white bg-primary px-2 py-1">NODE_03</span>
+</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-bold text-lg tracking-tight mb-1">Tunnel Entry 12A</h3>
+<p class="text-[10px] text-secondary uppercase tracking-widest">Northern Link Path</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="bg-error-container/20 p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-error block mb-1">Signal</span>
+<span class="font-black text-xl tracking-tighter text-error">Low</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Data Rate</span>
+<span class="font-black text-xl tracking-tighter">0.2 MB/s</span>
+</div>
+</div>
+<div class="flex gap-2">
+<a class="flex-1 bg-primary text-on-primary py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity text-center" href="{{DATA:SCREEN:SCREEN_5}}">View Full Feed</a>
+<button class="flex-1 bg-error text-white py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity">Restart</button>
+</div>
+</div>
+</div>
+<div class="group bg-surface-container-lowest transition-all duration-300">
+<div class="relative aspect-video overflow-hidden bg-black">
+<img alt="Camera 04" class="w-full h-full object-cover grayscale opacity-80 group-hover:scale-105 transition-transform duration-700" data-alt="Grainy black and white surveillance view of a pedestrian plaza with geometric paving patterns and long shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjA224pLhGQpZUycGFrMjOM7XwUaKblBdDsuLlDqSH4eWEIjzAjEtwSF-oR1r5ancskq-GZQPsI2c8df4SmefNk1TDgvqDxou_kDPe7q2onWsA3u7HvlfIE2owco_Gg8Vunur8D5Qvqe5VA2AqmLYh5Lw5u51bwTJnuM9crGzEaMn2u7pDU3h-MhJlh3Lc8KEvdRqxf7pFsQhnjTQyNW9BfHooL7a3ha_NGH9zsEbCcGI6aMF-6LBTMnSOX1JJ2b__jhlpem_cihY7"/>
+<div class="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-md px-2 py-1">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+<span class="text-[9px] font-bold uppercase tracking-widest text-white">Online</span>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black tracking-tighter text-white bg-primary px-2 py-1">NODE_04</span>
+</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-bold text-lg tracking-tight mb-1">Civic Plaza North</h3>
+<p class="text-[10px] text-secondary uppercase tracking-widest">Government Quarter</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Uptime</span>
+<span class="font-black text-xl tracking-tighter">100%</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Data Rate</span>
+<span class="font-black text-xl tracking-tighter">3.1 MB/s</span>
+</div>
+</div>
+<div class="flex gap-2">
+<a class="flex-1 bg-primary text-on-primary py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity text-center" href="{{DATA:SCREEN:SCREEN_5}}">View Full Feed</a>
+<button class="flex-1 border border-outline-variant/30 text-on-surface py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container transition-colors">Calibrate</button>
+</div>
+</div>
+</div>
+<div class="group bg-surface-container-lowest transition-all duration-300">
+<div class="relative aspect-video overflow-hidden bg-black">
+<img alt="Camera 05" class="w-full h-full object-cover grayscale opacity-80 group-hover:scale-105 transition-transform duration-700" data-alt="Monochrome wide angle shot of an empty freeway at dawn with fog and minimalist concrete architecture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBw4p057smVTpgDzp5bCoIxlz7UpgsdqSU4eaqkdolrFWurmIdZ4eebFeB0tIR8KjzQ4RTguOBtJeNgGjKZgYgRlgtSFkQNMfOzruyDSV3iFoc4j_mhIf4Yq420owKwM0nZ5I_AwHK5FFntL1Vrm_x3goM_BHUK3wUmqh9zgAPKSJDOW1hyRvo3_uq1ISRTBbX9fvZY6hluhYlTA5g7H1ZLhAOF_BEM3Aj1_P1x_k503iT_TL_vjJgmvxnDWrIZdvUOHAN5VwUDmNXZ"/>
+<div class="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-md px-2 py-1">
+<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+<span class="text-[9px] font-bold uppercase tracking-widest text-white">Online</span>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black tracking-tighter text-white bg-primary px-2 py-1">NODE_05</span>
+</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-bold text-lg tracking-tight mb-1">Westside Freeway M1</h3>
+<p class="text-[10px] text-secondary uppercase tracking-widest">Expressway Exit</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Uptime</span>
+<span class="font-black text-xl tracking-tighter">99.12%</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Data Rate</span>
+<span class="font-black text-xl tracking-tighter">5.5 MB/s</span>
+</div>
+</div>
+<div class="flex gap-2">
+<a class="flex-1 bg-primary text-on-primary py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity text-center" href="{{DATA:SCREEN:SCREEN_5}}">View Full Feed</a>
+<button class="flex-1 border border-outline-variant/30 text-on-surface py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container transition-colors">Calibrate</button>
+</div>
+</div>
+</div>
+<div class="group bg-surface-container-lowest transition-all duration-300">
+<div class="relative aspect-video overflow-hidden bg-black">
+<img alt="Camera 06" class="w-full h-full object-cover grayscale opacity-80 group-hover:scale-105 transition-transform duration-700" data-alt="Black and white top-down view of a railway station entrance with rhythmic patterns of commuters and architecture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmXMYnbQAHU6_dJU7jG8jKDfVDiyVGzfSAgcctqYp8RVCW7ckcYZkZWqndVowdfUk-zE9ncIiXsT1xLdDBiF6UeH28p56ULlBHkbT6oXldeOFH2PNnCxITJbX54bGMkO7RS47-redsgmcFRFd2Qf_oBuMvKRQOUghgzPP25Y_HBq8CpMvg9x5d93VTMOkoZ28yFBgJQrlozWsZCJf_IYznn4eD48IKIpcEuWifFWcPDWR1cRRH8C2MPkFnw3RZRAK4-XuDgMRbbKZh"/>
+<div class="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-md px-2 py-1">
+<span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+<span class="text-[9px] font-bold uppercase tracking-widest text-white">Recording</span>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="text-[10px] font-black tracking-tighter text-white bg-primary px-2 py-1">NODE_06</span>
+</div>
+</div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-bold text-lg tracking-tight mb-1">South Station Terminal</h3>
+<p class="text-[10px] text-secondary uppercase tracking-widest">Transit Hub</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Uptime</span>
+<span class="font-black text-xl tracking-tighter">99.75%</span>
+</div>
+<div class="bg-surface-container-low p-4">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary block mb-1">Data Rate</span>
+<span class="font-black text-xl tracking-tighter">4.9 MB/s</span>
+</div>
+</div>
+<div class="flex gap-2">
+<a class="flex-1 bg-primary text-on-primary py-3 text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity text-center" href="{{DATA:SCREEN:SCREEN_5}}">View Full Feed</a>
+<button class="flex-1 border border-outline-variant/30 text-on-surface py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-surface-container transition-colors">Calibrate</button>
+</div>
+</div>
+</div>
+</section>
+<footer class="mt-20 pt-12 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex gap-8">
+<div class="flex flex-col">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary">System Health</span>
+<span class="font-bold text-xs">Optimal / All systems nominal</span>
+</div>
+<div class="flex flex-col">
+<span class="label-sm text-[9px] uppercase tracking-widest text-secondary">Network Load</span>
+<span class="font-bold text-xs">112.4 GB / Current Session</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-[10px] uppercase tracking-widest text-secondary">Refresh in 12s</span>
+<button class="material-symbols-outlined text-secondary hover:text-primary transition-colors" data-icon="refresh">refresh</button>
+</div>
+</footer>
+</main>
+</body></html>

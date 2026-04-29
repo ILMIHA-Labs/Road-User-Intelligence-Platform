@@ -1,5 +1,11 @@
 *.mp4
 *.pt
 venv/
+.venv/
 *.log
 post/
+*.db
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
