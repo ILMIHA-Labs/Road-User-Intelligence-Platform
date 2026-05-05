@@ -1,0 +1,13 @@
+camera_id: sample_video_01
+meters_per_pixel:
+reference_segments:
+  - id: zebra_width
+    image_points:
+      - [300, 260]
+      - [520, 260]
+    real_distance_m: 8.0
+approach_speed_threshold_kmh: 15.0
+pedestrian_speed_threshold_kmh: 8.0
+interaction_window_seconds: 3.0
+approach_distance_m: 12.0
+pedestrian_near_distance_m: 2.0

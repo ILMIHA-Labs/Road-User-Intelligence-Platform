@@ -9,3 +9,6 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+artifacts/
+logs/
+MedMind/

@@ -1,0 +1,31 @@
+camera_id: sample_video_01
+meters_per_pixel: null
+reference_segments:
+- id: drawn_reference_line
+  image_points:
+  - - 632.0
+    - 348.0
+  - - 756.0
+    - 262.0
+  real_distance_m: 3.5
+zebra_zones:
+- id: drawn_zebra_crossing
+  label: Drawn Zebra Crossing
+  type: polygon
+  category: zebra_crossing
+  points:
+  - - 800.0
+    - 398.0
+  - - 502.0
+    - 311.0
+  - - 632.0
+    - 240.0
+  - - 901.0
+    - 285.0
+  - - 801.0
+    - 399.0
+approach_speed_threshold_kmh: 15.0
+pedestrian_speed_threshold_kmh: 8.0
+interaction_window_seconds: 3.0
+approach_distance_m: 12.0
+pedestrian_near_distance_m: 2.0
