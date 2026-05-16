@@ -16,6 +16,9 @@ defaults:
   stop_line_min_speed_kmh: 5.0
   pedestrian_crossing_min_speed_kmh: 5.0
   pedestrian_crossing_window_seconds: 2.0
+  crossing_min_presence_seconds: 0.75
+  crossing_min_observations: 2
+  crossing_vehicle_min_displacement_px: 12.0
   zones: []
   counting_lines: []
 
@@ -49,12 +52,19 @@ cameras:
     max_motorcycle_riders: 2
     stop_line_min_speed_kmh: 6.0
     pedestrian_crossing_min_speed_kmh: 8.0
+    crossing_min_presence_seconds: 0.75
+    crossing_min_observations: 2
+    crossing_vehicle_min_displacement_px: 14.0
     counting_lines:
       - id: corridor_flow
         label: Corridor Flow
         points:
           - [220, 180]
           - [220, 360]
+        min_crossing_distance_px: 8.0
+        reset_distance_px: 14.0
+        min_displacement_px: 14.0
+        min_observations: 2
     zones:
       - id: school_crossing
         label: School Crossing

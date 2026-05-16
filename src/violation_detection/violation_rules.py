@@ -6,6 +6,19 @@ from common.event_schemas import ViolationEvent
 logger = logging.getLogger(__name__)
 
 
+def _distance(point_a, point_b):
+    if (
+        point_a is None
+        or point_b is None
+        or len(point_a) != 2
+        or len(point_b) != 2
+    ):
+        return 0.0
+    dx = float(point_a[0]) - float(point_b[0])
+    dy = float(point_a[1]) - float(point_b[1])
+    return (dx * dx + dy * dy) ** 0.5
+
+
 def _parse_timestamp(value):
     if not value:
         return None
@@ -66,6 +79,9 @@ class ViolationRulesEngine:
         stop_line_vehicle_classes=None,
         pedestrian_crossing_min_speed_kmh=5.0,
         pedestrian_crossing_window_seconds=2.0,
+        crossing_min_presence_seconds=0.75,
+        crossing_min_observations=2,
+        crossing_vehicle_min_displacement_px=12.0,
         pedestrian_crossing_vehicle_classes=None,
         pedestrian_classes=None,
     ):
@@ -96,6 +112,9 @@ class ViolationRulesEngine:
         )
         self.pedestrian_crossing_min_speed_kmh = pedestrian_crossing_min_speed_kmh
         self.pedestrian_crossing_window_seconds = pedestrian_crossing_window_seconds
+        self.crossing_min_presence_seconds = crossing_min_presence_seconds
+        self.crossing_min_observations = crossing_min_observations
+        self.crossing_vehicle_min_displacement_px = crossing_vehicle_min_displacement_px
         self.pedestrian_crossing_vehicle_classes = set(
             pedestrian_crossing_vehicle_classes or {"car", "bus", "truck", "motorcycle"}
         )
@@ -120,6 +139,37 @@ class ViolationRulesEngine:
                 matches.append(zone)
         return matches
 
+    def _zone_state_key(self, category, zone_id):
+        return f"{category}:{zone_id}"
+
+    def _update_zone_presence(self, state, point, timestamp):
+        active_zone_ids = state.setdefault("active_zone_ids_by_category", {})
+        zone_entered_at = state.setdefault("zone_entered_at", {})
+        zone_observations = state.setdefault("zone_observations", {})
+
+        for category in ("stop_line", "pedestrian_crossing", "zebra_crossing"):
+            current_zone_ids = {
+                zone.get("id")
+                for zone in self._matching_zones(category, point)
+                if zone.get("id")
+            }
+            previous_zone_ids = set(active_zone_ids.get(category, []))
+
+            for zone_id in current_zone_ids:
+                key = self._zone_state_key(category, zone_id)
+                if zone_id not in previous_zone_ids:
+                    zone_entered_at[key] = timestamp
+                    zone_observations[key] = 1
+                else:
+                    zone_observations[key] = zone_observations.get(key, 1) + 1
+
+            for zone_id in previous_zone_ids - current_zone_ids:
+                key = self._zone_state_key(category, zone_id)
+                zone_entered_at.pop(key, None)
+                zone_observations.pop(key, None)
+
+            active_zone_ids[category] = sorted(current_zone_ids)
+
     def _is_recent_pair_with_window(self, state_a, state_b, window_seconds):
         ts_a = _parse_timestamp(state_a.get("last_seen"))
         ts_b = _parse_timestamp(state_b.get("last_seen"))
@@ -142,28 +192,59 @@ class ViolationRulesEngine:
             return []
         if vehicle_state.get("speed_kmh", 0.0) < self.pedestrian_crossing_min_speed_kmh:
             return []
+        if vehicle_state.get("detection_observations", 0) < self.crossing_min_observations:
+            return []
+        if (
+            vehicle_state.get("recent_motion_distance_px", 0.0)
+            < self.crossing_vehicle_min_displacement_px
+        ):
+            return []
 
-        vehicle_point = self._bbox_bottom_center(vehicle_state.get("bbox") or [])
+        vehicle_point = vehicle_state.get("anchor_point") or self._bbox_bottom_center(
+            vehicle_state.get("bbox") or []
+        )
         matching_vehicle_zones = self._matching_zones(category, vehicle_point)
         if not matching_vehicle_zones:
             return []
 
         zone_ids = {zone.get("id") for zone in matching_vehicle_zones}
         camera_id = vehicle_state.get("camera_id")
+        current_time = _parse_timestamp(vehicle_state.get("last_seen"))
         active_matches = []
         for state in self.object_states.values():
             if state.get("class") not in self.pedestrian_classes:
                 continue
             if state.get("camera_id") != camera_id:
                 continue
+            if state.get("detection_observations", 0) < self.crossing_min_observations:
+                continue
             if not self._is_recent_pair_with_window(
                 vehicle_state, state, self.pedestrian_crossing_window_seconds
             ):
                 continue
-            pedestrian_point = self._bbox_bottom_center(state.get("bbox") or [])
+            pedestrian_point = state.get("anchor_point") or self._bbox_bottom_center(
+                state.get("bbox") or []
+            )
             crossing_zones = self._matching_zones(category, pedestrian_point)
             for zone in crossing_zones:
-                if zone.get("id") in zone_ids:
+                zone_id = zone.get("id")
+                if zone_id not in zone_ids or current_time is None:
+                    continue
+                entered_at = _parse_timestamp(
+                    state.get("zone_entered_at", {}).get(
+                        self._zone_state_key(category, zone_id)
+                    )
+                )
+                dwell_seconds = 0.0
+                if entered_at is not None:
+                    dwell_seconds = (current_time - entered_at).total_seconds()
+                if (
+                    dwell_seconds >= self.crossing_min_presence_seconds
+                    and state.get("zone_observations", {}).get(
+                        self._zone_state_key(category, zone_id), 0
+                    )
+                    >= self.crossing_min_observations
+                ):
                     active_matches.append(zone)
                     break
         return active_matches
@@ -323,6 +404,13 @@ class ViolationRulesEngine:
                  "stop_line_violation_triggered": False,
                  "pedestrian_crossing_violation_triggered": False,
                  "zebra_crossing_violation_triggered": False,
+                 "detection_observations": 0,
+                 "anchor_point": None,
+                 "previous_anchor_point": None,
+                 "recent_motion_distance_px": 0.0,
+                 "active_zone_ids_by_category": {},
+                 "zone_entered_at": {},
+                 "zone_observations": {},
              }
              
         state = self.object_states[object_id]
@@ -334,6 +422,17 @@ class ViolationRulesEngine:
             state["last_seen"] = detection_event.get("timestamp", state["last_seen"])
             # Required for multi-camera deduplication later on in MVP
             state["camera_id"] = detection_event.get("camera_id")
+            state["detection_observations"] = state.get("detection_observations", 0) + 1
+            anchor_point = self._bbox_bottom_center(state.get("bbox") or [])
+            previous_anchor_point = state.get("anchor_point")
+            state["previous_anchor_point"] = previous_anchor_point
+            state["anchor_point"] = anchor_point
+            state["recent_motion_distance_px"] = _distance(
+                previous_anchor_point, anchor_point
+            )
+            event_timestamp = detection_event.get("timestamp", state["last_seen"])
+            if anchor_point is not None:
+                self._update_zone_presence(state, anchor_point, event_timestamp)
 
         if speed_event:
             state["speed_kmh"] = speed_event.get("speed_kmh", state["speed_kmh"])

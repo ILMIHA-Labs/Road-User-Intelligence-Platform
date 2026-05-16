@@ -53,6 +53,9 @@
     .speed-bar-fill {
       transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    #file-mode-banner.hidden {
+      display: none;
+    }
   </style>
 </head>
 <body class="bg-surface text-on-surface">
@@ -74,8 +77,11 @@
       <button data-view-button="configs" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">tune</span> Configs
       </button>
+      <button data-view-button="setup" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
+        <span class="material-symbols-outlined text-lg">gesture</span> Setup
+      </button>
       <button data-view-button="violations" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
-        <span class="material-symbols-outlined text-lg">report_problem</span> Violations
+        <span class="material-symbols-outlined text-lg">report_problem</span> Safety Events
       </button>
     </nav>
     <div class="border-t border-black/5 pt-6 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
@@ -90,28 +96,45 @@
         <h1 class="text-2xl font-black tracking-tighter md:text-3xl">Traffic Operations Dashboard</h1>
       </div>
       <div class="flex items-center gap-3">
-        <div class="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
-          <span class="mr-2 inline-block h-2 w-2 rounded-full bg-error align-middle"></span>
-          Live View
+        <div id="stream-status-pill" class="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
+          <span id="stream-status-dot" class="mr-2 inline-block h-2 w-2 rounded-full bg-amber-500 align-middle"></span>
+          <span id="stream-status-label">Connecting</span>
         </div>
-        <button id="refresh-button" class="rounded-sm bg-primary px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary">
-          Refresh Data
-        </button>
       </div>
     </header>
 
     <section class="mx-auto max-w-[1440px] p-6 md:p-8">
+      <section id="file-mode-banner" class="hidden mb-8 border border-black bg-black px-5 py-4 text-white">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-[0.25em] text-white/60">Demo Surface Warning</p>
+            <h2 class="mt-2 text-xl font-black tracking-tight">You are viewing the raw file copy, not the live MVP app.</h2>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-white/75">
+              For live analytics, safety-event evidence, and real camera state, open the backend-served dashboard instead of the local <code>file://</code> page.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <a href="http://127.0.0.1:8000/dashboard/" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-black">
+              Open Live Dashboard
+            </a>
+            <a href="http://127.0.0.1:8000/" class="border border-white/25 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
+              Check Backend
+            </a>
+          </div>
+        </div>
+      </section>
+
       <div class="mb-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p class="mb-2 text-[10px] font-bold uppercase tracking-[0.3em] text-on-surface-variant">Regional Oversight</p>
           <h2 class="text-5xl font-black tracking-tighter md:text-7xl">Operational Narrative</h2>
           <p class="mt-4 max-w-2xl text-sm leading-6 text-on-surface-variant">
-            A quiet, editorial view into detections, violations, and camera activity across the current deployment.
+            A quiet, editorial view into detections, safety events, and camera activity across the current deployment.
           </p>
         </div>
         <div class="text-right">
-          <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Last refresh</p>
-          <p id="last-updated" class="text-sm font-semibold">Waiting for first sync</p>
+          <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Live status</p>
+          <p id="last-updated" class="text-sm font-semibold">Connecting to live analytics…</p>
         </div>
       </div>
 
@@ -159,10 +182,10 @@
             </div>
           </article>
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
-            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violations Logged</p>
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Safety Events Logged</p>
             <div>
               <p id="total-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
-              <p class="mt-2 text-xs text-on-surface-variant">Detected safety and traffic violations</p>
+              <p class="mt-2 text-xs text-on-surface-variant">Detected safety and traffic events</p>
             </div>
           </article>
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
@@ -192,7 +215,7 @@
 
           <section class="bg-black p-6 text-white xl:col-span-4">
             <div class="mb-6 flex items-center justify-between">
-              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Violation Breakdown</h3>
+              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Safety Event Breakdown</h3>
               <span class="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.2em]">Current window</span>
             </div>
             <div id="violation-breakdown" class="space-y-4"></div>
@@ -200,11 +223,31 @@
           </section>
         </div>
 
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-7">
+            <div class="mb-5 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detection Breakdown</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Observed Class Mix</h3>
+              </div>
+              <span id="detection-class-total" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="detection-class-breakdown" class="space-y-4"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-5">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Detection Note</p>
+            <h3 class="mt-3 text-2xl font-black tracking-tight">What the camera is really seeing</h3>
+            <p id="detection-class-note" class="mt-3 text-sm leading-6 text-white/70">
+              Detection counts will appear here once class-level activity is available in the current scope.
+            </p>
+          </article>
+        </section>
+
         <section class="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <article class="bg-surface-container-lowest p-6 xl:col-span-2">
             <div class="mb-4 flex items-center justify-between">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violation Coverage</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Safety Event Coverage</p>
                 <h3 class="mt-1 text-2xl font-black tracking-tight">Rules Active In This MVP</h3>
               </div>
               <span id="rule-coverage-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
@@ -212,16 +255,16 @@
             <div id="rule-coverage" class="grid grid-cols-1 gap-3 md:grid-cols-2"></div>
           </article>
           <article class="bg-black p-6 text-white">
-            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Operations Note</p>
-            <h3 class="mt-3 text-2xl font-black tracking-tight">Live Feed Later</h3>
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Live Dashboard</p>
+            <h3 class="mt-3 text-2xl font-black tracking-tight">Streaming analytics, not manual syncs</h3>
             <p class="mt-3 text-sm leading-6 text-white/70">
-              This dashboard currently focuses on persisted analytics and recent records. We can add live camera viewing later once we choose whether to embed RTSP/WebRTC streams directly or proxy snapshots/video through the backend.
+              The operations surface now follows backend-pushed analytics snapshots. Counts, traffic flow, and camera state should move automatically as new events arrive.
             </p>
           </article>
         </section>
 
         <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
-          <article class="bg-surface-container-lowest p-8 xl:col-span-5">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-4">
             <div class="mb-6 flex items-center justify-between">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Directional Flow</p>
@@ -231,7 +274,17 @@
             </div>
             <div id="crossing-direction-bars" class="space-y-4"></div>
           </article>
-          <article class="bg-black p-8 text-white xl:col-span-7">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-4">
+            <div class="mb-6 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Class Contribution</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Crossings by Class</h3>
+              </div>
+              <span id="crossing-class-total" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+            </div>
+            <div id="crossing-class-bars" class="space-y-4"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-4">
             <div class="mb-6 flex items-center justify-between">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Top Counting Lines</p>
@@ -240,6 +293,10 @@
               <span id="crossing-line-total" class="text-[10px] uppercase tracking-[0.2em] text-white/40"></span>
             </div>
             <div id="crossing-line-bars" class="space-y-4"></div>
+            <div class="mt-6 border-t border-white/10 pt-4">
+              <p class="text-[10px] uppercase tracking-[0.2em] text-white/40">Flow Rate</p>
+              <p id="crossing-flow-rate" class="mt-2 text-3xl font-black tracking-tight">0 / min</p>
+            </div>
           </article>
         </section>
 
@@ -248,7 +305,7 @@
             <div class="mb-5 flex items-center justify-between">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Zone Enforcement</p>
-                <h3 class="mt-1 text-2xl font-black tracking-tight">Location-Based Violations</h3>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Location-Based Safety Events</h3>
               </div>
               <span id="zone-violation-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
             </div>
@@ -276,7 +333,7 @@
             <p id="camera-top-name" class="mt-3 text-2xl font-black tracking-tighter">No data</p>
           </article>
           <article class="bg-surface-container-lowest p-8">
-            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Camera Violations</p>
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Total Camera Safety Events</p>
             <p id="camera-total-violations" class="mt-3 text-6xl font-black tracking-tighter text-error">0</p>
           </article>
           <article class="bg-surface-container-lowest p-8">
@@ -362,6 +419,108 @@
         </section>
       </section>
 
+      <section id="setup-view" data-view="setup" class="hidden space-y-8">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-4">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Pre-Analysis Setup</p>
+            <p class="mt-3 text-3xl font-black tracking-tight">Draw before you run</p>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-3">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-white/50">Operator workflow</p>
+            <p class="mt-3 text-2xl font-black tracking-tight">Load a frame, draw counting lines and zebra bounds, then save the camera profile.</p>
+            <p class="mt-3 max-w-3xl text-sm leading-6 text-white/70">
+              This setup surface is meant for adding a new camera or preparing a new video before analysis. It writes the drawn counting lines and zebra-crossing zones into the main camera config so the live system can use them directly.
+            </p>
+          </article>
+        </div>
+
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-4">
+            <div class="space-y-5">
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera ID</span>
+                <input id="setup-camera-id" type="text" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="recam_02 or sample_video_02" />
+              </label>
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Video / Camera Source</span>
+                <input id="setup-source" type="text" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="data/sample.mp4, /path/video.mp4, rtsp://..., or 0" />
+              </label>
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Location</span>
+                <input id="setup-location" type="text" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="School crossing, north gate, corridor..." />
+              </label>
+              <div class="grid grid-cols-2 gap-4">
+                <label class="block">
+                  <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Target FPS</span>
+                  <input id="setup-target-fps" type="number" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="15" />
+                </label>
+                <label class="block">
+                  <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Pixels / Metre</span>
+                  <input id="setup-ppm" type="number" step="0.1" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="25.0" />
+                </label>
+              </div>
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Speed Limit (km/h)</span>
+                <input id="setup-speed-limit" type="number" step="0.1" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="50" />
+              </label>
+
+              <div class="flex flex-wrap gap-3">
+                <button id="setup-load-preview" class="bg-primary px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary">Load Frame</button>
+                <button id="setup-new-line" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface">New Counting Line</button>
+                <button id="setup-new-zebra" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface">New Zebra Zone</button>
+                <button id="setup-finish-shape" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface">Finish Zone</button>
+                <button id="setup-undo-point" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface">Undo</button>
+                <button id="setup-clear-draft" class="bg-surface-container-highest px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface">Clear Draft</button>
+              </div>
+
+              <div class="border-t border-black/5 pt-5">
+                <p id="setup-status" class="text-sm text-on-surface-variant">Load a preview frame to start drawing.</p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button id="setup-save-config" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">Save Camera Setup</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="bg-surface-container-lowest p-8 xl:col-span-8">
+            <div class="mb-5 flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Setup Preview</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Draw on the frame before analysis</h3>
+              </div>
+              <span id="setup-frame-meta" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">No frame loaded</span>
+            </div>
+            <div id="setup-preview-shell" class="relative aspect-[16/9] overflow-hidden bg-black">
+              <div id="setup-preview-empty" class="flex h-full items-center justify-center text-center text-white/60">
+                <div>
+                  <span class="material-symbols-outlined text-5xl">draw</span>
+                  <p class="mt-3 text-sm uppercase tracking-[0.2em]">Load a camera or video frame to draw setup guides</p>
+                </div>
+              </div>
+              <img id="setup-preview-image" alt="Setup preview frame" class="hidden h-full w-full object-contain" />
+              <div id="setup-preview-overlay" class="pointer-events-auto absolute inset-0 hidden"></div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <section class="bg-white p-5">
+                <div class="mb-4 flex items-center justify-between">
+                  <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Counting Lines</h4>
+                  <span id="setup-line-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">0 configured</span>
+                </div>
+                <div id="setup-lines-list" class="space-y-3 text-sm text-on-surface-variant"></div>
+              </section>
+              <section class="bg-white p-5">
+                <div class="mb-4 flex items-center justify-between">
+                  <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Zebra Zones</h4>
+                  <span id="setup-zebra-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">0 configured</span>
+                </div>
+                <div id="setup-zebra-list" class="space-y-3 text-sm text-on-surface-variant"></div>
+              </section>
+            </div>
+          </article>
+        </section>
+      </section>
+
       <!-- ═══ CAMERA DETAIL VIEW ═══ -->
       <section id="camera-detail-view" data-view="camera-detail" class="hidden space-y-8">
         <!-- Breadcrumb / back -->
@@ -420,7 +579,7 @@
             <p id="cd-speeds" class="text-5xl font-black tracking-tighter">0</p>
           </article>
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
-            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Safety Events</p>
             <p id="cd-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
           </article>
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
@@ -447,22 +606,41 @@
               <dl id="cd-config-list" class="space-y-4"></dl>
             </section>
 
+            <section class="bg-surface-container-lowest p-6">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detection Breakdown</h3>
+                <span id="cd-detection-breakdown-total" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+              </div>
+              <div id="cd-detection-breakdown" class="space-y-4">
+                <p class="text-sm text-on-surface-variant">No detection data for this camera.</p>
+              </div>
+            </section>
+
             <!-- Violation type breakdown -->
             <section class="bg-black p-6 text-white">
               <div class="mb-5 flex items-center justify-between">
-                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Violation Breakdown</h3>
+                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Safety Event Breakdown</h3>
               </div>
               <div id="cd-violation-breakdown" class="space-y-4">
-                <p class="text-sm text-white/50">No violations for this camera.</p>
+                <p class="text-sm text-white/50">No safety events for this camera.</p>
               </div>
             </section>
 
             <section class="bg-surface-container-lowest p-6">
               <div class="mb-5 flex items-center justify-between">
-                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Crossing Breakdown</h3>
+                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Line Activity</h3>
               </div>
               <div id="cd-crossing-breakdown" class="space-y-4">
                 <p class="text-sm text-on-surface-variant">No crossing events for this camera.</p>
+              </div>
+            </section>
+
+            <section class="bg-black p-6 text-white">
+              <div class="mb-5 flex items-center justify-between">
+                <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">Crossing Speed Context</h3>
+              </div>
+              <div id="cd-crossing-speed-metrics" class="space-y-4">
+                <p class="text-sm text-white/50">No crossing speed metrics for this camera.</p>
               </div>
             </section>
           </div>
@@ -494,7 +672,7 @@
             <!-- Recent violations -->
             <section class="bg-surface-container-lowest p-6">
               <div class="mb-5 flex items-center justify-between">
-                <h3 class="text-lg font-black tracking-tight">Recent Violations</h3>
+                <h3 class="text-lg font-black tracking-tight">Recent Safety Events</h3>
                 <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Latest 20 records</p>
               </div>
               <div class="overflow-x-auto">
@@ -544,9 +722,9 @@
         <!-- Hero stats row (inspired by violations_log_2) -->
         <div class="grid grid-cols-1 gap-0 md:grid-cols-3">
           <article class="bg-surface-container-lowest p-8 border-l-4 border-black">
-            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Total Violations</p>
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Total Safety Events</p>
             <p id="vl-total" class="mt-3 text-[3.5rem] font-black tracking-tighter leading-none">0</p>
-            <p id="vl-copy" class="mt-3 text-xs text-on-surface-variant">No violations recorded yet.</p>
+            <p id="vl-copy" class="mt-3 text-xs text-on-surface-variant">No safety events recorded yet.</p>
           </article>
           <article class="bg-surface-container-lowest p-8 border-l-4 border-outline-variant">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Most Common Type</p>
@@ -610,7 +788,7 @@
           <!-- By Type -->
           <section class="bg-black p-8 text-white">
             <div class="mb-6 flex items-center justify-between">
-              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">By Violation Type</h3>
+              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em]">By Safety Event Type</h3>
               <span id="vl-type-count-label" class="text-[10px] text-white/40 uppercase tracking-[0.15em]"></span>
             </div>
             <div id="vl-type-bars" class="space-y-4"></div>
@@ -631,7 +809,7 @@
           <article class="bg-surface-container-lowest p-8 xl:col-span-5">
             <div class="mb-6 flex items-center justify-between">
               <div>
-                <h3 class="text-xl font-black tracking-tight">Zone-Based Violations</h3>
+                <h3 class="text-xl font-black tracking-tight">Zone-Based Safety Events</h3>
                 <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Crossing and stop-line enforcement</p>
               </div>
               <span id="vl-zone-count-label" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
@@ -641,7 +819,7 @@
           <article class="bg-black p-8 text-white xl:col-span-7">
             <div class="mb-6 flex items-center justify-between">
               <div>
-                <h3 class="text-xl font-black tracking-tight">Behavioral Violations</h3>
+                <h3 class="text-xl font-black tracking-tight">Behavioral Safety Events</h3>
                 <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">Speed, helmet, rider-count, stoppage</p>
               </div>
               <span id="vl-behavior-count-label" class="text-[10px] uppercase tracking-[0.2em] text-white/40"></span>
@@ -736,12 +914,24 @@
       summary: null,
       byCamera: [],
       violations: [],
-      crossings: { total_crossings: 0, directions: [], classes: [], lines: [] },
+      detectionsAnalytics: { total_detections: 0, classes: [], cameras: [] },
+      crossings: {
+        total_crossings: 0,
+        directions: [],
+        classes: [],
+        lines: [],
+        counts_by_direction: {},
+        counts_by_class: {},
+        counts_by_line: {},
+        flow_rate_per_minute: 0,
+        speed_metrics_by_class: {},
+      },
       speedDist: [],
       cameraDefaults: {},
       cameraConfigs: [],
       liveFeeds: {},
       recent: { detections: [], speeds: [], violations: [], crossings: [] },
+      cameraDetailData: null,
       violationLog: { items: [], total: 0, page: 1, pages: 0, pageSize: 25 },
       violationLogFilters: { type: "", camera: "", search: "" },
       filters: {
@@ -752,9 +942,22 @@
       activeView: "overview",
       currentCameraDetailId: null,
       isRefreshing: false,
+      liveStream: {
+        source: null,
+        reconnectTimer: null,
+        status: "connecting",
+        lastUpdateAt: null,
+      },
+      setup: {
+        frame: null,
+        lines: [],
+        zebraZones: [],
+        draftMode: null,
+        draftPoints: [],
+      },
     };
 
-    const LIVE_REFRESH_INTERVAL_MS = 5000;
+    const DASHBOARD_FILE_MODE = window.location.protocol === "file:";
 
     const CONFIG_FIELDS = [
       ["location", "Location"],
@@ -791,11 +994,16 @@
       }).format(date);
     }
 
+    function formatObjectClassLabel(value) {
+      if (!value) return "Unknown";
+      return String(value).replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase());
+    }
+
     function getViolationMeta(type) {
       return VIOLATION_META[type] || {
-        label: type ? type.replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "Unknown Violation",
+        label: type ? type.replaceAll("_", " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "Unknown Safety Event",
         chip: "bg-black text-white",
-        description: "Violation captured by the current rules engine."
+        description: "Safety event captured by the current rules engine."
       };
     }
 
@@ -925,6 +1133,258 @@
       });
     }
 
+    function initializeDashboardSurface() {
+      const fileModeBanner = document.getElementById("file-mode-banner");
+      if (!fileModeBanner) return;
+      fileModeBanner.classList.toggle("hidden", !DASHBOARD_FILE_MODE);
+    }
+
+    function setSetupStatus(message) {
+      const status = document.getElementById("setup-status");
+      if (status) status.textContent = message;
+    }
+
+    function getSetupPayload() {
+      return {
+        camera_id: document.getElementById("setup-camera-id").value.trim(),
+        source: document.getElementById("setup-source").value.trim(),
+        location: document.getElementById("setup-location").value.trim(),
+        target_fps: document.getElementById("setup-target-fps").value ? Number(document.getElementById("setup-target-fps").value) : null,
+        pixels_per_meter: document.getElementById("setup-ppm").value ? Number(document.getElementById("setup-ppm").value) : null,
+        speed_limit_kmh: document.getElementById("setup-speed-limit").value ? Number(document.getElementById("setup-speed-limit").value) : null,
+      };
+    }
+
+    function resetSetupDraft(mode = null) {
+      state.setup.draftMode = mode;
+      state.setup.draftPoints = [];
+      renderSetupOverlay();
+    }
+
+    function renderSetupCollections() {
+      const linesList = document.getElementById("setup-lines-list");
+      const zebraList = document.getElementById("setup-zebra-list");
+      const lineCount = document.getElementById("setup-line-count");
+      const zebraCount = document.getElementById("setup-zebra-count");
+      if (!linesList || !zebraList) return;
+
+      lineCount.textContent = `${state.setup.lines.length} configured`;
+      zebraCount.textContent = `${state.setup.zebraZones.length} configured`;
+
+      linesList.innerHTML = state.setup.lines.length
+        ? state.setup.lines.map((line) => `
+            <div class="border border-black/5 p-3">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">${line.label}</p>
+                  <p class="mt-1 text-xs text-on-surface-variant">${line.points.map((point) => `[${point[0]}, ${point[1]}]`).join(" → ")}</p>
+                </div>
+                <button data-setup-remove-line="${line.id}" class="text-[10px] font-bold uppercase tracking-[0.2em] text-error">Remove</button>
+              </div>
+            </div>
+          `).join("")
+        : `<p class="text-sm text-on-surface-variant">No counting lines drawn yet.</p>`;
+
+      zebraList.innerHTML = state.setup.zebraZones.length
+        ? state.setup.zebraZones.map((zone) => `
+            <div class="border border-black/5 p-3">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">${zone.label}</p>
+                  <p class="mt-1 text-xs text-on-surface-variant">${zone.points.length} points</p>
+                </div>
+                <button data-setup-remove-zebra="${zone.id}" class="text-[10px] font-bold uppercase tracking-[0.2em] text-error">Remove</button>
+              </div>
+            </div>
+          `).join("")
+        : `<p class="text-sm text-on-surface-variant">No zebra zones drawn yet.</p>`;
+
+      linesList.querySelectorAll("[data-setup-remove-line]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.setup.lines = state.setup.lines.filter((line) => line.id !== button.dataset.setupRemoveLine);
+          renderSetup();
+        });
+      });
+      zebraList.querySelectorAll("[data-setup-remove-zebra]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.setup.zebraZones = state.setup.zebraZones.filter((zone) => zone.id !== button.dataset.setupRemoveZebra);
+          renderSetup();
+        });
+      });
+    }
+
+    function renderSetupOverlay() {
+      const overlay = document.getElementById("setup-preview-overlay");
+      const previewImage = document.getElementById("setup-preview-image");
+      if (!overlay || !previewImage) return;
+      if (!state.setup.frame) {
+        overlay.classList.add("hidden");
+        overlay.innerHTML = "";
+        return;
+      }
+      overlay.classList.remove("hidden");
+      const width = state.setup.frame.width;
+      const height = state.setup.frame.height;
+      const zebraMarkup = state.setup.zebraZones.map((zone) => `
+        <polygon points="${zone.points.map((point) => point.join(",")).join(" ")}" fill="rgba(16, 185, 129, 0.18)" stroke="#10b981" stroke-width="4" vector-effect="non-scaling-stroke"></polygon>
+      `).join("");
+      const lineMarkup = state.setup.lines.map((line) => `
+        <g>
+          <line x1="${line.points[0][0]}" y1="${line.points[0][1]}" x2="${line.points[1][0]}" y2="${line.points[1][1]}" stroke="#38bdf8" stroke-width="6" stroke-dasharray="18 10" vector-effect="non-scaling-stroke"></line>
+          <circle cx="${line.points[0][0]}" cy="${line.points[0][1]}" r="6" fill="#38bdf8"></circle>
+          <circle cx="${line.points[1][0]}" cy="${line.points[1][1]}" r="6" fill="#38bdf8"></circle>
+        </g>
+      `).join("");
+      const draftColor = state.setup.draftMode === "zebra" ? "#facc15" : "#f472b6";
+      const draftMarkup = state.setup.draftPoints.length
+        ? `
+          <polyline points="${state.setup.draftPoints.map((point) => point.join(",")).join(" ")}" fill="${state.setup.draftMode === "zebra" ? "rgba(250, 204, 21, 0.16)" : "none"}" stroke="${draftColor}" stroke-width="4" ${state.setup.draftMode === "zebra" ? "" : "stroke-dasharray=\"12 8\""} vector-effect="non-scaling-stroke"></polyline>
+          ${state.setup.draftPoints.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="5" fill="${draftColor}"></circle>`).join("")}
+        `
+        : "";
+      overlay.innerHTML = `
+        <svg id="setup-overlay-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="h-full w-full cursor-crosshair">
+          ${zebraMarkup}
+          ${lineMarkup}
+          ${draftMarkup}
+        </svg>
+      `;
+      const svg = document.getElementById("setup-overlay-svg");
+      svg.addEventListener("click", handleSetupOverlayClick);
+    }
+
+    function renderSetup() {
+      const frameMeta = document.getElementById("setup-frame-meta");
+      const previewImage = document.getElementById("setup-preview-image");
+      const previewEmpty = document.getElementById("setup-preview-empty");
+      if (!frameMeta || !previewImage || !previewEmpty) return;
+
+      if (state.setup.frame) {
+        frameMeta.textContent = `${state.setup.frame.width} × ${state.setup.frame.height}`;
+        previewImage.src = state.setup.frame.previewUrl;
+        previewImage.classList.remove("hidden");
+        previewEmpty.classList.add("hidden");
+      } else {
+        frameMeta.textContent = "No frame loaded";
+        previewImage.classList.add("hidden");
+        previewEmpty.classList.remove("hidden");
+      }
+
+      renderSetupOverlay();
+      renderSetupCollections();
+    }
+
+    function nextSetupLineId() {
+      return `count_line_${state.setup.lines.length + 1}`;
+    }
+
+    function nextSetupZebraId() {
+      return `zebra_crossing_${state.setup.zebraZones.length + 1}`;
+    }
+
+    function handleSetupOverlayClick(event) {
+      if (!state.setup.frame || !state.setup.draftMode) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = Math.round(((event.clientX - rect.left) / rect.width) * state.setup.frame.width);
+      const y = Math.round(((event.clientY - rect.top) / rect.height) * state.setup.frame.height);
+      state.setup.draftPoints.push([x, y]);
+
+      if (state.setup.draftMode === "line" && state.setup.draftPoints.length === 2) {
+        const lineId = nextSetupLineId();
+        state.setup.lines.push({
+          id: lineId,
+          label: `Count Line ${state.setup.lines.length + 1}`,
+          points: [...state.setup.draftPoints],
+        });
+        setSetupStatus(`Saved ${state.setup.lines[state.setup.lines.length - 1].label}.`);
+        resetSetupDraft(null);
+        renderSetup();
+        return;
+      }
+
+      renderSetupOverlay();
+    }
+
+    async function loadSetupPreview() {
+      const payload = getSetupPayload();
+      if (!payload.camera_id || !payload.source) {
+        setSetupStatus("Enter a camera ID and source before loading a frame.");
+        return;
+      }
+      setSetupStatus("Loading preview frame…");
+      try {
+        const data = await postJson("/setup/preview-frame", {
+          camera_id: payload.camera_id,
+          source: payload.source,
+        });
+        state.setup.frame = {
+          cameraId: data.camera_id,
+          previewUrl: data.preview_url,
+          width: data.width,
+          height: data.height,
+        };
+        state.setup.lines = [];
+        state.setup.zebraZones = [];
+        resetSetupDraft(null);
+        renderSetup();
+        setSetupStatus("Preview frame loaded. Draw counting lines and zebra zones on the image.");
+      } catch (error) {
+        console.error(error);
+        setSetupStatus(error.message);
+      }
+    }
+
+    function finishSetupShape() {
+      if (state.setup.draftMode !== "zebra") {
+        setSetupStatus("Finish Zone only applies to a zebra polygon draft.");
+        return;
+      }
+      if (state.setup.draftPoints.length < 3) {
+        setSetupStatus("A zebra zone needs at least three points.");
+        return;
+      }
+      const zoneId = nextSetupZebraId();
+      state.setup.zebraZones.push({
+        id: zoneId,
+        label: `Zebra Crossing ${state.setup.zebraZones.length + 1}`,
+        points: [...state.setup.draftPoints],
+      });
+      setSetupStatus(`Saved ${state.setup.zebraZones[state.setup.zebraZones.length - 1].label}.`);
+      resetSetupDraft(null);
+      renderSetup();
+    }
+
+    async function saveSetupConfig() {
+      const payload = getSetupPayload();
+      if (!payload.camera_id || !payload.source) {
+        setSetupStatus("Enter a camera ID and source before saving setup.");
+        return;
+      }
+      if (!state.setup.lines.length) {
+        setSetupStatus("Draw at least one counting line before saving.");
+        return;
+      }
+      if (!state.setup.zebraZones.length) {
+        setSetupStatus("Draw at least one zebra zone before saving.");
+        return;
+      }
+
+      setSetupStatus("Saving camera setup…");
+      try {
+        const response = await postJson("/setup/camera-config", {
+          ...payload,
+          preview_image_url: state.setup.frame ? state.setup.frame.previewUrl : null,
+          counting_lines: state.setup.lines,
+          zebra_zones: state.setup.zebraZones,
+        });
+        await refreshDashboard();
+        setSetupStatus(`Saved setup for ${response.camera.id} into cameras.yaml.`);
+      } catch (error) {
+        console.error(error);
+        setSetupStatus(error.message);
+      }
+    }
+
     function renderActiveView() {
       if (state.activeView === "overview") {
         renderOverview();
@@ -939,25 +1399,31 @@
         }
       } else if (state.activeView === "configs") {
         renderConfigs();
+      } else if (state.activeView === "setup") {
+        renderSetup();
       } else if (state.activeView === "violations") {
         renderViolations();
         renderViolationLogTable();
         renderViolationPagination();
       } else if (state.activeView === "camera-detail" && state.currentCameraDetailId) {
-        renderCameraDetailLivePreview(state.currentCameraDetailId);
+        renderCameraDetail(state.currentCameraDetailId);
       }
     }
 
     function switchView(viewName) {
+      const leavingCameraDetail = state.activeView === "camera-detail" && viewName !== "camera-detail";
+      if (leavingCameraDetail) {
+        state.currentCameraDetailId = null;
+        state.cameraDetailData = null;
+      }
       setActiveView(viewName);
       renderActiveView();
+      if (leavingCameraDetail) {
+        connectDashboardStream();
+      }
       if (viewName === "violations" && !state.isRefreshing) {
         loadViolationLog();
       }
-    }
-
-    function refreshCurrentView() {
-      return refreshDashboard({ loadViolationLog: state.activeView === "violations" });
     }
 
     function liveSnapshotUrl(cameraId) {
@@ -1032,6 +1498,29 @@
       return response.json();
     }
 
+    async function postJson(url, payload) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        let message = `Request failed for ${url}: ${response.status}`;
+        try {
+          const data = await response.json();
+          if (data?.detail) {
+            message = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+          }
+        } catch (error) {
+          // Ignore JSON parsing failures and keep the generic message.
+        }
+        throw new Error(message);
+      }
+      return response.json();
+    }
+
     function buildQuery(params) {
       const search = new URLSearchParams();
       Object.entries(params).forEach(([key, value]) => {
@@ -1064,6 +1553,143 @@
         ? `${startLabel} to ${endLabel}`
         : "all recorded time";
       document.getElementById("active-scope").textContent = `Scope: ${cameraLabel}, ${timeLabel}`;
+    }
+
+    function setLiveStatus(status, timestamp = null) {
+      state.liveStream.status = status;
+      if (timestamp) {
+        state.liveStream.lastUpdateAt = timestamp;
+      }
+
+      const pill = document.getElementById("stream-status-pill");
+      const dot = document.getElementById("stream-status-dot");
+      const label = document.getElementById("stream-status-label");
+      const detail = document.getElementById("last-updated");
+
+      pill.className = "rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]";
+      if (status === "live") {
+        pill.classList.add("bg-emerald-100", "text-emerald-950");
+        dot.className = "mr-2 inline-block h-2 w-2 rounded-full bg-emerald-500 align-middle";
+        label.textContent = "Live";
+      } else if (status === "reconnecting") {
+        pill.classList.add("bg-amber-100", "text-amber-950");
+        dot.className = "mr-2 inline-block h-2 w-2 rounded-full bg-amber-500 align-middle";
+        label.textContent = "Reconnecting";
+      } else if (status === "disconnected") {
+        pill.classList.add("bg-red-100", "text-red-950");
+        dot.className = "mr-2 inline-block h-2 w-2 rounded-full bg-red-500 align-middle";
+        label.textContent = "Disconnected";
+      } else {
+        pill.classList.add("bg-surface-container", "text-on-surface");
+        dot.className = "mr-2 inline-block h-2 w-2 rounded-full bg-slate-500 align-middle";
+        label.textContent = "Connecting";
+      }
+
+      if (state.liveStream.lastUpdateAt) {
+        detail.textContent = `${label.textContent} • ${formatTimestamp(state.liveStream.lastUpdateAt)}`;
+      } else if (status === "reconnecting") {
+        detail.textContent = "Reconnecting to live analytics…";
+      } else if (status === "disconnected") {
+        detail.textContent = "Live analytics stream disconnected";
+      } else {
+        detail.textContent = "Connecting to live analytics…";
+      }
+    }
+
+    function currentFilterParams() {
+      return {
+        camera_id: state.filters.cameraId,
+        start: normalizeDateInput(state.filters.start),
+        end: normalizeDateInput(state.filters.end),
+      };
+    }
+
+    function buildLiveStreamUrl() {
+      const params = currentFilterParams();
+      if (state.currentCameraDetailId) {
+        params.detail_camera_id = state.currentCameraDetailId;
+      }
+      return `/live/dashboard${buildQuery(params)}`;
+    }
+
+    function applyDashboardSnapshot(snapshot) {
+      state.summary = snapshot.summary || null;
+      state.byCamera = snapshot.by_camera?.cameras || [];
+      state.violations = snapshot.violations?.violations || [];
+      state.detectionsAnalytics = snapshot.detections || { total_detections: 0, classes: [], cameras: [] };
+      state.crossings = snapshot.crossings || {
+        total_crossings: 0,
+        directions: [],
+        classes: [],
+        lines: [],
+        counts_by_direction: {},
+        counts_by_class: {},
+        counts_by_line: {},
+        flow_rate_per_minute: 0,
+        speed_metrics_by_class: {},
+      };
+      state.recent = snapshot.recent || { detections: [], speeds: [], violations: [], crossings: [] };
+      state.speedDist = snapshot.speed_distribution?.buckets || [];
+      state.cameraDefaults = snapshot.camera_configs?.defaults || {};
+      state.cameraConfigs = snapshot.camera_configs?.cameras || [];
+      state.liveFeeds = Object.fromEntries((snapshot.live_feeds?.cameras || []).map((camera) => [camera.camera_id, camera]));
+      state.cameraDetailData = snapshot.camera_detail || null;
+      renderActiveView();
+      if (state.activeView === "violations" && state.violationLog.page === 1) {
+        loadViolationLog(true);
+      }
+      setLiveStatus("live", snapshot.stream?.generated_at || new Date().toISOString());
+    }
+
+    function disconnectDashboardStream() {
+      if (state.liveStream.source) {
+        state.liveStream.source.close();
+        state.liveStream.source = null;
+      }
+      if (state.liveStream.reconnectTimer) {
+        clearTimeout(state.liveStream.reconnectTimer);
+        state.liveStream.reconnectTimer = null;
+      }
+    }
+
+    function connectDashboardStream() {
+      disconnectDashboardStream();
+      if (DASHBOARD_FILE_MODE) {
+        setLiveStatus("disconnected");
+        const detail = document.getElementById("last-updated");
+        if (detail) {
+          detail.textContent = "Open http://127.0.0.1:8000/dashboard/ for the live MVP";
+        }
+        return;
+      }
+      setLiveStatus("connecting");
+      if (!window.EventSource) {
+        refreshDashboard();
+        return;
+      }
+      const source = new EventSource(buildLiveStreamUrl());
+      state.liveStream.source = source;
+      source.addEventListener("open", () => setLiveStatus("live", state.liveStream.lastUpdateAt));
+      source.addEventListener("snapshot", (event) => {
+        try {
+          applyDashboardSnapshot(JSON.parse(event.data));
+        } catch (error) {
+          console.error("Failed to parse live dashboard snapshot", error);
+        }
+      });
+      source.addEventListener("error", () => {
+        if (state.liveStream.source) {
+          state.liveStream.source.close();
+          state.liveStream.source = null;
+        }
+        setLiveStatus("reconnecting");
+        if (!state.liveStream.reconnectTimer) {
+          state.liveStream.reconnectTimer = setTimeout(() => {
+            state.liveStream.reconnectTimer = null;
+            connectDashboardStream();
+          }, 2000);
+        }
+      });
     }
 
     function populateCameraOptions() {
@@ -1110,7 +1736,7 @@
               <div class="text-right text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
                 <div>Detections ${camera.detections}</div>
                 <div>Speeds ${camera.speeds}</div>
-                <div>Violations ${camera.violations}</div>
+                <div>Safety Events ${camera.violations}</div>
                 <div>Crossings ${camera.crossings || 0}</div>
               </div>
             </div>
@@ -1126,7 +1752,7 @@
       const violationTotal = document.getElementById("violation-breakdown-total");
       violationBreakdown.innerHTML = "";
       if (!state.violations.length) {
-        violationBreakdown.innerHTML = '<p class="text-sm text-white/70">No violations available yet.</p>';
+        violationBreakdown.innerHTML = '<p class="text-sm text-white/70">No safety events available yet.</p>';
         violationTotal.textContent = "";
       } else {
         const totalCount = state.violations.reduce((s, i) => s + i.count, 0);
@@ -1156,7 +1782,51 @@
           `;
           violationBreakdown.appendChild(block);
         });
-        violationTotal.textContent = `${totalCount} total violations across ${sorted.length} type${sorted.length !== 1 ? "s" : ""}`;
+        violationTotal.textContent = `${totalCount} total safety events across ${sorted.length} type${sorted.length !== 1 ? "s" : ""}`;
+      }
+
+      const detectionBreakdown = document.getElementById("detection-class-breakdown");
+      const detectionTotal = document.getElementById("detection-class-total");
+      const detectionNote = document.getElementById("detection-class-note");
+      const detectionClasses = state.detectionsAnalytics?.classes || [];
+      detectionBreakdown.innerHTML = "";
+      detectionTotal.textContent = detectionClasses.length
+        ? `${(summary.total_detections_logged ?? 0).toLocaleString()} detections across ${detectionClasses.length} class${detectionClasses.length !== 1 ? "es" : ""}`
+        : "No detection classes in scope";
+
+      if (!detectionClasses.length) {
+        detectionBreakdown.innerHTML = '<p class="text-sm text-on-surface-variant">No detection class data in the current scope.</p>';
+        detectionNote.textContent = "Detection counts will appear here once class-level activity is available in the current scope.";
+      } else {
+        const maxClassCount = Math.max(...detectionClasses.map((item) => item.count), 1);
+        const totalDetectionClassCount = detectionClasses.reduce((sum, item) => sum + item.count, 0);
+        detectionClasses
+          .slice()
+          .sort((a, b) => b.count - a.count)
+          .forEach((item, idx) => {
+            const width = (item.count / maxClassCount) * 100;
+            const pct = Math.round((item.count / totalDetectionClassCount) * 100);
+            const block = document.createElement("div");
+            block.innerHTML = `
+              <div class="mb-1 flex items-baseline justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-[9px] font-bold tabular-nums text-on-surface-variant">${String(idx + 1).padStart(2, "0")}</span>
+                  <span class="text-[10px] font-bold uppercase tracking-[0.15em]">${formatObjectClassLabel(item.class)}</span>
+                </div>
+                <div class="flex items-baseline gap-2">
+                  <span class="text-[10px] text-on-surface-variant">${pct}%</span>
+                  <span class="text-sm font-black tabular-nums">${item.count.toLocaleString()}</span>
+                </div>
+              </div>
+              <div class="relative h-1.5 bg-surface-container overflow-hidden">
+                <div class="bar-fill absolute left-0 top-0 h-full bg-black" style="width:${width}%"></div>
+              </div>
+            `;
+            detectionBreakdown.appendChild(block);
+          });
+
+        const topClass = detectionClasses.slice().sort((a, b) => b.count - a.count)[0];
+        detectionNote.textContent = `${formatObjectClassLabel(topClass.class)} is the most frequently observed class in the current scope with ${topClass.count.toLocaleString()} detections.`;
       }
 
       const coverage = document.getElementById("rule-coverage");
@@ -1199,10 +1869,10 @@
       const zoneTotal = zoneViolations.reduce((sum, item) => sum + item.count, 0);
       zoneCount.textContent = zoneViolations.length
         ? `${zoneTotal} event${zoneTotal !== 1 ? "s" : ""} across ${zoneViolations.length} rule${zoneViolations.length !== 1 ? "s" : ""}`
-        : "No zone-based violations in current scope";
+        : "No zone-based safety events in current scope";
 
       if (!zoneViolations.length) {
-        zoneSummary.innerHTML = '<p class="text-sm text-on-surface-variant">No zone-based violations recorded in the current scope.</p>';
+        zoneSummary.innerHTML = '<p class="text-sm text-on-surface-variant">No zone-based safety events recorded in the current scope.</p>';
         zoneNote.innerHTML = '<p>Configured zones are ready, but nothing in the filtered window crossed a monitored stop line or active crossing.</p>';
       } else {
         zoneViolations
@@ -1230,22 +1900,29 @@
 
         const activeCameras = state.byCamera.filter((camera) => camera.violations > 0).length;
         zoneNote.innerHTML = `
-          <p>${zoneTotal} zone-aware violation${zoneTotal !== 1 ? "s" : ""} recorded in the current scope.</p>
+          <p>${zoneTotal} zone-aware safety event${zoneTotal !== 1 ? "s" : ""} recorded in the current scope.</p>
           <p>${activeCameras} camera${activeCameras !== 1 ? "s" : ""} currently show persisted enforcement activity.</p>
         `;
       }
 
       const directionBars = document.getElementById("crossing-direction-bars");
       const directionTotal = document.getElementById("crossing-direction-total");
+      const classBars = document.getElementById("crossing-class-bars");
+      const classTotal = document.getElementById("crossing-class-total");
       const lineBars = document.getElementById("crossing-line-bars");
       const lineTotal = document.getElementById("crossing-line-total");
+      const flowRate = document.getElementById("crossing-flow-rate");
       const directionItems = state.crossings?.directions || [];
+      const classItems = state.crossings?.classes || [];
       const lineItems = state.crossings?.lines || [];
       const crossingTotal = state.crossings?.total_crossings || 0;
       directionBars.innerHTML = "";
+      classBars.innerHTML = "";
       lineBars.innerHTML = "";
       directionTotal.textContent = crossingTotal ? `${crossingTotal.toLocaleString()} events` : "No flow events";
+      classTotal.textContent = classItems.length ? `${classItems.length} class${classItems.length !== 1 ? "es" : ""}` : "No class data";
       lineTotal.textContent = lineItems.length ? `${lineItems.length} line${lineItems.length !== 1 ? "s" : ""}` : "";
+      flowRate.textContent = `${(state.crossings?.flow_rate_per_minute || 0).toFixed(2)} / min`;
 
       if (!directionItems.length) {
         directionBars.innerHTML = '<p class="text-sm text-on-surface-variant">No directional crossings in the current scope.</p>';
@@ -1267,6 +1944,29 @@
             </div>
           `;
           directionBars.appendChild(row);
+        });
+      }
+
+      if (!classItems.length) {
+        classBars.innerHTML = '<p class="text-sm text-on-surface-variant">No class-attributed crossings in the current scope.</p>';
+      } else {
+        const maxClass = Math.max(...classItems.map((item) => item.count), 1);
+        classItems.forEach((item, index) => {
+          const width = (item.count / maxClass) * 100;
+          const row = document.createElement("div");
+          row.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-on-surface-variant">${String(index + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em]">${formatObjectClassLabel(item.class)}</span>
+              </div>
+              <span class="text-sm font-black tabular-nums">${item.count}</span>
+            </div>
+            <div class="relative h-1.5 bg-surface-container overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-black" style="width:${width}%"></div>
+            </div>
+          `;
+          classBars.appendChild(row);
         });
       }
 
@@ -1350,7 +2050,7 @@
                   ${severityLabel}
                   <span class="${healthMeta.chip} px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em]">${healthMeta.label}</span>
                 </div>
-                <p class="mt-2 text-[10px] text-white/40">Violation rate</p>
+                <p class="mt-2 text-[10px] text-white/40">Safety event rate</p>
                 <p class="text-lg font-black tabular-nums">${violationRate}%</p>
               </div>
             </div>
@@ -1364,7 +2064,7 @@
                 <div class="bar-fill h-full bg-white" style="width:${dPct}%" title="Detections"></div>
                 <div class="bar-fill h-full bg-white/50" style="width:${sPct}%" title="Speeds"></div>
                 <div class="bar-fill h-full bg-sky-400" style="width:${cPct}%" title="Crossings"></div>
-                <div class="bar-fill h-full bg-error" style="width:${vPct}%" title="Violations"></div>
+                <div class="bar-fill h-full bg-error" style="width:${vPct}%" title="Safety Events"></div>
               </div>
               <div class="mt-2 flex gap-4 text-[9px] uppercase tracking-[0.15em] text-white/40">
                 <span class="flex items-center gap-1"><span class="inline-block h-1.5 w-3 bg-white"></span>Det</span>
@@ -1385,7 +2085,7 @@
                 <p class="mt-2 text-2xl font-black tracking-tighter">${camera.speeds.toLocaleString()}</p>
               </div>
               <div class="bg-surface-container-low p-4">
-                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Violations</p>
+                <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Safety Events</p>
                 <p class="mt-2 text-2xl font-black tracking-tighter text-error">${camera.violations.toLocaleString()}</p>
               </div>
               <div class="bg-surface-container-low p-4">
@@ -1709,8 +2409,8 @@
       const totalViolations = state.summary?.total_violations_logged ?? 0;
       document.getElementById("vl-total").textContent = totalViolations.toLocaleString();
       document.getElementById("vl-copy").textContent = totalViolations
-        ? `${totalViolations.toLocaleString()} violations persisted in current scope.`
-        : "No violations recorded yet.";
+        ? `${totalViolations.toLocaleString()} safety events persisted in current scope.`
+        : "No safety events recorded yet.";
 
       // Top type
       const sorted = [...state.violations].sort((a, b) => b.count - a.count);
@@ -1720,13 +2420,13 @@
       document.getElementById("vl-top-type").textContent = topType
         ? topTypeMeta.label : "—";
       document.getElementById("vl-top-type-pct").textContent = topType
-        ? `${pct}% of total violations. ${topTypeMeta.description}` : "";
+        ? `${pct}% of total safety events. ${topTypeMeta.description}` : "";
 
       // Top camera
       const topCamera = [...state.byCamera].sort((a, b) => b.violations - a.violations)[0];
       document.getElementById("vl-top-camera").textContent = topCamera ? topCamera.camera_id : "—";
       document.getElementById("vl-top-camera-count").textContent = topCamera
-        ? `${topCamera.violations.toLocaleString()} violations recorded` : "";
+        ? `${topCamera.violations.toLocaleString()} safety events recorded` : "";
 
       // Populate type filter dropdown
       const typeSelect = document.getElementById("vl-type-filter");
@@ -1759,7 +2459,7 @@
       document.getElementById("vl-type-count-label").textContent =
         sorted.length ? `${sorted.length} type${sorted.length !== 1 ? "s" : ""}` : "";
       if (!sorted.length) {
-        typeBars.innerHTML = '<p class="text-sm text-white/50">No violation data.</p>';
+        typeBars.innerHTML = '<p class="text-sm text-white/50">No safety event data.</p>';
       } else {
         const maxC = Math.max(...sorted.map(i => i.count), 1);
         sorted.forEach((item, idx) => {
@@ -1830,7 +2530,7 @@
 
       renderSegmentBars(zoneBars, zoneTypes, {
         emptyClass: "text-on-surface-variant",
-        emptyText: "No zone-based violations in the current scope.",
+        emptyText: "No zone-based safety events in the current scope.",
         indexClass: "text-on-surface-variant",
         labelClass: "text-on-surface",
         valueClass: "text-on-surface",
@@ -1840,7 +2540,7 @@
       });
       renderSegmentBars(behaviorBars, behaviorTypes, {
         emptyClass: "text-white/50",
-        emptyText: "No behavioral violations in the current scope.",
+        emptyText: "No behavioral safety events in the current scope.",
         indexClass: "text-white/30",
         labelClass: "text-white",
         valueClass: "text-white",
@@ -1887,7 +2587,7 @@
       const tbody = document.getElementById("vl-table");
       tbody.innerHTML = "";
       if (!state.violationLog.items.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-sm text-on-surface-variant">No violation records match the current filters.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-sm text-on-surface-variant">No safety event records match the current filters.</td></tr>';
         return;
       }
       state.violationLog.items.forEach((v, idx) => {
@@ -1963,6 +2663,14 @@
     async function openCameraDetail(cameraId) {
       setActiveView("camera-detail");
       state.currentCameraDetailId = cameraId;
+      connectDashboardStream();
+      renderCameraDetail(cameraId);
+    }
+
+    function renderCameraDetail(cameraId) {
+      const cameraDetail = state.cameraDetailData && state.cameraDetailData.camera_id === cameraId
+        ? state.cameraDetailData
+        : null;
 
       // Header
       document.getElementById("camera-detail-breadcrumb").textContent = cameraId;
@@ -2006,28 +2714,24 @@
 
       // Summary counts (from cached byCamera state)
       const camStats = state.byCamera.find(c => c.camera_id === cameraId) || { detections: 0, speeds: 0, violations: 0, crossings: 0 };
-      document.getElementById("cd-detections").textContent = camStats.detections.toLocaleString();
-      document.getElementById("cd-speeds").textContent = camStats.speeds.toLocaleString();
-      document.getElementById("cd-violations").textContent = camStats.violations.toLocaleString();
-      document.getElementById("cd-crossings").textContent = (camStats.crossings || 0).toLocaleString();
+      const detailStats = cameraDetail?.camera_stats || camStats;
+      document.getElementById("cd-detections").textContent = detailStats.detections.toLocaleString();
+      document.getElementById("cd-speeds").textContent = detailStats.speeds.toLocaleString();
+      document.getElementById("cd-violations").textContent = detailStats.violations.toLocaleString();
+      document.getElementById("cd-crossings").textContent = (detailStats.crossings || 0).toLocaleString();
 
-      // Fetch per-camera recent events + violation breakdown in parallel
-      try {
-        const q = buildQuery({ camera_id: cameraId, limit: 20 });
-        const [recent, breakdown, crossingAnalytics] = await Promise.all([
-          loadJson(`/events/recent${q}`),
-          loadJson(`/analytics/violations${buildQuery({ camera_id: cameraId })}`),
-          loadJson(`/analytics/crossings${buildQuery({ camera_id: cameraId })}`),
-        ]);
+      const recent = cameraDetail?.recent || { detections: [], violations: [], crossings: [] };
+      const breakdown = cameraDetail?.violations || { violations: [] };
+      const crossingAnalytics = cameraDetail?.crossings || { lines: [], speed_metrics_by_class: {} };
+      const detectionAnalytics = cameraDetail?.detections || { classes: [], total_detections: 0 };
 
-        renderCameraDetailDetections(recent.detections || []);
-        renderCameraDetailViolations(recent.violations || []);
-        renderCameraDetailCrossings(recent.crossings || []);
-        renderCameraDetailBreakdown(breakdown.violations || []);
-        renderCameraDetailCrossingBreakdown(crossingAnalytics.lines || []);
-      } catch (err) {
-        console.error("Camera detail fetch failed", err);
-      }
+      renderCameraDetailDetections(recent.detections || []);
+      renderCameraDetailViolations(recent.violations || []);
+      renderCameraDetailCrossings(recent.crossings || []);
+      renderCameraDetailBreakdown(breakdown.violations || []);
+      renderCameraDetailCrossingBreakdown(crossingAnalytics.lines || []);
+      renderCameraDetailDetectionBreakdown(detectionAnalytics.classes || [], detectionAnalytics.total_detections || 0);
+      renderCameraDetailSpeedMetrics(crossingAnalytics.speed_metrics_by_class || {});
     }
 
     function renderCameraDetailLivePreview(cameraId) {
@@ -2091,6 +2795,7 @@
     }
 
     function refreshVisibleLiveSnapshots() {
+      if (DASHBOARD_FILE_MODE) return;
       if (state.activeView === "live") {
         document.querySelectorAll("[data-live-snapshot]").forEach((img) => {
           img.src = liveSnapshotUrlWithCacheBust(img.dataset.liveSnapshot);
@@ -2198,7 +2903,7 @@
       const tbody = document.getElementById("cd-violations-table");
       tbody.innerHTML = "";
       if (!violations.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-sm text-on-surface-variant">No violation records for this camera.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-6 text-sm text-on-surface-variant">No safety event records for this camera.</td></tr>';
         return;
       }
       violations.forEach((v, idx) => {
@@ -2250,7 +2955,7 @@
       const container = document.getElementById("cd-violation-breakdown");
       container.innerHTML = "";
       if (!violations.length) {
-        container.innerHTML = '<p class="text-sm text-white/50">No violations for this camera.</p>';
+        container.innerHTML = '<p class="text-sm text-white/50">No safety events for this camera.</p>';
         return;
       }
       const total = violations.reduce((s, i) => s + i.count, 0);
@@ -2279,6 +2984,40 @@
         `;
         container.appendChild(block);
       });
+    }
+
+    function renderCameraDetailDetectionBreakdown(classes, totalDetections = 0) {
+      const container = document.getElementById("cd-detection-breakdown");
+      const totalLabel = document.getElementById("cd-detection-breakdown-total");
+      container.innerHTML = "";
+      totalLabel.textContent = classes.length
+        ? `${totalDetections.toLocaleString()} total`
+        : "No class counts";
+      if (!classes.length) {
+        container.innerHTML = '<p class="text-sm text-on-surface-variant">No detection data for this camera.</p>';
+        return;
+      }
+      const max = Math.max(...classes.map((item) => item.count), 1);
+      classes
+        .slice()
+        .sort((a, b) => b.count - a.count)
+        .forEach((item, idx) => {
+          const width = (item.count / max) * 100;
+          const block = document.createElement("div");
+          block.innerHTML = `
+            <div class="mb-1 flex items-baseline justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[9px] font-bold tabular-nums text-on-surface-variant">${String(idx + 1).padStart(2, "0")}</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.15em]">${formatObjectClassLabel(item.class)}</span>
+              </div>
+              <span class="text-sm font-black tabular-nums">${item.count.toLocaleString()}</span>
+            </div>
+            <div class="relative h-1.5 bg-surface-container overflow-hidden">
+              <div class="bar-fill absolute left-0 top-0 h-full bg-black" style="width:${width}%"></div>
+            </div>
+          `;
+          container.appendChild(block);
+        });
     }
 
     function renderCameraDetailCrossingBreakdown(lines) {
@@ -2310,6 +3049,43 @@
         `;
         container.appendChild(block);
       });
+    }
+
+    function renderCameraDetailSpeedMetrics(metricsByClass) {
+      const container = document.getElementById("cd-crossing-speed-metrics");
+      container.innerHTML = "";
+      const entries = Object.entries(metricsByClass || {});
+      if (!entries.length) {
+        container.innerHTML = '<p class="text-sm text-white/50">No crossing speed metrics for this camera.</p>';
+        return;
+      }
+      entries
+        .sort((a, b) => (b[1].samples || 0) - (a[1].samples || 0))
+        .forEach(([className, metrics]) => {
+          const block = document.createElement("div");
+          block.className = "border border-white/10 bg-white/5 p-4";
+          block.innerHTML = `
+            <div class="mb-2 flex items-baseline justify-between gap-4">
+              <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">${formatObjectClassLabel(className)}</h4>
+              <span class="text-[10px] uppercase tracking-[0.15em] text-white/40">${metrics.samples || 0} samples</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p class="text-[9px] uppercase tracking-[0.15em] text-white/40">Avg</p>
+                <p class="mt-1 text-lg font-black">${metrics.avg_speed_kmh ?? "—"}</p>
+              </div>
+              <div>
+                <p class="text-[9px] uppercase tracking-[0.15em] text-white/40">P85</p>
+                <p class="mt-1 text-lg font-black">${metrics.p85_speed_kmh ?? "—"}</p>
+              </div>
+              <div>
+                <p class="text-[9px] uppercase tracking-[0.15em] text-white/40">Max</p>
+                <p class="mt-1 text-lg font-black">${metrics.max_speed_kmh ?? "—"}</p>
+              </div>
+            </div>
+          `;
+          container.appendChild(block);
+        });
     }
 
     function renderSpeedDistribution() {
@@ -2346,61 +3122,56 @@
     }
 
     async function refreshDashboard(options = {}) {
-      const {
-        resetViolationLogPage = false,
-        silent = false,
-        loadViolationLog: shouldLoadViolationLog = state.activeView === "violations",
-      } = options;
       if (state.isRefreshing) return;
       state.isRefreshing = true;
-      const refreshButton = document.getElementById("refresh-button");
-      if (!silent) {
-        refreshButton.disabled = true;
-        refreshButton.textContent = "Syncing";
-      }
       try {
-        const filterParams = {
-          camera_id: state.filters.cameraId,
-          start: normalizeDateInput(state.filters.start),
-          end: normalizeDateInput(state.filters.end)
-        };
-        const [summary, byCamera, violations, crossings, recent, speedDist, cameraConfigs, liveFeeds] = await Promise.all([
+        const filterParams = currentFilterParams();
+        const [summary, byCamera, violations, detectionsAnalytics, crossings, recent, speedDist, cameraConfigs, liveFeeds] = await Promise.all([
           loadJson(`/analytics/summary${buildQuery(filterParams)}`),
           loadJson(`/analytics/by-camera${buildQuery({ start: filterParams.start, end: filterParams.end })}`),
           loadJson(`/analytics/violations${buildQuery(filterParams)}`),
+          loadJson(`/analytics/detections${buildQuery(filterParams)}`),
           loadJson(`/analytics/crossings${buildQuery(filterParams)}`),
           loadJson(`/events/recent${buildQuery({ ...filterParams, limit: 20 })}`),
           loadJson(`/analytics/speed-distribution${buildQuery(filterParams)}`),
           loadJson(`/cameras/config`),
-          loadJson(`/live/cameras`)
+          loadJson(`/live/cameras`),
         ]);
-
-        state.summary = summary;
-        state.byCamera = byCamera.cameras || [];
-        state.violations = violations.violations || [];
-        state.crossings = crossings || { total_crossings: 0, directions: [], classes: [], lines: [] };
-        state.recent = recent;
-        state.speedDist = speedDist.buckets || [];
-        state.cameraDefaults = cameraConfigs.defaults || {};
-        state.cameraConfigs = cameraConfigs.cameras || [];
-        state.liveFeeds = Object.fromEntries((liveFeeds.cameras || []).map((camera) => [camera.camera_id, camera]));
-        if (resetViolationLogPage) {
-          state.violationLog.page = 1;
+        const snapshot = {
+          summary,
+          by_camera: byCamera,
+          violations,
+          detections: detectionsAnalytics,
+          crossings,
+          recent,
+          speed_distribution: speedDist,
+          camera_configs: cameraConfigs,
+          live_feeds: liveFeeds,
+          stream: { generated_at: new Date().toISOString() },
+        };
+        if (state.currentCameraDetailId) {
+          const cameraId = state.currentCameraDetailId;
+          const [cameraRecent, cameraViolations, cameraCrossings, cameraDetections] = await Promise.all([
+            loadJson(`/events/recent${buildQuery({ camera_id: cameraId, start: filterParams.start, end: filterParams.end, limit: 20 })}`),
+            loadJson(`/analytics/violations${buildQuery({ camera_id: cameraId, start: filterParams.start, end: filterParams.end })}`),
+            loadJson(`/analytics/crossings${buildQuery({ camera_id: cameraId, start: filterParams.start, end: filterParams.end })}`),
+            loadJson(`/analytics/detections${buildQuery({ camera_id: cameraId, start: filterParams.start, end: filterParams.end })}`),
+          ]);
+          snapshot.camera_detail = {
+            camera_id: cameraId,
+            camera_stats: (byCamera.cameras || []).find((camera) => camera.camera_id === cameraId) || { camera_id: cameraId, detections: 0, speeds: 0, violations: 0, crossings: 0 },
+            recent: cameraRecent,
+            violations: cameraViolations,
+            crossings: cameraCrossings,
+            detections: cameraDetections,
+          };
         }
-        renderActiveView();
-        if (shouldLoadViolationLog) {
-          await loadViolationLog();
-        }
-        document.getElementById("last-updated").textContent = new Date().toLocaleString();
+        applyDashboardSnapshot(snapshot);
       } catch (error) {
         console.error(error);
-        document.getElementById("last-updated").textContent = "Dashboard sync failed";
+        setLiveStatus("disconnected");
       } finally {
         state.isRefreshing = false;
-        if (!silent) {
-          refreshButton.disabled = false;
-          refreshButton.textContent = "Refresh Data";
-        }
       }
     }
 
@@ -2408,7 +3179,6 @@
       button.addEventListener("click", () => switchView(button.dataset.viewButton));
     });
     document.getElementById("camera-detail-back").addEventListener("click", () => switchView("cameras"));
-    document.getElementById("refresh-button").addEventListener("click", () => refreshCurrentView());
 
     document.getElementById("vl-apply").addEventListener("click", () => {
       state.violationLogFilters.type   = document.getElementById("vl-type-filter").value;
@@ -2432,23 +3202,59 @@
       state.filters.cameraId = document.getElementById("camera-filter").value;
       state.filters.start = document.getElementById("start-filter").value;
       state.filters.end = document.getElementById("end-filter").value;
-      refreshDashboard({ resetViolationLogPage: true });
+      state.violationLog.page = 1;
+      connectDashboardStream();
     });
     document.getElementById("clear-filters").addEventListener("click", () => {
       state.filters = { cameraId: "", start: "", end: "" };
       syncFilterInputs();
-      refreshDashboard({ resetViolationLogPage: true });
+      state.violationLog.page = 1;
+      connectDashboardStream();
     });
+
+    document.getElementById("setup-load-preview").addEventListener("click", loadSetupPreview);
+    document.getElementById("setup-new-line").addEventListener("click", () => {
+      if (!state.setup.frame) {
+        setSetupStatus("Load a preview frame before drawing.");
+        return;
+      }
+      resetSetupDraft("line");
+      setSetupStatus("Click two points on the frame to place a counting line.");
+    });
+    document.getElementById("setup-new-zebra").addEventListener("click", () => {
+      if (!state.setup.frame) {
+        setSetupStatus("Load a preview frame before drawing.");
+        return;
+      }
+      resetSetupDraft("zebra");
+      setSetupStatus("Click at least three points, then press Finish Zone.");
+    });
+    document.getElementById("setup-finish-shape").addEventListener("click", finishSetupShape);
+    document.getElementById("setup-undo-point").addEventListener("click", () => {
+      if (!state.setup.draftPoints.length) {
+        setSetupStatus("There is no draft point to undo.");
+        return;
+      }
+      state.setup.draftPoints.pop();
+      renderSetupOverlay();
+      setSetupStatus("Removed the last draft point.");
+    });
+    document.getElementById("setup-clear-draft").addEventListener("click", () => {
+      resetSetupDraft(null);
+      setSetupStatus("Cleared the active draft shape.");
+    });
+    document.getElementById("setup-save-config").addEventListener("click", saveSetupConfig);
 
     setActiveView("overview");
     syncFilterInputs();
-    refreshDashboard({ resetViolationLogPage: true });
-    setInterval(() => {
-      if (!document.hidden) {
-        refreshDashboard({ silent: true });
-      }
-    }, LIVE_REFRESH_INTERVAL_MS);
+    initializeDashboardSurface();
+    connectDashboardStream();
     setInterval(refreshVisibleLiveSnapshots, 3000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && !state.liveStream.source) {
+        connectDashboardStream();
+      }
+    });
   </script>
 </body>
 </html>

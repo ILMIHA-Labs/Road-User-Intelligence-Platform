@@ -23,6 +23,50 @@ class FakeMessage:
         self.payload = json.dumps(payload).encode("utf-8")
 
 class TestViolationDetection(unittest.TestCase):
+
+    def _prime_crossing_vehicle(self, engine, object_id, camera_id, timestamp_start, timestamp_end):
+        engine.update_state(
+            object_id,
+            detection_event={
+                "class": "car",
+                "camera_id": camera_id,
+                "bbox": [60.0, 170.0, 140.0, 245.0],
+                "timestamp": timestamp_start,
+            },
+        )
+        engine.update_state(
+            object_id,
+            detection_event={
+                "class": "car",
+                "camera_id": camera_id,
+                "bbox": [120.0, 180.0, 220.0, 260.0],
+                "timestamp": timestamp_end,
+            },
+        )
+        engine.update_state(
+            object_id,
+            speed_event={"speed_kmh": 14.0, "timestamp": timestamp_end},
+        )
+
+    def _prime_crossing_pedestrian(self, engine, object_id, camera_id, timestamp_start, timestamp_end):
+        engine.update_state(
+            object_id,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": camera_id,
+                "bbox": [150.0, 220.0, 190.0, 300.0],
+                "timestamp": timestamp_start,
+            },
+        )
+        engine.update_state(
+            object_id,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": camera_id,
+                "bbox": [152.0, 220.0, 192.0, 300.0],
+                "timestamp": timestamp_end,
+            },
+        )
     
     def test_speed_violation(self):
         engine = ViolationRulesEngine(speed_limit_kmh=60.0)
@@ -202,6 +246,9 @@ class TestViolationDetection(unittest.TestCase):
             speed_limit_kmh=60.0,
             pedestrian_crossing_min_speed_kmh=5.0,
             pedestrian_crossing_window_seconds=2.0,
+            crossing_min_presence_seconds=0.5,
+            crossing_min_observations=2,
+            crossing_vehicle_min_displacement_px=12.0,
             zones=[
                 {
                     "id": "school_crossing",
@@ -213,27 +260,19 @@ class TestViolationDetection(unittest.TestCase):
 
         vehicle_id = 56
         pedestrian_id = 57
-        engine.update_state(
+        self._prime_crossing_vehicle(
+            engine,
             vehicle_id,
-            detection_event={
-                "class": "car",
-                "camera_id": "cam_cross",
-                "bbox": [120.0, 180.0, 220.0, 260.0],
-                "timestamp": "2025-01-01T10:00:00Z",
-            },
+            "cam_cross",
+            "2025-01-01T10:00:00Z",
+            "2025-01-01T10:00:01Z",
         )
-        engine.update_state(
-            vehicle_id,
-            speed_event={"speed_kmh": 14.0, "timestamp": "2025-01-01T10:00:00Z"},
-        )
-        engine.update_state(
+        self._prime_crossing_pedestrian(
+            engine,
             pedestrian_id,
-            detection_event={
-                "class": "pedestrian",
-                "camera_id": "cam_cross",
-                "bbox": [150.0, 220.0, 190.0, 300.0],
-                "timestamp": "2025-01-01T10:00:01Z",
-            },
+            "cam_cross",
+            "2025-01-01T10:00:00Z",
+            "2025-01-01T10:00:01Z",
         )
 
         self.assertIn("pedestrian_crossing_violation", engine.evaluate_violations(vehicle_id))
@@ -248,6 +287,9 @@ class TestViolationDetection(unittest.TestCase):
             speed_limit_kmh=60.0,
             pedestrian_crossing_min_speed_kmh=5.0,
             pedestrian_crossing_window_seconds=2.0,
+            crossing_min_presence_seconds=0.5,
+            crossing_min_observations=2,
+            crossing_vehicle_min_displacement_px=12.0,
             zones=[
                 {
                     "id": "zebra_demo",
@@ -259,27 +301,19 @@ class TestViolationDetection(unittest.TestCase):
 
         vehicle_id = 58
         pedestrian_id = 59
-        engine.update_state(
+        self._prime_crossing_vehicle(
+            engine,
             vehicle_id,
-            detection_event={
-                "class": "car",
-                "camera_id": "cam_zebra",
-                "bbox": [120.0, 180.0, 220.0, 260.0],
-                "timestamp": "2025-01-01T10:00:00Z",
-            },
+            "cam_zebra",
+            "2025-01-01T10:00:00Z",
+            "2025-01-01T10:00:01Z",
         )
-        engine.update_state(
-            vehicle_id,
-            speed_event={"speed_kmh": 14.0, "timestamp": "2025-01-01T10:00:00Z"},
-        )
-        engine.update_state(
+        self._prime_crossing_pedestrian(
+            engine,
             pedestrian_id,
-            detection_event={
-                "class": "pedestrian",
-                "camera_id": "cam_zebra",
-                "bbox": [150.0, 220.0, 190.0, 300.0],
-                "timestamp": "2025-01-01T10:00:01Z",
-            },
+            "cam_zebra",
+            "2025-01-01T10:00:00Z",
+            "2025-01-01T10:00:01Z",
         )
 
         self.assertIn("zebra_crossing_violation", engine.evaluate_violations(vehicle_id))
@@ -299,6 +333,68 @@ class TestViolationDetection(unittest.TestCase):
             },
         )
         self.assertEqual(engine.evaluate_violations(vehicle_id), [])
+
+    def test_zebra_crossing_violation_requires_real_presence_and_motion(self):
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            pedestrian_crossing_min_speed_kmh=5.0,
+            pedestrian_crossing_window_seconds=2.0,
+            crossing_min_presence_seconds=0.5,
+            crossing_min_observations=2,
+            crossing_vehicle_min_displacement_px=12.0,
+            zones=[
+                {
+                    "id": "zebra_demo",
+                    "category": "zebra_crossing",
+                    "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                }
+            ],
+        )
+
+        vehicle_id = 63
+        pedestrian_id = 64
+
+        engine.update_state(
+            vehicle_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_zebra",
+                "bbox": [120.0, 180.0, 220.0, 260.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        engine.update_state(
+            vehicle_id,
+            speed_event={"speed_kmh": 15.0, "timestamp": "2025-01-01T10:00:00Z"},
+        )
+        engine.update_state(
+            pedestrian_id,
+            detection_event={
+                "class": "pedestrian",
+                "camera_id": "cam_zebra",
+                "bbox": [150.0, 220.0, 190.0, 300.0],
+                "timestamp": "2025-01-01T10:00:00Z",
+            },
+        )
+        self.assertEqual(engine.evaluate_violations(vehicle_id), [])
+
+        self._prime_crossing_pedestrian(
+            engine,
+            pedestrian_id,
+            "cam_zebra",
+            "2025-01-01T10:00:00Z",
+            "2025-01-01T10:00:01Z",
+        )
+        self.assertEqual(engine.evaluate_violations(vehicle_id), [])
+
+        self._prime_crossing_vehicle(
+            engine,
+            vehicle_id,
+            "cam_zebra",
+            "2025-01-01T10:00:00Z",
+            "2025-01-01T10:00:01Z",
+        )
+        self.assertIn("zebra_crossing_violation", engine.evaluate_violations(vehicle_id))
 
     def test_multiple_riders_violation(self):
         engine = ViolationRulesEngine(
@@ -490,6 +586,9 @@ class TestViolationDetection(unittest.TestCase):
             speed_limit=60.0,
             pedestrian_crossing_min_speed_kmh=5.0,
             pedestrian_crossing_window_seconds=2.0,
+            crossing_min_presence_seconds=0.5,
+            crossing_min_observations=2,
+            crossing_vehicle_min_displacement_px=12.0,
             camera_profiles={
                 "cam_cross": {
                     "zones": [
@@ -515,6 +614,23 @@ class TestViolationDetection(unittest.TestCase):
                     "object_id": 91,
                     "class": "car",
                     "helmet_status": "unknown",
+                    "bbox": [60.0, 170.0, 140.0, 245.0],
+                    "confidence": 0.95,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_cross",
+                    "timestamp": "2025-01-01T10:00:01Z",
+                    "object_id": 91,
+                    "class": "car",
+                    "helmet_status": "unknown",
                     "bbox": [120.0, 180.0, 220.0, 260.0],
                     "confidence": 0.95,
                     "source": "edge",
@@ -528,9 +644,26 @@ class TestViolationDetection(unittest.TestCase):
                 "camera/speeds",
                 {
                     "camera_id": "cam_cross",
-                    "timestamp": "2025-01-01T10:00:00Z",
+                    "timestamp": "2025-01-01T10:00:01Z",
                     "object_id": 91,
                     "speed_kmh": 15.0,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_cross",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 92,
+                    "class": "pedestrian",
+                    "helmet_status": "unknown",
+                    "bbox": [150.0, 220.0, 190.0, 300.0],
+                    "confidence": 0.96,
                     "source": "edge",
                 },
             ),
@@ -546,7 +679,7 @@ class TestViolationDetection(unittest.TestCase):
                     "object_id": 92,
                     "class": "pedestrian",
                     "helmet_status": "unknown",
-                    "bbox": [150.0, 220.0, 190.0, 300.0],
+                    "bbox": [152.0, 220.0, 192.0, 300.0],
                     "confidence": 0.96,
                     "source": "edge",
                 },
@@ -564,6 +697,9 @@ class TestViolationDetection(unittest.TestCase):
             speed_limit=60.0,
             pedestrian_crossing_min_speed_kmh=5.0,
             pedestrian_crossing_window_seconds=2.0,
+            crossing_min_presence_seconds=0.5,
+            crossing_min_observations=2,
+            crossing_vehicle_min_displacement_px=12.0,
             camera_profiles={
                 "cam_zebra": {
                     "zones": [
@@ -589,6 +725,23 @@ class TestViolationDetection(unittest.TestCase):
                     "object_id": 93,
                     "class": "car",
                     "helmet_status": "unknown",
+                    "bbox": [60.0, 170.0, 140.0, 245.0],
+                    "confidence": 0.95,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_zebra",
+                    "timestamp": "2025-01-01T10:00:01Z",
+                    "object_id": 93,
+                    "class": "car",
+                    "helmet_status": "unknown",
                     "bbox": [120.0, 180.0, 220.0, 260.0],
                     "confidence": 0.95,
                     "source": "edge",
@@ -602,9 +755,26 @@ class TestViolationDetection(unittest.TestCase):
                 "camera/speeds",
                 {
                     "camera_id": "cam_zebra",
-                    "timestamp": "2025-01-01T10:00:00Z",
+                    "timestamp": "2025-01-01T10:00:01Z",
                     "object_id": 93,
                     "speed_kmh": 15.0,
+                    "source": "edge",
+                },
+            ),
+        )
+        service.on_message(
+            None,
+            None,
+            FakeMessage(
+                "camera/detections",
+                {
+                    "camera_id": "cam_zebra",
+                    "timestamp": "2025-01-01T10:00:00Z",
+                    "object_id": 94,
+                    "class": "pedestrian",
+                    "helmet_status": "unknown",
+                    "bbox": [150.0, 220.0, 190.0, 300.0],
+                    "confidence": 0.96,
                     "source": "edge",
                 },
             ),
@@ -620,7 +790,7 @@ class TestViolationDetection(unittest.TestCase):
                     "object_id": 94,
                     "class": "pedestrian",
                     "helmet_status": "unknown",
-                    "bbox": [150.0, 220.0, 190.0, 300.0],
+                    "bbox": [152.0, 220.0, 192.0, 300.0],
                     "confidence": 0.96,
                     "source": "edge",
                 },
@@ -677,6 +847,9 @@ class TestViolationDetection(unittest.TestCase):
                     "stop_line_min_speed_kmh": 7.0,
                     "pedestrian_crossing_min_speed_kmh": 9.0,
                     "pedestrian_crossing_window_seconds": 3.5,
+                    "crossing_min_presence_seconds": 1.0,
+                    "crossing_min_observations": 3,
+                    "crossing_vehicle_min_displacement_px": 18.0,
                     "zones": [
                         {
                             "id": "north_stop_line",
@@ -710,6 +883,9 @@ class TestViolationDetection(unittest.TestCase):
         self.assertEqual(school_zone_engine.stop_line_min_speed_kmh, 7.0)
         self.assertEqual(school_zone_engine.pedestrian_crossing_min_speed_kmh, 9.0)
         self.assertEqual(school_zone_engine.pedestrian_crossing_window_seconds, 3.5)
+        self.assertEqual(school_zone_engine.crossing_min_presence_seconds, 1.0)
+        self.assertEqual(school_zone_engine.crossing_min_observations, 3)
+        self.assertEqual(school_zone_engine.crossing_vehicle_min_displacement_px, 18.0)
         self.assertEqual(len(school_zone_engine.zones), 2)
 
 if __name__ == '__main__':

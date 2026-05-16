@@ -39,6 +39,9 @@ class ViolationDetectionService:
         stop_line_min_speed_kmh=5.0,
         pedestrian_crossing_min_speed_kmh=5.0,
         pedestrian_crossing_window_seconds=2.0,
+        crossing_min_presence_seconds=0.75,
+        crossing_min_observations=2,
+        crossing_vehicle_min_displacement_px=12.0,
     ):
         self.broker_host = broker_host
         self.broker_port = broker_port
@@ -59,6 +62,11 @@ class ViolationDetectionService:
         self.default_stop_line_min_speed_kmh = stop_line_min_speed_kmh
         self.default_pedestrian_crossing_min_speed_kmh = pedestrian_crossing_min_speed_kmh
         self.default_pedestrian_crossing_window_seconds = pedestrian_crossing_window_seconds
+        self.default_crossing_min_presence_seconds = crossing_min_presence_seconds
+        self.default_crossing_min_observations = crossing_min_observations
+        self.default_crossing_vehicle_min_displacement_px = (
+            crossing_vehicle_min_displacement_px
+        )
         self.engines = {}
         
         self.client = mqtt.Client(callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
@@ -127,6 +135,18 @@ class ViolationDetectionService:
             "pedestrian_crossing_window_seconds",
             self.default_pedestrian_crossing_window_seconds,
         )
+        crossing_min_presence_seconds = camera_profile.get(
+            "crossing_min_presence_seconds",
+            self.default_crossing_min_presence_seconds,
+        )
+        crossing_min_observations = camera_profile.get(
+            "crossing_min_observations",
+            self.default_crossing_min_observations,
+        )
+        crossing_vehicle_min_displacement_px = camera_profile.get(
+            "crossing_vehicle_min_displacement_px",
+            self.default_crossing_vehicle_min_displacement_px,
+        )
         zones = camera_profile.get("zones", [])
         engine = ViolationRulesEngine(
             speed_limit_kmh=speed_limit,
@@ -146,6 +166,9 @@ class ViolationDetectionService:
             stop_line_min_speed_kmh=stop_line_min_speed_kmh,
             pedestrian_crossing_min_speed_kmh=pedestrian_crossing_min_speed_kmh,
             pedestrian_crossing_window_seconds=pedestrian_crossing_window_seconds,
+            crossing_min_presence_seconds=crossing_min_presence_seconds,
+            crossing_min_observations=crossing_min_observations,
+            crossing_vehicle_min_displacement_px=crossing_vehicle_min_displacement_px,
         )
         self.engines[camera_id] = engine
         logger.info(
@@ -319,6 +342,24 @@ def main():
         help="Maximum timestamp gap allowed between a pedestrian and vehicle in the same crossing zone",
     )
     parser.add_argument(
+        "--crossing-min-presence-seconds",
+        type=float,
+        default=float(os.getenv("CROSSING_MIN_PRESENCE_SECONDS", "0.75")),
+        help="How long a pedestrian must remain in a crossing zone before crossing-related events can trigger",
+    )
+    parser.add_argument(
+        "--crossing-min-observations",
+        type=int,
+        default=int(os.getenv("CROSSING_MIN_OBSERVATIONS", "2")),
+        help="Minimum tracked observations required before crossing-related events can trigger",
+    )
+    parser.add_argument(
+        "--crossing-vehicle-min-displacement-px",
+        type=float,
+        default=float(os.getenv("CROSSING_VEHICLE_MIN_DISPLACEMENT_PX", "12.0")),
+        help="Minimum per-update vehicle movement in pixels before crossing-related events can trigger",
+    )
+    parser.add_argument(
         "--config",
         type=str,
         default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
@@ -346,6 +387,9 @@ def main():
         stop_line_min_speed_kmh=args.stop_line_min_speed,
         pedestrian_crossing_min_speed_kmh=args.pedestrian_crossing_min_speed,
         pedestrian_crossing_window_seconds=args.pedestrian_crossing_window_seconds,
+        crossing_min_presence_seconds=args.crossing_min_presence_seconds,
+        crossing_min_observations=args.crossing_min_observations,
+        crossing_vehicle_min_displacement_px=args.crossing_vehicle_min_displacement_px,
     )
     service.run()
 

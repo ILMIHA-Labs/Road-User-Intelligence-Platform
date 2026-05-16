@@ -6,7 +6,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_COUNTING_LINE_CLASSES = ["car", "motorcycle", "bus", "truck", "pedestrian"]
+DEFAULT_COUNTING_LINE_CLASSES = ["car", "motorcycle", "bus", "truck", "pedestrian", "bicycle"]
 
 
 def load_camera_config(config_path: str) -> dict:
@@ -79,6 +79,10 @@ def normalize_counting_line_definitions(lines: Optional[List[dict]]) -> List[dic
                 "points": points,
                 "enabled": bool(line.get("enabled", True)),
                 "classes": normalized_classes,
+                "min_crossing_distance_px": float(line.get("min_crossing_distance_px", 8.0)),
+                "reset_distance_px": float(line.get("reset_distance_px", 12.0)),
+                "min_displacement_px": float(line.get("min_displacement_px", 12.0)),
+                "min_observations": max(2, int(line.get("min_observations", 2))),
             }
         )
     return normalized

@@ -1,0 +1,30 @@
+camera_id: sample_video_01
+zebra_zones:
+- id: zebra_1
+  label: Z1
+  category: zebra_crossing
+  points:
+  - - 617.0
+    - 315.0
+  - - 595.0
+    - 349.0
+  - - 778.0
+    - 347.0
+  - - 768.0
+    - 314.0
+  - - 619.0
+    - 315.0
+- id: zebra_2
+  label: Z2
+  category: zebra_crossing
+  points:
+  - - 884.0
+    - 337.0
+  - - 1029.0
+    - 330.0
+  - - 1106.0
+    - 380.0
+  - - 915.0
+    - 375.0
+  - - 883.0
+    - 339.0

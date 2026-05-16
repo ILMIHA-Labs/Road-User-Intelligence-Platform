@@ -3,7 +3,12 @@ from fastapi.testclient import TestClient
 import sys
 import os
 import tempfile
+import json
+import shutil
 from pathlib import Path
+
+import cv2
+import numpy as np
 
 # Ensure src is in the path for importing backend_api
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
@@ -29,10 +34,15 @@ class TestBackendAPI(unittest.TestCase):
         init_db()
         self.live_preview_tmp = tempfile.TemporaryDirectory()
         self.evidence_tmp = tempfile.TemporaryDirectory()
+        self.config_tmp = tempfile.TemporaryDirectory()
         self.original_live_frames_dir = backend_main._LIVE_FRAMES_DIR
         self.original_violation_evidence_dir = backend_main._VIOLATION_EVIDENCE_DIR
+        self.original_cameras_config_path = backend_main._CAMERAS_CONFIG_PATH
         backend_main._LIVE_FRAMES_DIR = Path(self.live_preview_tmp.name)
         backend_main._VIOLATION_EVIDENCE_DIR = Path(self.evidence_tmp.name)
+        temp_config_path = Path(self.config_tmp.name) / "cameras.yaml"
+        shutil.copy2(self.original_cameras_config_path, temp_config_path)
+        backend_main._CAMERAS_CONFIG_PATH = temp_config_path
         self.client_cm = TestClient(app)
         self.client = self.client_cm.__enter__()
 
@@ -40,8 +50,10 @@ class TestBackendAPI(unittest.TestCase):
         self.client_cm.__exit__(None, None, None)
         backend_main._LIVE_FRAMES_DIR = self.original_live_frames_dir
         backend_main._VIOLATION_EVIDENCE_DIR = self.original_violation_evidence_dir
+        backend_main._CAMERAS_CONFIG_PATH = self.original_cameras_config_path
         self.live_preview_tmp.cleanup()
         self.evidence_tmp.cleanup()
+        self.config_tmp.cleanup()
         Base.metadata.drop_all(bind=engine)
 
     def test_read_root(self):
@@ -53,6 +65,8 @@ class TestBackendAPI(unittest.TestCase):
         response = self.client.get("/dashboard/")
         self.assertEqual(response.status_code, 200)
         self.assertIn("Traffic Operations Dashboard", response.text)
+        self.assertNotIn("Refresh Data", response.text)
+        self.assertIn("Connecting", response.text)
 
     def test_camera_config_endpoint_returns_defaults_and_merged_profiles(self):
         response = self.client.get("/cameras/config")
@@ -66,6 +80,64 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("max_motorcycle_riders", sample_camera)
         self.assertIn("zones", sample_camera)
         self.assertIn("counting_lines", sample_camera)
+
+    def test_setup_preview_frame_supports_local_image_source(self):
+        image_path = Path(self.config_tmp.name) / "preview.png"
+        image = np.zeros((80, 120, 3), dtype=np.uint8)
+        image[:, :] = (12, 34, 56)
+        cv2.imwrite(str(image_path), image)
+
+        response = self.client.post("/setup/preview-frame", json={
+            "camera_id": "setup_cam",
+            "source": str(image_path),
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["camera_id"], "setup_cam")
+        self.assertEqual(data["width"], 120)
+        self.assertEqual(data["height"], 80)
+
+        image_response = self.client.get(data["preview_url"])
+        self.assertEqual(image_response.status_code, 200)
+        self.assertEqual(image_response.headers["content-type"], "image/jpeg")
+
+    def test_setup_camera_config_saves_counting_lines_and_zebra_zone(self):
+        response = self.client.post("/setup/camera-config", json={
+            "camera_id": "demo_setup_cam",
+            "source": "data/sample.mp4",
+            "location": "demo_intersection",
+            "target_fps": 12,
+            "pixels_per_meter": 18.5,
+            "speed_limit_kmh": 35.0,
+            "counting_lines": [
+                {
+                    "id": "approach_flow",
+                    "label": "Approach Flow",
+                    "points": [[100, 10], [100, 400]],
+                }
+            ],
+            "zebra_zones": [
+                {
+                    "id": "main_zebra",
+                    "label": "Main Zebra",
+                    "points": [[120, 100], [220, 100], [220, 180], [120, 180]],
+                }
+            ],
+        })
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["camera"]["id"], "demo_setup_cam")
+        self.assertEqual(len(data["camera"]["counting_lines"]), 1)
+        self.assertEqual(len(data["camera"]["zones"]), 1)
+        self.assertEqual(data["camera"]["zones"][0]["category"], "zebra_crossing")
+
+        config_response = self.client.get("/cameras/config")
+        self.assertEqual(config_response.status_code, 200)
+        cameras = config_response.json()["cameras"]
+        saved = next(camera for camera in cameras if camera["id"] == "demo_setup_cam")
+        self.assertEqual(saved["url"], "data/sample.mp4")
+        self.assertEqual(saved["counting_lines"][0]["id"], "approach_flow")
+        self.assertEqual(saved["zones"][0]["id"], "main_zebra")
 
     def test_live_camera_snapshot_endpoints(self):
         camera_dir = Path(self.live_preview_tmp.name) / "sample_video_01"
@@ -242,6 +314,55 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(cameras["cam_a"]["crossings"], 1)
         self.assertEqual(cameras["cam_b"]["violations"], 1)
 
+    def test_detection_analytics_breaks_down_classes(self):
+        self.client.post("/detections", json={
+            "camera_id": "cam_a",
+            "timestamp": "2023-10-27T10:00:00Z",
+            "object_id": 1,
+            "class": "car",
+            "helmet_status": "unknown",
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
+        self.client.post("/detections", json={
+            "camera_id": "cam_a",
+            "timestamp": "2023-10-27T10:00:01Z",
+            "object_id": 2,
+            "class": "car",
+            "helmet_status": "unknown",
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
+        self.client.post("/detections", json={
+            "camera_id": "cam_a",
+            "timestamp": "2023-10-27T10:00:02Z",
+            "object_id": 3,
+            "class": "pedestrian",
+            "helmet_status": "unknown",
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
+
+        response = self.client.get("/analytics/detections?camera_id=cam_a")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["total_detections"], 3)
+        self.assertEqual(data["classes"], [
+            {"class": "car", "count": 2},
+            {"class": "pedestrian", "count": 1},
+        ])
+        self.assertEqual(data["cameras"], [{
+            "camera_id": "cam_a",
+            "total_detections": 3,
+            "classes": [
+                {"class": "car", "count": 2},
+                {"class": "pedestrian", "count": 1},
+            ],
+        }])
+
     def test_crossing_analytics(self):
         self.client.post("/crossings", json={
             "camera_id": "cam_a",
@@ -263,6 +384,20 @@ class TestBackendAPI(unittest.TestCase):
             "timestamp": "2023-10-27T10:00:03Z",
             "source": "edge",
         })
+        self.client.post("/speeds", json={
+            "camera_id": "cam_a",
+            "object_id": 1,
+            "speed_kmh": 42.0,
+            "timestamp": "2023-10-27T10:00:02Z",
+            "source": "edge",
+        })
+        self.client.post("/speeds", json={
+            "camera_id": "cam_a",
+            "object_id": 2,
+            "speed_kmh": 5.0,
+            "timestamp": "2023-10-27T10:00:03Z",
+            "source": "edge",
+        })
 
         response = self.client.get("/analytics/crossings?camera_id=cam_a")
         self.assertEqual(response.status_code, 200)
@@ -270,6 +405,56 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(data["total_crossings"], 2)
         self.assertEqual(len(data["lines"]), 1)
         self.assertEqual(data["lines"][0]["line_id"], "main_gate")
+        self.assertEqual(data["counts_by_class"], {"car": 1, "pedestrian": 1})
+        self.assertEqual(data["counts_by_direction"], {"a_to_b": 1, "b_to_a": 1})
+        self.assertEqual(data["counts_by_line"], {"main_gate": 2})
+        self.assertGreaterEqual(data["flow_rate_per_minute"], 0.0)
+        self.assertEqual(data["speed_metrics_by_class"]["car"]["avg_speed_kmh"], 42.0)
+        self.assertEqual(data["speed_metrics_by_class"]["pedestrian"]["avg_speed_kmh"], 5.0)
+
+    def test_live_dashboard_stream_returns_snapshot(self):
+        self.client.post("/detections", json={
+            "camera_id": "cam_live",
+            "timestamp": "2023-10-27T10:00:00Z",
+            "object_id": 1,
+            "class": "car",
+            "helmet_status": "unknown",
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
+        self.client.post("/crossings", json={
+            "camera_id": "cam_live",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 1,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:03Z",
+            "source": "edge",
+        })
+
+        with self.client.stream("GET", "/live/dashboard?camera_id=cam_live&detail_camera_id=cam_live&once=true") as response:
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers["content-type"].split(";")[0], "text/event-stream")
+            payload = None
+            for chunk in response.iter_text():
+                if "data: " not in chunk:
+                    continue
+                for line in chunk.splitlines():
+                    if line.startswith("data: "):
+                        payload = json.loads(line[6:])
+                        break
+                if payload is not None:
+                    break
+
+        self.assertIsNotNone(payload)
+        self.assertIn("summary", payload)
+        self.assertIn("crossings", payload)
+        self.assertIn("stream", payload)
+        self.assertEqual(payload["summary"]["camera_id"], "cam_live")
+        self.assertEqual(payload["crossings"]["counts_by_line"]["main_gate"], 1)
+        self.assertEqual(payload["camera_detail"]["camera_id"], "cam_live")
 
     def test_analytics_violation_breakdown(self):
         self.client.post("/violations", json={
@@ -393,6 +578,7 @@ class TestBackendAPI(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["total_detections_logged"], 1)
         self.assertEqual(data["camera_id"], "cam_filter")
+        self.assertEqual(data["detection_classes"], [{"class": "car", "count": 1}])
 
     def test_z_analytics_summary(self):
         self.client.post("/detections", json={
@@ -411,6 +597,7 @@ class TestBackendAPI(unittest.TestCase):
         data = response.json()
         self.assertIn("total_detections_logged", data)
         self.assertEqual(data["total_detections_logged"], 1)
+        self.assertEqual(data["detection_classes"], [{"class": "motorcycle", "count": 1}])
         self.assertEqual(data["total_speeds_logged"], 0)
         self.assertEqual(data["total_crossings_logged"], 0)
         self.assertIn("total_speeds_logged", data)

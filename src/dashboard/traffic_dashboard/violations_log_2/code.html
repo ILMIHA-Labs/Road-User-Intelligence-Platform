@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#dadada",
+              "outline-variant": "#c6c6c6",
+              "on-secondary-fixed": "#1b1c1c",
+              "on-tertiary-fixed": "#ffffff",
+              "primary-fixed-dim": "#474747",
+              "on-surface": "#1a1c1c",
+              "surface-container-low": "#f3f3f4",
+              "on-primary-container": "#ffffff",
+              "on-secondary": "#ffffff",
+              "inverse-primary": "#c6c6c6",
+              "secondary-fixed-dim": "#acabab",
+              "primary-fixed": "#5e5e5e",
+              "tertiary": "#3b3b3c",
+              "surface-container": "#eeeeee",
+              "surface": "#f9f9f9",
+              "secondary": "#5f5e5e",
+              "inverse-surface": "#2f3131",
+              "on-tertiary-container": "#ffffff",
+              "surface-bright": "#f9f9f9",
+              "primary-container": "#3b3b3b",
+              "error": "#ba1a1a",
+              "tertiary-fixed-dim": "#464747",
+              "outline": "#777777",
+              "error-container": "#ffdad6",
+              "on-surface-variant": "#474747",
+              "on-secondary-container": "#1b1c1c",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "tertiary-fixed": "#5e5e5e",
+              "surface-container-highest": "#e2e2e2",
+              "secondary-container": "#d6d4d3",
+              "on-tertiary-fixed-variant": "#e3e2e2",
+              "on-tertiary": "#e3e2e2",
+              "tertiary-container": "#747474",
+              "on-secondary-fixed-variant": "#3b3b3b",
+              "surface-variant": "#e2e2e2",
+              "surface-tint": "#5e5e5e",
+              "inverse-on-surface": "#f0f1f1",
+              "background": "#f9f9f9",
+              "on-background": "#1a1c1c",
+              "on-primary": "#e2e2e2",
+              "surface-container-lowest": "#ffffff",
+              "primary": "#000000",
+              "secondary-fixed": "#c8c6c6",
+              "on-primary-fixed": "#ffffff",
+              "on-error-container": "#410002",
+              "on-error": "#ffffff",
+              "surface-container-high": "#e8e8e8"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col p-6 z-40 bg-gray-50 dark:bg-zinc-950 h-screen w-64 left-0 border-r border-gray-100 dark:border-gray-900 shadow-sm">
+<div class="mb-12">
+<h2 class="font-['Inter'] label-sm uppercase tracking-widest text-black dark:text-white font-bold">Admin Console</h2>
+<p class="text-[10px] text-gray-500 dark:text-zinc-500 tracking-widest uppercase mt-1">Regional Traffic Control</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 font-['Inter'] label-sm uppercase tracking-widest text-gray-500 dark:text-zinc-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Inter'] label-sm uppercase tracking-widest text-gray-500 dark:text-zinc-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="videocam">videocam</span>
+                Cameras
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Inter'] label-sm uppercase tracking-widest text-black dark:text-white font-bold bg-white dark:bg-black rounded-sm shadow-sm scale-[0.98]" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="report_problem">report_problem</span>
+                Violations
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 font-['Inter'] label-sm uppercase tracking-widest text-gray-500 dark:text-zinc-500 hover:bg-gray-200 dark:hover:bg-zinc-800 transition-all" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="mt-auto space-y-6">
+<button class="w-full bg-primary text-on-primary py-3 font-['Inter'] label-sm uppercase tracking-widest font-bold hover:opacity-90 transition-opacity">
+                Generate Report
+            </button>
+<div class="space-y-2 border-t border-gray-100 dark:border-gray-900 pt-4">
+<a class="flex items-center gap-3 px-4 py-1 text-gray-500 text-xs uppercase tracking-widest hover:text-black" href="#">
+<span class="material-symbols-outlined text-base" data-icon="help_outline">help_outline</span>
+                    Support
+                </a>
+<a class="flex items-center gap-3 px-4 py-1 text-gray-500 text-xs uppercase tracking-widest hover:text-black" href="#">
+<span class="material-symbols-outlined text-base" data-icon="list_alt">list_alt</span>
+                    Logs
+                </a>
+</div>
+</div>
+</aside>
+<div class="ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="sticky top-0 z-50 flex items-center justify-between px-8 py-4 w-full bg-white/85 dark:bg-black/85 backdrop-blur-xl border-b border-gray-100 dark:border-gray-900">
+<div class="flex items-center gap-8">
+<h1 class="text-2xl font-black tracking-tighter text-black dark:text-white">TRAFFIC ANALYTICS</h1>
+<nav class="hidden md:flex gap-6">
+<a class="font-['Inter'] font-medium tracking-tight text-sm text-gray-400 dark:text-zinc-600 hover:text-black transition-colors duration-200" href="#">Global Filters</a>
+<a class="font-['Inter'] font-medium tracking-tight text-sm text-black dark:text-white border-b-2 border-black dark:border-white pb-1" href="#">Date Range</a>
+<a class="font-['Inter'] font-medium tracking-tight text-sm text-gray-400 dark:text-zinc-600 hover:text-black transition-colors duration-200" href="#">Export</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-primary text-on-primary px-4 py-1.5 text-xs font-bold uppercase tracking-widest">Live View</button>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-8 space-y-12 max-w-[1400px] mx-auto w-full">
+<!-- Hero Metrics -->
+<section class="grid grid-cols-12 gap-8 items-end">
+<div class="col-span-12 md:col-span-2">
+<h2 class="label-sm uppercase tracking-widest text-on-surface-variant mb-2">Violations Log</h2>
+<p class="body-md text-on-surface-variant leading-relaxed">Detailed audit of traffic infractions detected across the metropolitan area.</p>
+</div>
+<div class="col-span-12 md:col-span-5 bg-surface-container-lowest p-8 border-l-4 border-black">
+<label class="label-sm uppercase tracking-widest text-on-surface-variant">Violations This Week</label>
+<div class="text-[3.5rem] font-black tracking-tighter leading-none mt-2">1,240</div>
+<div class="flex items-center gap-2 mt-4 text-error font-bold text-sm">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+<span>+12.4% vs last week</span>
+</div>
+</div>
+<div class="col-span-12 md:col-span-5 bg-surface-container-lowest p-8 border-l-4 border-outline-variant">
+<label class="label-sm uppercase tracking-widest text-on-surface-variant">Most Common Offense</label>
+<div class="text-[2rem] font-black tracking-tighter leading-tight mt-2 uppercase">Helmet Violation</div>
+<p class="label-sm text-on-surface-variant mt-4">Contributing to 42% of total weekly volume</p>
+</div>
+</section>
+<!-- Filters Bar -->
+<section class="bg-surface-container-low p-1 flex flex-wrap items-center gap-4">
+<div class="flex-1 min-w-[200px] relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="w-full bg-surface-container-lowest border-none py-3 pl-12 pr-4 text-sm focus:ring-0 focus:border-b-2 border-primary transition-all" placeholder="Search Camera ID or Vehicle..." type="text"/>
+</div>
+<select class="bg-surface-container-lowest border-none py-3 px-6 text-sm font-bold uppercase tracking-widest appearance-none focus:ring-0">
+<option>Violation Type</option>
+<option>Speeding</option>
+<option>Helmet</option>
+<option>Red Light</option>
+</select>
+<select class="bg-surface-container-lowest border-none py-3 px-6 text-sm font-bold uppercase tracking-widest appearance-none focus:ring-0">
+<option>Camera</option>
+<option>District 1 - North</option>
+<option>District 4 - Central</option>
+</select>
+<button class="bg-surface-container-highest px-6 py-3 text-sm font-bold uppercase tracking-widest hover:bg-surface-dim transition-colors">
+                    Date Range: Oct 24 - Oct 31
+                </button>
+</section>
+<!-- Data Table -->
+<section class="overflow-x-auto bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant">
+<th class="px-6 py-4 label-sm uppercase tracking-widest font-bold">Timestamp</th>
+<th class="px-6 py-4 label-sm uppercase tracking-widest font-bold">Camera ID</th>
+<th class="px-6 py-4 label-sm uppercase tracking-widest font-bold">Type</th>
+<th class="px-6 py-4 label-sm uppercase tracking-widest font-bold text-right">Confidence %</th>
+<th class="px-6 py-4 label-sm uppercase tracking-widest font-bold">Vehicle Type</th>
+<th class="px-6 py-4 label-sm uppercase tracking-widest font-bold text-center">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-6 body-md font-medium">Oct 31, 2023 · 14:22:01</td>
+<td class="px-6 py-6 body-md font-mono text-xs">CAM-4922-NW</td>
+<td class="px-6 py-6">
+<span class="bg-black text-white px-2 py-0.5 text-[10px] font-black tracking-widest uppercase">Helmet</span>
+</td>
+<td class="px-6 py-6 body-md text-right font-mono">98.2%</td>
+<td class="px-6 py-6 body-md text-on-surface-variant">Motorcycle</td>
+<td class="px-6 py-6 text-center">
+<button class="inline-flex items-center gap-2 px-4 py-2 border-2 border-black text-[10px] font-black tracking-widest uppercase hover:bg-black hover:text-white transition-all">
+                                    View Proof
+                                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-6 body-md font-medium">Oct 31, 2023 · 14:18:45</td>
+<td class="px-6 py-6 body-md font-mono text-xs">CAM-1108-SE</td>
+<td class="px-6 py-6">
+<span class="bg-surface-container-highest text-black px-2 py-0.5 text-[10px] font-black tracking-widest uppercase">Speeding</span>
+</td>
+<td class="px-6 py-6 body-md text-right font-mono">94.5%</td>
+<td class="px-6 py-6 body-md text-on-surface-variant">SUV</td>
+<td class="px-6 py-6 text-center">
+<button class="inline-flex items-center gap-2 px-4 py-2 border-2 border-black text-[10px] font-black tracking-widest uppercase hover:bg-black hover:text-white transition-all">
+                                    View Proof
+                                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-6 body-md font-medium">Oct 31, 2023 · 14:15:12</td>
+<td class="px-6 py-6 body-md font-mono text-xs">CAM-4922-NW</td>
+<td class="px-6 py-6">
+<span class="bg-black text-white px-2 py-0.5 text-[10px] font-black tracking-widest uppercase">Helmet</span>
+</td>
+<td class="px-6 py-6 body-md text-right font-mono">99.1%</td>
+<td class="px-6 py-6 body-md text-on-surface-variant">Motorcycle</td>
+<td class="px-6 py-6 text-center">
+<button class="inline-flex items-center gap-2 px-4 py-2 border-2 border-black text-[10px] font-black tracking-widest uppercase hover:bg-black hover:text-white transition-all">
+                                    View Proof
+                                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-6 body-md font-medium">Oct 31, 2023 · 14:12:33</td>
+<td class="px-6 py-6 body-md font-mono text-xs">CAM-8821-E</td>
+<td class="px-6 py-6">
+<span class="bg-surface-container-highest text-black px-2 py-0.5 text-[10px] font-black tracking-widest uppercase">Red Light</span>
+</td>
+<td class="px-6 py-6 body-md text-right font-mono">87.3%</td>
+<td class="px-6 py-6 body-md text-on-surface-variant">Truck</td>
+<td class="px-6 py-6 text-center">
+<button class="inline-flex items-center gap-2 px-4 py-2 border-2 border-black text-[10px] font-black tracking-widest uppercase hover:bg-black hover:text-white transition-all">
+                                    View Proof
+                                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="px-6 py-6 body-md font-medium">Oct 31, 2023 · 14:05:59</td>
+<td class="px-6 py-6 body-md font-mono text-xs">CAM-4922-NW</td>
+<td class="px-6 py-6">
+<span class="bg-black text-white px-2 py-0.5 text-[10px] font-black tracking-widest uppercase">Helmet</span>
+</td>
+<td class="px-6 py-6 body-md text-right font-mono">97.8%</td>
+<td class="px-6 py-6 body-md text-on-surface-variant">Motorcycle</td>
+<td class="px-6 py-6 text-center">
+<button class="inline-flex items-center gap-2 px-4 py-2 border-2 border-black text-[10px] font-black tracking-widest uppercase hover:bg-black hover:text-white transition-all">
+                                    View Proof
+                                    <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="flex items-center justify-between px-6 py-8 border-t border-surface-container">
+<div class="label-sm text-on-surface-variant">Showing 1-10 of 1,240 results</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 border border-outline-variant flex items-center justify-center hover:bg-black hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-10 h-10 bg-black text-white flex items-center justify-center font-bold">1</button>
+<button class="w-10 h-10 border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">2</button>
+<button class="w-10 h-10 border border-outline-variant flex items-center justify-center hover:bg-surface-container transition-all">3</button>
+<button class="w-10 h-10 border border-outline-variant flex items-center justify-center hover:bg-black hover:text-white transition-all">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Visual Insight (Asymmetric Section) -->
+<section class="grid grid-cols-12 gap-8 py-12 border-t border-outline-variant/20">
+<div class="col-span-12 md:col-span-4 space-y-4">
+<h3 class="headline-lg font-black tracking-tighter">Spatial Hotspots</h3>
+<p class="body-md text-on-surface-variant leading-relaxed">Most violations are clustering in the North-West corridor during peak morning hours. Automated enforcement is currently scaled to 110% capacity in this zone.</p>
+<button class="text-xs font-black tracking-widest uppercase border-b-2 border-black pb-1 hover:opacity-70 transition-opacity">View Heatmap Details</button>
+</div>
+<div class="col-span-12 md:col-span-8 bg-surface-container rounded-lg h-64 relative overflow-hidden">
+<img class="w-full h-full object-cover grayscale opacity-50 mix-blend-multiply" data-alt="abstract architectural grayscale satellite view of city street grid with highlighted points of interest and digital data overlay" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsYkXAevaUwLPP7IHUFUcy0It3v3ugqCZytU_QFCFHJC-8viub6-Ms-qFZmzQ5cdbicndFCiWLz0P_euQc-uQ5F8mW9wLn3OuFkr4hbhU1VsCDGqn4WAGyiPLvnv1RqRai7DHjyyM0kiPSjZITHsEIXxuE3vCB4gVqzlESG8I7ZE_kbkf4IMlTKI4folGZLN2dIyFLEkMZv8xv-Ym-iCPx-F_NdnBfLnzqpfnRR8K-OLJeWk-JmhsuffsFXMk_SVtsjyn5d1jg-AgQ"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container via-transparent to-transparent"></div>
+<div class="absolute bottom-6 left-6 flex gap-4">
+<div class="bg-black text-white px-4 py-2 label-sm font-bold">TOP SECTOR: CAM-4922-NW</div>
+<div class="bg-white/80 backdrop-blur-md px-4 py-2 label-sm font-bold text-black border border-black/10">ACTIVE PATROLS: 08</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer Info -->
+<footer class="p-8 border-t border-gray-100 dark:border-gray-900 bg-surface-container-low mt-auto">
+<div class="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="label-sm uppercase tracking-widest text-on-surface-variant">© 2024 Traffic Analytics System · Secure Environment v2.4.1</div>
+<div class="flex gap-8">
+<span class="label-sm text-on-surface-variant flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-black"></span> System Healthy
+                    </span>
+<span class="label-sm text-on-surface-variant">Lat: 40.7128° N, Lon: 74.0060° W</span>
+</div>
+</div>
+</footer>
+</div>
+<!-- Right Proof Sidebar (Conceptual State) -->
+<div class="fixed right-0 top-0 h-full w-[400px] bg-white shadow-2xl z-[60] translate-x-full transition-transform duration-500 hidden md:block border-l border-gray-200">
+<!-- Mockup of Sidebar Content -->
+<div class="p-8 flex flex-col h-full">
+<div class="flex justify-between items-center mb-8">
+<h3 class="label-sm font-black tracking-widest uppercase">Evidence File #88921</h3>
+<span class="material-symbols-outlined cursor-pointer hover:rotate-90 transition-transform" data-icon="close">close</span>
+</div>
+<div class="bg-surface-container aspect-video mb-6 overflow-hidden border border-black/5">
+<img class="w-full h-full object-cover grayscale" data-alt="grayscale high-speed camera capture of a motorcycle on an empty highway road from a rear elevated angle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVtp2CHT0-UbNcFrZhj6NPDDN6YvMbWjY53AbcrSp3I-UQYegmjchH741k7GVBLPUJYOkkkCecvvAcrEQ9b2pYy8NBLGMSjoAfcqYci7PXTZFlzBHa4L-4VcNUk-qIHO8oy58gjceXcxjIm6OjVnzh0j-sd7Uxc8kmujQ_67ozOQ-5bIaqHmPty5rP4l2ck0sdEPVPXlir9ccU0RCQGntKrYbtfhJVyohs2dA0jbBcjLqjTrY9y_zodWLVL74_h8hg6Zw4W1ap_POC"/>
+</div>
+<div class="space-y-6">
+<div>
+<label class="label-sm uppercase text-outline">Detected Infraction</label>
+<p class="body-md font-bold mt-1">No Helmet (Rider + Passenger)</p>
+</div>
+<div>
+<label class="label-sm uppercase text-outline">License Plate</label>
+<p class="body-md font-mono mt-1 text-lg">ZX-8821-M</p>
+</div>
+<div>
+<label class="label-sm uppercase text-outline">Meta Data</label>
+<div class="grid grid-cols-2 gap-4 mt-2">
+<div class="p-4 bg-surface-container-low">
+<span class="text-[10px] text-outline uppercase block">Speed</span>
+<span class="font-bold">42 km/h</span>
+</div>
+<div class="p-4 bg-surface-container-low">
+<span class="text-[10px] text-outline uppercase block">Lane</span>
+<span class="font-bold">Inner Right</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 gap-4">
+<button class="py-3 border-2 border-black font-black text-[10px] uppercase tracking-widest">Reject</button>
+<button class="py-3 bg-black text-white font-black text-[10px] uppercase tracking-widest">Issue Citation</button>
+</div>
+</div>
+</div>
+</body></html>
