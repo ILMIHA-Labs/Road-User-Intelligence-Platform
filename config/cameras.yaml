@@ -44,26 +44,48 @@ cameras:
     target_fps: 15
     live_feed_type: preview
     preview_image_url: https://placehold.co/1280x720/png?text=sample_video_01
-    pixels_per_meter: 22.5
-    speed_limit_kmh: 50.0
-    speed_tolerance_kmh: 2.0
-    severe_speed_delta_kmh: 18.0
+    pixels_per_meter: 20.0
+    speed_limit_kmh: 65.0
+    speed_tolerance_kmh: 10.0
+    severe_speed_delta_kmh: 35.0
     stopped_duration_seconds: 15
-    max_motorcycle_riders: 2
-    stop_line_min_speed_kmh: 6.0
-    pedestrian_crossing_min_speed_kmh: 8.0
-    crossing_min_presence_seconds: 0.75
+    max_motorcycle_riders: 4
+    rider_association_window_seconds: 1.5
+    rider_horizontal_margin_ratio: 0.25
+    rider_upper_margin_ratio: 0.6
+    rider_lower_margin_ratio: 0.2
+    stop_line_min_speed_kmh: 8.0
+    pedestrian_crossing_min_speed_kmh: 4.0
+    crossing_min_presence_seconds: 0.35
     crossing_min_observations: 2
-    crossing_vehicle_min_displacement_px: 14.0
+    crossing_vehicle_min_displacement_px: 10.0
     counting_lines:
-      - id: corridor_flow
-        label: Corridor Flow
+      - id: main_approach_flow
+        label: Main Approach Flow
         points:
-          - [220, 180]
-          - [220, 360]
+          - [380, 470]
+          - [720, 470]
+        classes:
+          - car
+          - motorcycle
+          - bus
+          - truck
+          - bicycle
         min_crossing_distance_px: 8.0
         reset_distance_px: 14.0
-        min_displacement_px: 14.0
+        min_displacement_px: 10.0
+        min_observations: 2
+      - id: zebra_walk_flow
+        label: Zebra Walk Flow
+        points:
+          - [610, 250]
+          - [610, 390]
+        classes:
+          - pedestrian
+          - bicycle
+        min_crossing_distance_px: 6.0
+        reset_distance_px: 12.0
+        min_displacement_px: 8.0
         min_observations: 2
     zones:
       - id: school_crossing
@@ -71,25 +93,25 @@ cameras:
         type: polygon
         category: pedestrian_crossing
         points:
-          - [180, 250]
-          - [420, 250]
-          - [420, 330]
-          - [180, 330]
+          - [420, 245]
+          - [810, 245]
+          - [810, 375]
+          - [420, 375]
       - id: zebra_crossing_demo
         label: Zebra Crossing
         type: polygon
         category: zebra_crossing
         points:
-          - [300, 260]
-          - [520, 260]
-          - [520, 340]
-          - [300, 340]
+          - [450, 260]
+          - [780, 260]
+          - [780, 360]
+          - [450, 360]
       - id: north_stop_line
         label: North Stop Line
         type: polygon
         category: stop_line
         points:
-          - [150, 220]
-          - [450, 220]
-          - [450, 245]
-          - [150, 245]
+          - [435, 342]
+          - [785, 342]
+          - [785, 366]
+          - [435, 366]
