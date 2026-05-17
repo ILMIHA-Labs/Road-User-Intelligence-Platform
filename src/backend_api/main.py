@@ -414,6 +414,11 @@ def get_violation_evidence(violation_id: int, db: Session = Depends(get_db)):
     return FileResponse(evidence_path, media_type="image/jpeg")
 
 
+@app.get("/violations/detail/{violation_id}")
+def get_violation_detail(violation_id: int, db: Session = Depends(get_db)):
+    return _get_violation_detail_data(db, violation_id)
+
+
 def _apply_time_filters(query, model, start: datetime = None, end: datetime = None):
     if start is not None:
         query = query.filter(model.timestamp >= start)
@@ -496,6 +501,56 @@ def _serialize_recent_crossings(rows):
         }
         for row in rows
     ]
+
+
+def _get_violation_detail_data(db: Session, violation_id: int):
+    row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Safety event not found")
+
+    camera_defaults, camera_profiles = _read_camera_profiles()
+    camera_profile = next((camera for camera in camera_profiles if camera.get("id") == row.camera_id), None)
+    from datetime import timedelta
+    timestamp = row.timestamp
+    start = timestamp - timedelta(seconds=5)
+    end = timestamp + timedelta(seconds=5)
+
+    detections_query = db.query(models.DBDetection).filter(
+        models.DBDetection.camera_id == row.camera_id,
+        models.DBDetection.object_id == row.object_id,
+        models.DBDetection.timestamp >= start,
+        models.DBDetection.timestamp <= end,
+    ).order_by(models.DBDetection.timestamp.desc())
+
+    speeds_query = db.query(models.DBSpeed).filter(
+        models.DBSpeed.camera_id == row.camera_id,
+        models.DBSpeed.object_id == row.object_id,
+        models.DBSpeed.timestamp >= start,
+        models.DBSpeed.timestamp <= end,
+    ).order_by(models.DBSpeed.timestamp.desc())
+
+    crossings_query = db.query(models.DBCrossing).filter(
+        models.DBCrossing.camera_id == row.camera_id,
+        models.DBCrossing.object_id == row.object_id,
+        models.DBCrossing.timestamp >= start,
+        models.DBCrossing.timestamp <= end,
+    ).order_by(models.DBCrossing.timestamp.desc())
+
+    return {
+        "id": row.id,
+        "violation_type": row.violation_type,
+        "object_id": row.object_id,
+        "camera_id": row.camera_id,
+        "timestamp": row.timestamp,
+        "evidence_url": _violation_evidence_url(row),
+        "camera_profile": camera_profile,
+        "camera_defaults": camera_defaults,
+        "related": {
+            "detections": _serialize_recent_detections(detections_query.limit(10).all()),
+            "speeds": _serialize_recent_speeds(speeds_query.limit(10).all()),
+            "crossings": _serialize_recent_crossings(crossings_query.limit(10).all()),
+        },
+    }
 
 
 def _build_counts_map(items, key_field="count", label_field=None):

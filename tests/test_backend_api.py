@@ -269,6 +269,58 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(len(data["items"]), 1)
         self.assertTrue(data["items"][0]["evidence_url"])
 
+    def test_violation_detail_returns_related_context(self):
+        camera_dir = Path(self.live_preview_tmp.name) / "detail_cam"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+
+        self.client.post("/detections", json={
+            "camera_id": "detail_cam",
+            "timestamp": "2023-10-27T10:00:00Z",
+            "object_id": 14,
+            "class": "car",
+            "helmet_status": "unknown",
+            "bbox": [10.0, 20.0, 30.0, 40.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
+        self.client.post("/speeds", json={
+            "camera_id": "detail_cam",
+            "object_id": 14,
+            "speed_kmh": 42.0,
+            "timestamp": "2023-10-27T10:00:01Z",
+            "source": "edge",
+        })
+        self.client.post("/crossings", json={
+            "camera_id": "detail_cam",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 14,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:02Z",
+            "source": "edge",
+        })
+        self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 14,
+            "camera_id": "detail_cam",
+            "timestamp": "2023-10-27T10:00:03Z",
+        })
+
+        log_response = self.client.get("/violations/log?camera_id=detail_cam")
+        violation_id = log_response.json()["items"][0]["id"]
+        detail_response = self.client.get(f"/violations/detail/{violation_id}")
+        self.assertEqual(detail_response.status_code, 200)
+        detail = detail_response.json()
+        self.assertEqual(detail["id"], violation_id)
+        self.assertEqual(detail["camera_id"], "detail_cam")
+        self.assertEqual(detail["object_id"], 14)
+        self.assertTrue(detail["evidence_url"])
+        self.assertEqual(len(detail["related"]["detections"]), 1)
+        self.assertEqual(len(detail["related"]["speeds"]), 1)
+        self.assertEqual(len(detail["related"]["crossings"]), 1)
+
     def test_analytics_by_camera(self):
         self.client.post("/detections", json={
             "camera_id": "cam_a",

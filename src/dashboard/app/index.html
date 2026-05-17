@@ -846,6 +846,88 @@
     </section>
   </main>
 
+  <div id="violation-detail-modal" class="fixed inset-0 z-50 hidden bg-black/75 px-4 py-8">
+    <div class="mx-auto flex h-full max-w-6xl items-center justify-center">
+      <div class="max-h-full w-full overflow-hidden bg-white">
+        <div class="flex items-start justify-between border-b border-black/5 px-6 py-5">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Safety Event Detail</p>
+            <h3 id="vd-title" class="mt-2 text-2xl font-black tracking-tight">Loading…</h3>
+            <p id="vd-subtitle" class="mt-2 text-sm text-on-surface-variant"></p>
+          </div>
+          <button id="violation-detail-close" class="inline-flex items-center gap-2 border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors">
+            Close <span class="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+        <div class="grid max-h-[80vh] grid-cols-1 overflow-y-auto xl:grid-cols-12">
+          <div class="space-y-6 bg-surface-container-lowest p-6 xl:col-span-5">
+            <section>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Evidence</p>
+              <div id="vd-evidence-shell" class="mt-4 aspect-[16/9] overflow-hidden bg-black">
+                <div id="vd-evidence-empty" class="flex h-full items-center justify-center text-center text-white/60">
+                  <div>
+                    <span class="material-symbols-outlined text-5xl">image_not_supported</span>
+                    <p class="mt-3 text-sm uppercase tracking-[0.2em]">No evidence image</p>
+                  </div>
+                </div>
+                <img id="vd-evidence-image" alt="Safety event evidence" class="hidden h-full w-full object-cover" />
+              </div>
+            </section>
+            <section>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Event Summary</p>
+              <dl id="vd-summary-list" class="mt-4 space-y-3"></dl>
+            </section>
+            <section>
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera Context</p>
+              <dl id="vd-camera-config-list" class="mt-4 space-y-3"></dl>
+            </section>
+            <div class="flex flex-wrap gap-3">
+              <button id="vd-open-camera" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">Open Camera Detail</button>
+              <a id="vd-open-evidence" href="#" target="_blank" rel="noreferrer" class="hidden border border-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">Open Evidence</a>
+            </div>
+          </div>
+          <div class="space-y-6 bg-surface-container-low p-6 xl:col-span-7">
+            <section class="bg-white p-5">
+              <div class="mb-4 flex items-center justify-between">
+                <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Related Detections</h4>
+                <span id="vd-detection-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full border-collapse text-left">
+                  <thead>
+                    <tr class="bg-surface-container text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">
+                      <th class="px-4 py-3">Timestamp</th>
+                      <th class="px-4 py-3">Class</th>
+                      <th class="px-4 py-3">Confidence</th>
+                      <th class="px-4 py-3">Object ID</th>
+                    </tr>
+                  </thead>
+                  <tbody id="vd-detections-table"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <article class="bg-white p-5">
+                <div class="mb-4 flex items-center justify-between">
+                  <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Related Speeds</h4>
+                  <span id="vd-speed-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+                </div>
+                <div id="vd-speeds-list" class="space-y-3"></div>
+              </article>
+              <article class="bg-white p-5">
+                <div class="mb-4 flex items-center justify-between">
+                  <h4 class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Related Crossings</h4>
+                  <span id="vd-crossing-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
+                </div>
+                <div id="vd-crossings-list" class="space-y-3"></div>
+              </article>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const VIOLATION_META = {
       helmet_violation: {
@@ -934,6 +1016,7 @@
       cameraDetailData: null,
       violationLog: { items: [], total: 0, page: 1, pages: 0, pageSize: 25 },
       violationLogFilters: { type: "", camera: "", search: "" },
+      violationDetail: null,
       filters: {
         cameraId: "",
         start: "",
@@ -2615,7 +2698,7 @@
                 <img src="${v.evidence_url}" alt="${meta.label} evidence" class="h-14 w-24 object-cover" loading="lazy" />
               </a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No image</span>'}
               <button class="inline-flex items-center gap-1 border border-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors evidence-btn"
-                data-camera="${v.camera_id}">
+                data-violation-id="${v.id}">
                 Details <span class="material-symbols-outlined text-xs">arrow_forward</span>
               </button>
             </div>
@@ -2623,7 +2706,7 @@
         tbody.appendChild(tr);
       });
       tbody.querySelectorAll(".evidence-btn").forEach(btn => {
-        btn.addEventListener("click", () => openCameraDetail(btn.dataset.camera));
+        btn.addEventListener("click", () => openViolationDetail(btn.dataset.violationId));
       });
     }
 
@@ -2658,6 +2741,133 @@
         controls.appendChild(mkBtn(p, p, p === page));
       }
       controls.appendChild(mkBtn('<span class="material-symbols-outlined text-sm">chevron_right</span>', page + 1, false, page >= pages));
+    }
+
+    function closeViolationDetail() {
+      document.getElementById("violation-detail-modal").classList.add("hidden");
+    }
+
+    function renderKeyValueList(elementId, items, valueClass = "text-xs font-semibold text-right break-all") {
+      const container = document.getElementById(elementId);
+      if (!container) return;
+      container.innerHTML = "";
+      items.forEach(({ label, value }) => {
+        const row = document.createElement("div");
+        row.className = "flex items-start justify-between gap-4 border-b border-surface-container pb-3 last:border-b-0 last:pb-0";
+        row.innerHTML = `
+          <dt class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant shrink-0">${label}</dt>
+          <dd class="${valueClass}">${value}</dd>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderViolationDetail(detail) {
+      const meta = getViolationMeta(detail.violation_type);
+      document.getElementById("vd-title").textContent = meta.label;
+      document.getElementById("vd-subtitle").textContent = `${detail.camera_id} • Object ${detail.object_id ?? "—"} • ${formatTimestamp(detail.timestamp)}`;
+
+      const evidenceImage = document.getElementById("vd-evidence-image");
+      const evidenceEmpty = document.getElementById("vd-evidence-empty");
+      const evidenceLink = document.getElementById("vd-open-evidence");
+      if (detail.evidence_url) {
+        evidenceImage.src = detail.evidence_url;
+        evidenceImage.classList.remove("hidden");
+        evidenceEmpty.classList.add("hidden");
+        evidenceLink.href = detail.evidence_url;
+        evidenceLink.classList.remove("hidden");
+      } else {
+        evidenceImage.classList.add("hidden");
+        evidenceImage.removeAttribute("src");
+        evidenceEmpty.classList.remove("hidden");
+        evidenceLink.classList.add("hidden");
+        evidenceLink.removeAttribute("href");
+      }
+
+      renderKeyValueList("vd-summary-list", [
+        { label: "Event Type", value: meta.label },
+        { label: "Family", value: getViolationFamily(detail.violation_type) === "zone" ? "Zone-based" : "Behavioral" },
+        { label: "Camera", value: detail.camera_id },
+        { label: "Object ID", value: detail.object_id ?? "—" },
+        { label: "Timestamp", value: formatTimestamp(detail.timestamp) },
+        { label: "Description", value: meta.description },
+      ], "text-xs text-right leading-5 max-w-[24rem]");
+
+      const cfg = detail.camera_profile || {};
+      renderKeyValueList("vd-camera-config-list", [
+        { label: "Location", value: cfg.location || "—" },
+        { label: "Speed Limit", value: cfg.speed_limit_kmh != null ? `${cfg.speed_limit_kmh} km/h` : "—" },
+        { label: "Pixels / Metre", value: cfg.pixels_per_meter != null ? cfg.pixels_per_meter : "—" },
+        { label: "Configured Lines", value: Array.isArray(cfg.counting_lines) ? cfg.counting_lines.length : 0 },
+        { label: "Configured Zones", value: Array.isArray(cfg.zones) ? cfg.zones.length : 0 },
+      ]);
+
+      document.getElementById("vd-detection-count").textContent = `${(detail.related?.detections || []).length} records`;
+      document.getElementById("vd-speed-count").textContent = `${(detail.related?.speeds || []).length} records`;
+      document.getElementById("vd-crossing-count").textContent = `${(detail.related?.crossings || []).length} records`;
+
+      const detectionsTable = document.getElementById("vd-detections-table");
+      detectionsTable.innerHTML = "";
+      const detections = detail.related?.detections || [];
+      if (!detections.length) {
+        detectionsTable.innerHTML = '<tr><td colspan="4" class="px-4 py-4 text-sm text-on-surface-variant">No related detections in the local event window.</td></tr>';
+      } else {
+        detections.forEach((row) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="px-4 py-3 text-xs text-on-surface-variant">${formatTimestamp(row.timestamp)}</td>
+            <td class="px-4 py-3 text-xs font-semibold">${formatObjectClassLabel(row.class)}</td>
+            <td class="px-4 py-3 text-xs text-on-surface-variant">${row.confidence != null ? row.confidence.toFixed(2) : "—"}</td>
+            <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${row.object_id ?? "—"}</td>
+          `;
+          detectionsTable.appendChild(tr);
+        });
+      }
+
+      const speedsList = document.getElementById("vd-speeds-list");
+      const speeds = detail.related?.speeds || [];
+      speedsList.innerHTML = speeds.length
+        ? speeds.map((row) => `
+            <div class="border border-black/5 p-3">
+              <div class="flex items-baseline justify-between gap-4">
+                <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">${formatTimestamp(row.timestamp)}</span>
+                <span class="text-lg font-black">${row.speed_kmh} km/h</span>
+              </div>
+            </div>
+          `).join("")
+        : '<p class="text-sm text-on-surface-variant">No related speed samples in the local event window.</p>';
+
+      const crossingsList = document.getElementById("vd-crossings-list");
+      const crossings = detail.related?.crossings || [];
+      crossingsList.innerHTML = crossings.length
+        ? crossings.map((row) => `
+            <div class="border border-black/5 p-3">
+              <div class="flex items-baseline justify-between gap-4">
+                <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">${row.line_label || row.line_id}</span>
+                <span class="text-xs font-semibold">${formatDirectionLabel(row.direction)}</span>
+              </div>
+              <p class="mt-2 text-xs text-on-surface-variant">${formatTimestamp(row.timestamp)} • ${formatObjectClassLabel(row.class)} • Object ${row.object_id ?? "—"}</p>
+            </div>
+          `).join("")
+        : '<p class="text-sm text-on-surface-variant">No related crossing records in the local event window.</p>';
+
+      const openCameraButton = document.getElementById("vd-open-camera");
+      openCameraButton.onclick = () => {
+        closeViolationDetail();
+        openCameraDetail(detail.camera_id);
+      };
+
+      document.getElementById("violation-detail-modal").classList.remove("hidden");
+    }
+
+    async function openViolationDetail(violationId) {
+      try {
+        const detail = await loadJson(`/violations/detail/${violationId}`);
+        state.violationDetail = detail;
+        renderViolationDetail(detail);
+      } catch (error) {
+        console.error("Violation detail fetch failed", error);
+      }
     }
 
     async function openCameraDetail(cameraId) {
@@ -2923,10 +3133,18 @@
           </td>
           <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
           <td class="px-4 py-3">
-            ${v.evidence_url ? `<a href="${v.evidence_url}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 border border-outline-variant bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:border-black hover:bg-black hover:text-white transition-colors">Open Evidence</a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No image</span>'}
+            <div class="flex flex-wrap items-center gap-2">
+              ${v.evidence_url ? `<a href="${v.evidence_url}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 border border-outline-variant bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:border-black hover:bg-black hover:text-white transition-colors">Open Evidence</a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No image</span>'}
+              <button class="inline-flex items-center gap-2 border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors cd-violation-detail-btn" data-violation-id="${v.id}">
+                Review
+              </button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll(".cd-violation-detail-btn").forEach((button) => {
+        button.addEventListener("click", () => openViolationDetail(button.dataset.violationId));
       });
     }
 
@@ -3244,6 +3462,12 @@
       setSetupStatus("Cleared the active draft shape.");
     });
     document.getElementById("setup-save-config").addEventListener("click", saveSetupConfig);
+    document.getElementById("violation-detail-close").addEventListener("click", closeViolationDetail);
+    document.getElementById("violation-detail-modal").addEventListener("click", (event) => {
+      if (event.target.id === "violation-detail-modal") {
+        closeViolationDetail();
+      }
+    });
 
     setActiveView("overview");
     syncFilterInputs();

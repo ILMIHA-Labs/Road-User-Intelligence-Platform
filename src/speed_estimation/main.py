@@ -85,11 +85,12 @@ class SpeedEstimationService:
                 self.client.publish(self.out_topic, json.dumps(dump_event(speed_event)))
                 logger.debug(f"Published speed event: {dump_event(speed_event)}")
 
-            # Periodically clean up old tracks (approx every few seconds based on messages)
-            # In a production system, this would be a separate thread or timer
-            if int(time.time()) % 10 == 0:
-                 for calculator in self.calculators.values():
-                     calculator.clean_old_tracks(time.time())
+            # Periodically clean up old tracks using event time so replayed/sample video
+            # data does not get purged just because wall-clock time is far ahead.
+            event_timestamp_sec = detection_event.timestamp.timestamp()
+            if int(event_timestamp_sec) % 10 == 0:
+                for calculator in self.calculators.values():
+                    calculator.clean_old_tracks(event_timestamp_sec)
 
         except json.JSONDecodeError:
             logger.warning("Received invalid JSON on detection topic")
