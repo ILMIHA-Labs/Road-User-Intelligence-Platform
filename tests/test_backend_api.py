@@ -320,6 +320,50 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(len(detail["related"]["detections"]), 1)
         self.assertEqual(len(detail["related"]["speeds"]), 1)
         self.assertEqual(len(detail["related"]["crossings"]), 1)
+        self.assertEqual(detail["review_status"], "needs_review")
+
+    def test_violation_review_update_persists_status_and_notes(self):
+        camera_dir = Path(self.live_preview_tmp.name) / "review_cam"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+
+        self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 31,
+            "camera_id": "review_cam",
+            "timestamp": "2023-10-27T10:00:03Z",
+        })
+
+        log_response = self.client.get("/violations/log?camera_id=review_cam")
+        violation_id = log_response.json()["items"][0]["id"]
+        response = self.client.patch(
+            f"/violations/detail/{violation_id}/review",
+            json={"review_status": "false_positive", "review_notes": "Occlusion near the crossing line."},
+        )
+        self.assertEqual(response.status_code, 200)
+        detail = response.json()
+        self.assertEqual(detail["review_status"], "false_positive")
+        self.assertEqual(detail["review_notes"], "Occlusion near the crossing line.")
+        self.assertIsNotNone(detail["reviewed_at"])
+
+        log_after = self.client.get("/violations/log?camera_id=review_cam")
+        self.assertEqual(log_after.status_code, 200)
+        self.assertEqual(log_after.json()["items"][0]["review_status"], "false_positive")
+
+    def test_violation_review_update_rejects_invalid_status(self):
+        self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 41,
+            "camera_id": "review_cam",
+            "timestamp": "2023-10-27T10:00:03Z",
+        })
+        log_response = self.client.get("/violations/log?camera_id=review_cam")
+        violation_id = log_response.json()["items"][0]["id"]
+        response = self.client.patch(
+            f"/violations/detail/{violation_id}/review",
+            json={"review_status": "bad_status", "review_notes": ""},
+        )
+        self.assertEqual(response.status_code, 400)
 
     def test_analytics_by_camera(self):
         self.client.post("/detections", json={

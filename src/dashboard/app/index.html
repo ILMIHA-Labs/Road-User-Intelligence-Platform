@@ -905,6 +905,26 @@
               <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera Context</p>
               <dl id="vd-camera-config-list" class="mt-4 space-y-3"></dl>
             </section>
+            <section>
+              <div class="flex items-center justify-between gap-4">
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Review Status</p>
+                <span id="vd-review-status-pill" class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] bg-surface-container text-on-surface">Needs Review</span>
+              </div>
+              <p id="vd-reviewed-at" class="mt-2 text-xs text-on-surface-variant"></p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button id="vd-mark-needs-review" class="border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors">Needs Review</button>
+                <button id="vd-mark-confirmed" class="border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors">Confirmed</button>
+                <button id="vd-mark-false-positive" class="border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors">False Positive</button>
+              </div>
+              <label class="mt-4 block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Review Notes</span>
+                <textarea id="vd-review-notes" rows="4" class="w-full border border-black/10 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="Add operator notes about why this event was confirmed or dismissed."></textarea>
+              </label>
+              <div class="mt-3 flex items-center gap-3">
+                <button id="vd-save-review" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">Save Review</button>
+                <span id="vd-review-feedback" class="text-xs text-on-surface-variant"></span>
+              </div>
+            </section>
             <div class="flex flex-wrap gap-3">
               <button id="vd-open-camera" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">Open Camera Detail</button>
               <a id="vd-open-evidence" href="#" target="_blank" rel="noreferrer" class="hidden border border-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-black hover:text-white transition-colors">Open Evidence</a>
@@ -1119,6 +1139,17 @@
         return "zone";
       }
       return "behavior";
+    }
+
+    function getReviewMeta(status) {
+      const normalized = (status || "needs_review").toLowerCase();
+      if (normalized === "confirmed") {
+        return { label: "Confirmed", chip: "bg-emerald-200 text-emerald-950" };
+      }
+      if (normalized === "false_positive") {
+        return { label: "False Positive", chip: "bg-amber-200 text-amber-950" };
+      }
+      return { label: "Needs Review", chip: "bg-surface-container text-on-surface" };
     }
 
     function formatConfigValue(key, value) {
@@ -1608,6 +1639,29 @@
     async function postJson(url, payload) {
       const response = await fetch(url, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        let message = `Request failed for ${url}: ${response.status}`;
+        try {
+          const data = await response.json();
+          if (data?.detail) {
+            message = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+          }
+        } catch (error) {
+          // Ignore JSON parsing failures and keep the generic message.
+        }
+        throw new Error(message);
+      }
+      return response.json();
+    }
+
+    async function patchJson(url, payload) {
+      const response = await fetch(url, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -2738,6 +2792,9 @@
               <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${getViolationFamily(v.violation_type) === "zone" ? "bg-black text-white" : "bg-surface-container text-on-surface"}">
                 ${getViolationFamily(v.violation_type) === "zone" ? "Zone" : "Behavior"}
               </span>
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${getReviewMeta(v.review_status).chip}">
+                ${getReviewMeta(v.review_status).label}
+              </span>
             </div>
             <p class="mt-1 text-[11px] leading-5 text-on-surface-variant">${meta.description}</p>
           </td>
@@ -2794,6 +2851,7 @@
     }
 
     function closeViolationDetail() {
+      document.getElementById("vd-review-feedback").textContent = "";
       document.getElementById("violation-detail-modal").classList.add("hidden");
     }
 
@@ -2814,6 +2872,7 @@
 
     function renderViolationDetail(detail) {
       const meta = getViolationMeta(detail.violation_type);
+      const reviewMeta = getReviewMeta(detail.review_status);
       document.getElementById("vd-title").textContent = meta.label;
       document.getElementById("vd-subtitle").textContent = `${detail.camera_id} • Object ${detail.object_id ?? "—"} • ${formatTimestamp(detail.timestamp)}`;
 
@@ -2840,6 +2899,7 @@
         { label: "Camera", value: detail.camera_id },
         { label: "Object ID", value: detail.object_id ?? "—" },
         { label: "Timestamp", value: formatTimestamp(detail.timestamp) },
+        { label: "Review Status", value: reviewMeta.label },
         { label: "Description", value: meta.description },
       ], "text-xs text-right leading-5 max-w-[24rem]");
 
@@ -2851,6 +2911,15 @@
         { label: "Configured Lines", value: Array.isArray(cfg.counting_lines) ? cfg.counting_lines.length : 0 },
         { label: "Configured Zones", value: Array.isArray(cfg.zones) ? cfg.zones.length : 0 },
       ]);
+
+      const reviewPill = document.getElementById("vd-review-status-pill");
+      reviewPill.className = `inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${reviewMeta.chip}`;
+      reviewPill.textContent = reviewMeta.label;
+      document.getElementById("vd-reviewed-at").textContent = detail.reviewed_at
+        ? `Reviewed ${formatTimestamp(detail.reviewed_at)}`
+        : "No review action recorded yet.";
+      document.getElementById("vd-review-notes").value = detail.review_notes || "";
+      document.getElementById("vd-review-feedback").textContent = "";
 
       document.getElementById("vd-detection-count").textContent = `${(detail.related?.detections || []).length} records`;
       document.getElementById("vd-speed-count").textContent = `${(detail.related?.speeds || []).length} records`;
@@ -2908,6 +2977,30 @@
       };
 
       document.getElementById("violation-detail-modal").classList.remove("hidden");
+    }
+
+    async function saveViolationReview(reviewStatus) {
+      if (!state.violationDetail?.id) return;
+      const feedback = document.getElementById("vd-review-feedback");
+      feedback.textContent = "Saving review…";
+      try {
+        const detail = await patchJson(`/violations/detail/${state.violationDetail.id}/review`, {
+          review_status: reviewStatus,
+          review_notes: document.getElementById("vd-review-notes").value,
+        });
+        state.violationDetail = detail;
+        renderViolationDetail(detail);
+        feedback.textContent = "Review saved.";
+        if (state.activeView === "violations" && !state.isRefreshing) {
+          loadViolationLog(true);
+        }
+        if (state.currentCameraDetailId === detail.camera_id && !state.isRefreshing) {
+          refreshDashboard();
+        }
+      } catch (error) {
+        console.error("Failed to save review", error);
+        feedback.textContent = error.message;
+      }
     }
 
     async function openViolationDetail(violationId) {
@@ -3187,6 +3280,9 @@
               <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${meta.chip}">${meta.label}</span>
               <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${getViolationFamily(v.violation_type) === "zone" ? "bg-black text-white" : "bg-surface-container text-on-surface"}">
                 ${getViolationFamily(v.violation_type) === "zone" ? "Zone" : "Behavior"}
+              </span>
+              <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.15em] ${getReviewMeta(v.review_status).chip}">
+                ${getReviewMeta(v.review_status).label}
               </span>
             </div>
             <p class="mt-1 text-[11px] leading-5 text-on-surface-variant">${meta.description}</p>

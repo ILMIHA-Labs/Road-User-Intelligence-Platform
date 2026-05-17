@@ -88,6 +88,11 @@ class CameraSetupSaveRequest(BaseModel):
     zebra_zones: List[SetupZebraZoneInput] = Field(default_factory=list)
 
 
+class ViolationReviewUpdateRequest(BaseModel):
+    review_status: str
+    review_notes: Optional[str] = ""
+
+
 @app.get("/cameras/config")
 def get_cameras_config():
     """Return merged camera profiles from cameras.yaml (defaults + per-camera overrides)."""
@@ -295,6 +300,14 @@ def _violation_evidence_url(row: models.DBViolation) -> Optional[str]:
     return f"/violations/{row.id}/evidence"
 
 
+def _normalize_review_status(value: str) -> str:
+    normalized = (value or "").strip().lower().replace("-", "_").replace(" ", "_")
+    allowed = {"needs_review", "confirmed", "false_positive"}
+    if normalized not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid review status")
+    return normalized
+
+
 def _serialize_dt(value):
     if value is None:
         return None
@@ -482,6 +495,9 @@ def _serialize_recent_violations(rows):
             "camera_id": row.camera_id,
             "timestamp": row.timestamp,
             "evidence_url": _violation_evidence_url(row),
+            "review_status": row.review_status or "needs_review",
+            "review_notes": row.review_notes,
+            "reviewed_at": row.reviewed_at,
         }
         for row in rows
     ]
@@ -573,6 +589,9 @@ def _get_violation_detail_data(db: Session, violation_id: int):
         "camera_id": row.camera_id,
         "timestamp": row.timestamp,
         "evidence_url": _violation_evidence_url(row),
+        "review_status": row.review_status or "needs_review",
+        "review_notes": row.review_notes,
+        "reviewed_at": row.reviewed_at,
         "camera_profile": camera_profile,
         "camera_defaults": camera_defaults,
         "related": {
@@ -1143,6 +1162,29 @@ def create_violation(event: schemas.ViolationEvent, db: Session = Depends(get_db
         logger.error(f"Failed to insert violation: {e}")
         raise HTTPException(status_code=500, detail="Database Error")
     return {"message": "Violation stored"}
+
+
+@app.patch("/violations/detail/{violation_id}/review")
+def update_violation_review(
+    violation_id: int,
+    request: ViolationReviewUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Safety event not found")
+
+    row.review_status = _normalize_review_status(request.review_status)
+    row.review_notes = (request.review_notes or "").strip() or None
+    row.reviewed_at = datetime.now(timezone.utc)
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update violation review: {e}")
+        raise HTTPException(status_code=500, detail="Database Error")
+
+    return _get_violation_detail_data(db, violation_id)
 
 @app.post("/trajectories", status_code=201)
 def create_trajectory(event: schemas.TrajectoryEvent, db: Session = Depends(get_db)):

@@ -26,6 +26,15 @@ def _ensure_runtime_columns():
     if "evidence_image_path" not in violation_columns:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE violations ADD COLUMN evidence_image_path VARCHAR"))
+    if "review_status" not in violation_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE violations ADD COLUMN review_status VARCHAR"))
+    if "review_notes" not in violation_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE violations ADD COLUMN review_notes VARCHAR"))
+    if "reviewed_at" not in violation_columns:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE violations ADD COLUMN reviewed_at DATETIME"))
 
 def get_db():
     db = SessionLocal()
