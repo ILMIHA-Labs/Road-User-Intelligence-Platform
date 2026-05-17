@@ -165,6 +165,24 @@
         Scope: all cameras, all recorded time
       </div>
 
+      <section class="mb-8 flex flex-col gap-3 bg-black px-5 py-4 text-white lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">Reporting</p>
+          <p class="mt-2 text-sm leading-6 text-white/75">Export the current live scope for sharing, review, or offline analysis.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+          <a id="export-safety-events" href="#" class="border border-white/25 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors">
+            Export Safety Events CSV
+          </a>
+          <a id="export-crossings" href="#" class="border border-white/25 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-colors">
+            Export Crossings CSV
+          </a>
+          <a id="export-traffic-flow" href="#" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-black">
+            Export Traffic Flow JSON
+          </a>
+        </div>
+      </section>
+
       <section id="overview-view" data-view="overview" class="space-y-8">
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-5">
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
@@ -540,10 +558,16 @@
             <h2 id="camera-detail-title" class="text-5xl font-black tracking-tighter md:text-6xl"></h2>
             <p id="camera-detail-location" class="mt-2 text-sm text-on-surface-variant"></p>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <div class="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
               <span class="mr-2 inline-block h-2 w-2 rounded-full bg-error align-middle animate-pulse"></span>Observed
             </div>
+            <a id="cd-export-safety-events" href="#" class="border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors">
+              Export Camera Safety Events
+            </a>
+            <a id="cd-export-crossings" href="#" class="border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors">
+              Export Camera Crossings
+            </a>
           </div>
         </div>
 
@@ -1615,6 +1639,14 @@
       return query ? `?${query}` : "";
     }
 
+    function apiBaseUrl() {
+      return DASHBOARD_FILE_MODE ? "http://127.0.0.1:8000" : "";
+    }
+
+    function buildExportUrl(path, params = {}) {
+      return `${apiBaseUrl()}${path}${buildQuery(params)}`;
+    }
+
     function normalizeDateInput(value) {
       if (!value) return "";
       const date = new Date(value);
@@ -1636,6 +1668,23 @@
         ? `${startLabel} to ${endLabel}`
         : "all recorded time";
       document.getElementById("active-scope").textContent = `Scope: ${cameraLabel}, ${timeLabel}`;
+    }
+
+    function updateExportActions() {
+      const scope = currentFilterParams();
+      const safetyEventsLink = document.getElementById("export-safety-events");
+      const crossingsLink = document.getElementById("export-crossings");
+      const trafficFlowLink = document.getElementById("export-traffic-flow");
+
+      if (safetyEventsLink) {
+        safetyEventsLink.href = buildExportUrl("/exports/safety-events.csv", scope);
+      }
+      if (crossingsLink) {
+        crossingsLink.href = buildExportUrl("/exports/crossings.csv", scope);
+      }
+      if (trafficFlowLink) {
+        trafficFlowLink.href = buildExportUrl("/exports/traffic-flow.json", scope);
+      }
     }
 
     function setLiveStatus(status, timestamp = null) {
@@ -1717,6 +1766,7 @@
       state.cameraConfigs = snapshot.camera_configs?.cameras || [];
       state.liveFeeds = Object.fromEntries((snapshot.live_feeds?.cameras || []).map((camera) => [camera.camera_id, camera]));
       state.cameraDetailData = snapshot.camera_detail || null;
+      updateExportActions();
       renderActiveView();
       if (state.activeView === "violations" && state.violationLog.page === 1) {
         loadViolationLog(true);
@@ -2929,6 +2979,16 @@
       document.getElementById("cd-speeds").textContent = detailStats.speeds.toLocaleString();
       document.getElementById("cd-violations").textContent = detailStats.violations.toLocaleString();
       document.getElementById("cd-crossings").textContent = (detailStats.crossings || 0).toLocaleString();
+      document.getElementById("cd-export-safety-events").href = buildExportUrl("/exports/safety-events.csv", {
+        camera_id: cameraId,
+        start: normalizeDateInput(state.filters.start),
+        end: normalizeDateInput(state.filters.end),
+      });
+      document.getElementById("cd-export-crossings").href = buildExportUrl("/exports/crossings.csv", {
+        camera_id: cameraId,
+        start: normalizeDateInput(state.filters.start),
+        end: normalizeDateInput(state.filters.end),
+      });
 
       const recent = cameraDetail?.recent || { detections: [], violations: [], crossings: [] };
       const breakdown = cameraDetail?.violations || { violations: [] };
@@ -3421,12 +3481,14 @@
       state.filters.start = document.getElementById("start-filter").value;
       state.filters.end = document.getElementById("end-filter").value;
       state.violationLog.page = 1;
+      updateExportActions();
       connectDashboardStream();
     });
     document.getElementById("clear-filters").addEventListener("click", () => {
       state.filters = { cameraId: "", start: "", end: "" };
       syncFilterInputs();
       state.violationLog.page = 1;
+      updateExportActions();
       connectDashboardStream();
     });
 
@@ -3472,6 +3534,7 @@
     setActiveView("overview");
     syncFilterInputs();
     initializeDashboardSurface();
+    updateExportActions();
     connectDashboardStream();
     setInterval(refreshVisibleLiveSnapshots, 3000);
     document.addEventListener("visibilitychange", () => {

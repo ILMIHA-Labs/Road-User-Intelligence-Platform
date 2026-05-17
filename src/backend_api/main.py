@@ -1,9 +1,11 @@
 import asyncio
+import csv
 import json
 import logging
 import math
 import os
 import shutil
+from io import StringIO
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
@@ -503,6 +505,34 @@ def _serialize_recent_crossings(rows):
     ]
 
 
+def _build_export_filename(prefix: str, extension: str, camera_id: str = None, start: datetime = None, end: datetime = None):
+    parts = [prefix]
+    if camera_id:
+        parts.append(camera_id)
+    if start:
+        parts.append(start.strftime("%Y%m%dT%H%M%S"))
+    if end:
+        parts.append(end.strftime("%Y%m%dT%H%M%S"))
+    return f"{'_'.join(parts)}.{extension}"
+
+
+def _csv_download_response(filename: str, fieldnames: List[str], rows: List[dict]):
+    buffer = StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+    content = buffer.getvalue()
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(iter([content]), media_type="text/csv", headers=headers)
+
+
+def _json_download_response(filename: str, payload: dict):
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    content = json.dumps(jsonable_encoder(payload), indent=2)
+    return StreamingResponse(iter([content]), media_type="application/json", headers=headers)
+
+
 def _get_violation_detail_data(db: Session, violation_id: int):
     row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
     if row is None:
@@ -996,6 +1026,83 @@ def _get_dashboard_snapshot_data(
 
     return snapshot
 
+
+def _get_safety_event_export_rows(
+    db: Session,
+    camera_id: str = None,
+    violation_type: str = None,
+    start: datetime = None,
+    end: datetime = None,
+):
+    query = db.query(models.DBViolation)
+    if camera_id:
+        query = query.filter(models.DBViolation.camera_id == camera_id)
+    if violation_type:
+        query = query.filter(models.DBViolation.violation_type == violation_type)
+    query = _apply_time_filters(query, models.DBViolation, start, end)
+    rows = query.order_by(models.DBViolation.timestamp.desc()).all()
+
+    return [
+        {
+            "id": row.id,
+            "timestamp": _serialize_dt(row.timestamp),
+            "camera_id": row.camera_id,
+            "violation_type": row.violation_type,
+            "object_id": row.object_id,
+            "evidence_url": _violation_evidence_url(row) or "",
+        }
+        for row in rows
+    ]
+
+
+def _get_crossing_export_rows(
+    db: Session,
+    camera_id: str = None,
+    start: datetime = None,
+    end: datetime = None,
+):
+    query = db.query(models.DBCrossing)
+    query = _apply_camera_filter(query, models.DBCrossing, camera_id)
+    query = _apply_time_filters(query, models.DBCrossing, start, end)
+    rows = query.order_by(models.DBCrossing.timestamp.desc()).all()
+
+    return [
+        {
+            "id": row.id,
+            "timestamp": _serialize_dt(row.timestamp),
+            "camera_id": row.camera_id,
+            "line_id": row.line_id,
+            "line_label": row.line_label,
+            "direction": row.direction,
+            "class": row.class_name,
+            "object_id": row.object_id,
+            "frame_number": row.frame_number if row.frame_number is not None else "",
+            "source": row.source or "",
+        }
+        for row in rows
+    ]
+
+
+def _get_traffic_flow_export_data(
+    db: Session,
+    camera_id: str = None,
+    start: datetime = None,
+    end: datetime = None,
+):
+    return {
+        "generated_at": datetime.now(timezone.utc),
+        "scope": {
+            "camera_id": camera_id,
+            "start": start,
+            "end": end,
+        },
+        "summary": _get_analytics_summary_data(db, camera_id, start, end),
+        "crossings": _get_crossing_analytics_data(db, camera_id, start, end),
+        "detections": _get_detection_analytics_data(db, camera_id, start, end),
+        "violations": _get_violation_breakdown_data(db, camera_id, start, end),
+        "speed_distribution": _get_speed_distribution_data(db, camera_id, start, end),
+    }
+
 @app.post("/detections", status_code=201)
 def create_detection(event: schemas.DetectionEvent, db: Session = Depends(get_db)):
     data = event.model_dump()
@@ -1146,6 +1253,51 @@ def get_violations_log(
     db: Session = Depends(get_db),
 ):
     return _get_violation_log_data(db, camera_id, violation_type, start, end, page, page_size)
+
+
+@app.get("/exports/safety-events.csv")
+def export_safety_events_csv(
+    camera_id: str = Query(default=None),
+    violation_type: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    rows = _get_safety_event_export_rows(db, camera_id, violation_type, start, end)
+    filename = _build_export_filename("safety_events", "csv", camera_id, start, end)
+    return _csv_download_response(
+        filename,
+        ["id", "timestamp", "camera_id", "violation_type", "object_id", "evidence_url"],
+        rows,
+    )
+
+
+@app.get("/exports/crossings.csv")
+def export_crossings_csv(
+    camera_id: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    rows = _get_crossing_export_rows(db, camera_id, start, end)
+    filename = _build_export_filename("crossings", "csv", camera_id, start, end)
+    return _csv_download_response(
+        filename,
+        ["id", "timestamp", "camera_id", "line_id", "line_label", "direction", "class", "object_id", "frame_number", "source"],
+        rows,
+    )
+
+
+@app.get("/exports/traffic-flow.json")
+def export_traffic_flow_json(
+    camera_id: str = Query(default=None),
+    start: datetime = Query(default=None),
+    end: datetime = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    payload = _get_traffic_flow_export_data(db, camera_id, start, end)
+    filename = _build_export_filename("traffic_flow", "json", camera_id, start, end)
+    return _json_download_response(filename, payload)
 
 
 @app.get("/live/dashboard")

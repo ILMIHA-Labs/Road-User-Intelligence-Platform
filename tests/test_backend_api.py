@@ -535,6 +535,74 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(violations["speed_violation"], 1)
         self.assertEqual(violations["helmet_violation"], 1)
 
+    def test_export_safety_events_csv(self):
+        camera_dir = Path(self.live_preview_tmp.name) / "cam_export"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 11,
+            "camera_id": "cam_export",
+            "timestamp": "2023-10-27T10:00:02Z",
+        })
+
+        response = self.client.get("/exports/safety-events.csv?camera_id=cam_export")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"].split(";")[0], "text/csv")
+        self.assertIn("attachment; filename=", response.headers["content-disposition"])
+        self.assertIn("violation_type", response.text)
+        self.assertIn("speed_violation", response.text)
+        self.assertIn("cam_export", response.text)
+
+    def test_export_crossings_csv(self):
+        self.client.post("/crossings", json={
+            "camera_id": "cam_cross",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 21,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:02Z",
+            "frame_number": 9,
+            "source": "edge",
+        })
+
+        response = self.client.get("/exports/crossings.csv?camera_id=cam_cross")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"].split(";")[0], "text/csv")
+        self.assertIn("line_label", response.text)
+        self.assertIn("Main Gate", response.text)
+        self.assertIn("a_to_b", response.text)
+
+    def test_export_traffic_flow_json(self):
+        self.client.post("/crossings", json={
+            "camera_id": "cam_flow",
+            "line_id": "main_gate",
+            "line_label": "Main Gate",
+            "object_id": 1,
+            "class": "car",
+            "direction": "a_to_b",
+            "timestamp": "2023-10-27T10:00:02Z",
+            "source": "edge",
+        })
+        self.client.post("/speeds", json={
+            "camera_id": "cam_flow",
+            "object_id": 1,
+            "speed_kmh": 42.0,
+            "timestamp": "2023-10-27T10:00:02Z",
+            "source": "edge",
+        })
+
+        response = self.client.get("/exports/traffic-flow.json?camera_id=cam_flow")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"].split(";")[0], "application/json")
+        data = response.json()
+        self.assertEqual(data["scope"]["camera_id"], "cam_flow")
+        self.assertIn("summary", data)
+        self.assertIn("crossings", data)
+        self.assertIn("speed_distribution", data)
+        self.assertEqual(data["crossings"]["counts_by_line"]["main_gate"], 1)
+
     def test_recent_events(self):
         self.client.post("/detections", json={
             "camera_id": "cam_recent",
