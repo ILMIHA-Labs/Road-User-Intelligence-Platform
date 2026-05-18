@@ -1,0 +1,1303 @@
+{
+  "source": "https://roaduserintelligence.com/rti",
+  "extracted_at": "2026-05-18T12:12:16.912024+00:00",
+  "traffic": {
+    "hotspots": [
+      {
+        "location": "Tamale Central Market Junction",
+        "riskScore": 94,
+        "incidents": 3842,
+        "primaryIssue": "Congestion & lane violations"
+      },
+      {
+        "location": "Nyohini Roundabout",
+        "riskScore": 91,
+        "incidents": 3256,
+        "primaryIssue": "Wrong-way roundabout entry"
+      },
+      {
+        "location": "Aboabo Junction",
+        "riskScore": 89,
+        "incidents": 2978,
+        "primaryIssue": "Lowest helmet compliance zone"
+      },
+      {
+        "location": "Liberation Road – School Zone",
+        "riskScore": 87,
+        "incidents": 2645,
+        "primaryIssue": "Child passenger overloading"
+      },
+      {
+        "location": "Kukuo – Ward K Junction",
+        "riskScore": 83,
+        "incidents": 2210,
+        "primaryIssue": "Inadequate signage & sightlines"
+      }
+    ],
+    "monthly_trend": [
+      {
+        "date": "Aug 25",
+        "motorcycles": 22480000,
+        "helmeted": 3147000,
+        "violations": 19333000
+      },
+      {
+        "date": "Sep 25",
+        "motorcycles": 23150000,
+        "helmeted": 2894000,
+        "violations": 20256000
+      },
+      {
+        "date": "Oct 25",
+        "motorcycles": 24320000,
+        "helmeted": 2918000,
+        "violations": 21402000
+      },
+      {
+        "date": "Nov 25",
+        "motorcycles": 23870000,
+        "helmeted": 2625000,
+        "violations": 21245000
+      },
+      {
+        "date": "Dec 25",
+        "motorcycles": 21640000,
+        "helmeted": 2381000,
+        "violations": 19259000
+      },
+      {
+        "date": "Jan 26",
+        "motorcycles": 25180000,
+        "helmeted": 2770000,
+        "violations": 22410000
+      },
+      {
+        "date": "Feb 26",
+        "motorcycles": 26540000,
+        "helmeted": 2654000,
+        "violations": 23886000
+      },
+      {
+        "date": "Mar 26",
+        "motorcycles": 27170000,
+        "helmeted": 2533000,
+        "violations": 24637000
+      }
+    ],
+    "helmet_compliance": {
+      "withHelmet": 20922028,
+      "withoutHelmet": 153428204,
+      "rate": 12.0
+    },
+    "vehicle_mix": [
+      {
+        "type": "motorcycle",
+        "count": 174350232,
+        "trend": -8.3
+      },
+      {
+        "type": "car",
+        "count": 48866328,
+        "trend": 3.7
+      },
+      {
+        "type": "truck",
+        "count": 12367404,
+        "trend": -1.2
+      },
+      {
+        "type": "pedestrian",
+        "count": 66060036,
+        "trend": 4.5
+      }
+    ],
+    "sites_detail": [
+      {
+        "id": "OBS-001",
+        "location": "Tamale Central Market Junction",
+        "totalDetections": 42187000,
+        "motorcycles": 24384000,
+        "helmetRate": 9.8,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-002",
+        "location": "Liberation Road – School Zone",
+        "totalDetections": 35621000,
+        "motorcycles": 20609000,
+        "helmetRate": 14.2,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-003",
+        "location": "Nyohini Roundabout",
+        "totalDetections": 33480000,
+        "motorcycles": 19362000,
+        "helmetRate": 10.1,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-004",
+        "location": "Lamashegu Interchange",
+        "totalDetections": 31250000,
+        "motorcycles": 18072000,
+        "helmetRate": 12.7,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-005",
+        "location": "Sakasaka – Hospital Road",
+        "totalDetections": 29840000,
+        "motorcycles": 17267000,
+        "helmetRate": 13.9,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-006",
+        "location": "Aboabo Junction",
+        "totalDetections": 28760000,
+        "motorcycles": 16635000,
+        "helmetRate": 8.4,
+        "status": "offline",
+        "lastUpdate": "March 12, 2026"
+      },
+      {
+        "id": "OBS-007",
+        "location": "Kalpohin – Bolgatanga Road",
+        "totalDetections": 27315000,
+        "motorcycles": 15800000,
+        "helmetRate": 14.6,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-008",
+        "location": "Kukuo – Ward K Junction",
+        "totalDetections": 25890000,
+        "motorcycles": 14974000,
+        "helmetRate": 11.3,
+        "status": "offline",
+        "lastUpdate": "March 14, 2026"
+      },
+      {
+        "id": "OBS-009",
+        "location": "Changli – Northern Bypass",
+        "totalDetections": 24520000,
+        "motorcycles": 14185000,
+        "helmetRate": 15.1,
+        "status": "offline",
+        "lastUpdate": "March 13, 2026"
+      },
+      {
+        "id": "OBS-010",
+        "location": "Jisonayili – Sagnarigu Road",
+        "totalDetections": 22781000,
+        "motorcycles": 13062000,
+        "helmetRate": 9.9,
+        "status": "offline",
+        "lastUpdate": "March 10, 2026"
+      }
+    ],
+    "observation_sites": [
+      {
+        "id": "OBS-001",
+        "label": "Tamale Central Market Junction"
+      },
+      {
+        "id": "OBS-002",
+        "label": "Liberation Road – School Zone"
+      },
+      {
+        "id": "OBS-003",
+        "label": "Nyohini Roundabout"
+      },
+      {
+        "id": "OBS-004",
+        "label": "Lamashegu Interchange"
+      },
+      {
+        "id": "OBS-005",
+        "label": "Sakasaka – Hospital Road"
+      },
+      {
+        "id": "OBS-006",
+        "label": "Aboabo Junction"
+      },
+      {
+        "id": "OBS-007",
+        "label": "Kalpohin – Bolgatanga Road"
+      },
+      {
+        "id": "OBS-008",
+        "label": "Kukuo – Ward K Junction"
+      },
+      {
+        "id": "OBS-009",
+        "label": "Changli – Northern Bypass"
+      },
+      {
+        "id": "OBS-010",
+        "label": "Jisonayili – Sagnarigu Road"
+      }
+    ],
+    "road_user_composition": [
+      {
+        "name": "Motorcycles",
+        "value": 62.4,
+        "color": "hsl(35, 95%, 55%)"
+      },
+      {
+        "name": "Cars",
+        "value": 14.8,
+        "color": "hsl(192, 100%, 45%)"
+      },
+      {
+        "name": "Trucks",
+        "value": 3.6,
+        "color": "hsl(280, 60%, 55%)"
+      },
+      {
+        "name": "Pedestrians",
+        "value": 19.2,
+        "color": "hsl(160, 70%, 42%)"
+      }
+    ],
+    "hourly_activity": [
+      {
+        "hour": "06:00",
+        "motorcycles": 1245000,
+        "cars": 486000,
+        "trucks": 112000,
+        "pedestrians": 620000,
+        "volume": 2463000
+      },
+      {
+        "hour": "06:15",
+        "motorcycles": 1876000,
+        "cars": 612000,
+        "trucks": 148000,
+        "pedestrians": 845000,
+        "volume": 3481000
+      },
+      {
+        "hour": "06:30",
+        "motorcycles": 2618000,
+        "cars": 738000,
+        "trucks": 176000,
+        "pedestrians": 1098000,
+        "volume": 4630000
+      },
+      {
+        "hour": "06:45",
+        "motorcycles": 3445000,
+        "cars": 912000,
+        "trucks": 205000,
+        "pedestrians": 1380000,
+        "volume": 5942000
+      },
+      {
+        "hour": "07:00",
+        "motorcycles": 4078000,
+        "cars": 1015000,
+        "trucks": 162000,
+        "pedestrians": 1502000,
+        "volume": 6757000
+      },
+      {
+        "hour": "07:15",
+        "motorcycles": 4546000,
+        "cars": 788000,
+        "trucks": 132000,
+        "pedestrians": 1274000,
+        "volume": 6740000
+      },
+      {
+        "hour": "07:30",
+        "motorcycles": 4904000,
+        "cars": 842000,
+        "trucks": 118000,
+        "pedestrians": 1204000,
+        "volume": 7068000
+      },
+      {
+        "hour": "07:45",
+        "motorcycles": 5097000,
+        "cars": 736000,
+        "trucks": 103000,
+        "pedestrians": 1027000,
+        "volume": 6963000
+      },
+      {
+        "hour": "08:00",
+        "motorcycles": 3912000,
+        "cars": 665000,
+        "trucks": 88000,
+        "pedestrians": 796000,
+        "volume": 5461000
+      },
+      {
+        "hour": "08:15",
+        "motorcycles": 1378000,
+        "cars": 420000,
+        "trucks": 73000,
+        "pedestrians": 495000,
+        "volume": 2366000
+      }
+    ]
+  },
+  "rtc_form": {
+    "form_title": "RTC Injury Surveillance Form v5",
+    "form_url": "https://roaduserintelligence.com/RTC_Surveillance_Form_v5.html",
+    "sections": [
+      {
+        "id": "s1",
+        "title": "EVENT TIMING",
+        "fields": [
+          "Date of Crash",
+          "Time of Crash",
+          "Date of Hospital Arrival",
+          "Time of Arrival",
+          "Onset of Care",
+          "Onset of Care — Exact (mins)"
+        ],
+        "options": {}
+      },
+      {
+        "id": "s2",
+        "title": "CRASH LOCATION",
+        "fields": [
+          "Town / District / GPS Coordinates",
+          "Road Type",
+          "Lighting Condition",
+          "Weather Condition"
+        ],
+        "options": {
+          "lighting": [
+            {
+              "value": "daylight",
+              "label": "Daylight"
+            },
+            {
+              "value": "night_lit",
+              "label": "Night — with streetlights"
+            },
+            {
+              "value": "night_dark",
+              "label": "Night — no streetlights"
+            },
+            {
+              "value": "dawn_dusk",
+              "label": "Dawn / Dusk"
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown"
+            }
+          ],
+          "road_type": [
+            {
+              "value": "highway",
+              "label": "Highway / Motorway"
+            },
+            {
+              "value": "urban_road",
+              "label": "Urban Road / Street"
+            },
+            {
+              "value": "rural_road",
+              "label": "Rural Road"
+            },
+            {
+              "value": "junction",
+              "label": "Junction / Intersection"
+            },
+            {
+              "value": "residential",
+              "label": "Residential Area"
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown"
+            }
+          ],
+          "weather": [
+            {
+              "value": "clear",
+              "label": "Clear"
+            },
+            {
+              "value": "rainy",
+              "label": "Rainy"
+            },
+            {
+              "value": "foggy",
+              "label": "Foggy / Misty"
+            },
+            {
+              "value": "dusty",
+              "label": "Dusty / Harmattan"
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown"
+            }
+          ]
+        }
+      },
+      {
+        "id": "s3",
+        "title": "ROAD USER CHARACTERISTICS",
+        "fields": [
+          "Age Group (years)",
+          "Sex",
+          "Road User Type",
+          "Protective Measures",
+          "Alcohol / Substance Involvement Suspected"
+        ],
+        "options": {
+          "age_group": [
+            {
+              "value": "0-5",
+              "label": "0 – 5"
+            },
+            {
+              "value": "6-15",
+              "label": "6 – 15"
+            },
+            {
+              "value": "16-25",
+              "label": "16 – 25"
+            },
+            {
+              "value": "26-35",
+              "label": "26 – 35"
+            },
+            {
+              "value": "36-45",
+              "label": "36 – 45"
+            },
+            {
+              "value": "46-55",
+              "label": "46 – 55"
+            },
+            {
+              "value": "56-65",
+              "label": "56 – 65"
+            },
+            {
+              "value": "66+",
+              "label": "66+"
+            }
+          ],
+          "helmet": [
+            {
+              "value": "yes",
+              "label": "Yes — Alcohol"
+            }
+          ],
+          "sex": [
+            {
+              "value": "male",
+              "label": "Male"
+            },
+            {
+              "value": "female",
+              "label": "Female"
+            },
+            {
+              "value": "other",
+              "label": "Other / Not specified"
+            }
+          ],
+          "user_type": [
+            {
+              "value": "pedestrian",
+              "label": "Pedestrian"
+            },
+            {
+              "value": "moto_rider",
+              "label": "Motorcyclist (Rider)"
+            },
+            {
+              "value": "moto_pass",
+              "label": "Motorcycle Passenger"
+            },
+            {
+              "value": "car_driver",
+              "label": "Car Driver"
+            },
+            {
+              "value": "car_pass",
+              "label": "Car Passenger"
+            },
+            {
+              "value": "bus",
+              "label": "Bus Occupant"
+            },
+            {
+              "value": "truck",
+              "label": "Truck / HGV Occupant"
+            },
+            {
+              "value": "cyclist",
+              "label": "Cyclist"
+            },
+            {
+              "value": "other",
+              "label": "Other / Unspecified"
+            }
+          ],
+          "alcohol": [
+            {
+              "value": "yes_alcohol",
+              "label": "Yes — Alcohol"
+            },
+            {
+              "value": "yes_other",
+              "label": "Yes — Other Substance"
+            },
+            {
+              "value": "no",
+              "label": "No"
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown"
+            }
+          ],
+          "seatbelt": [
+            {
+              "value": "yes",
+              "label": "Yes — Alcohol"
+            }
+          ],
+          "vest": [
+            {
+              "value": "yes",
+              "label": "Yes — Alcohol"
+            }
+          ]
+        }
+      },
+      {
+        "id": "s4",
+        "title": "CRASH CHARACTERISTICS",
+        "fields": [
+          "Number of Vehicles Involved"
+        ],
+        "options": {}
+      },
+      {
+        "id": "s5",
+        "title": "INJURY &amp; CLINICAL OUTCOME",
+        "fields": [
+          "Glasgow Coma Scale (GCS) Score",
+          "Injury Severity Score (ISS) if available",
+          "Length of Stay (days)",
+          "Injury Type / Anatomical Site",
+          "Selected Injury Codes",
+          "Injury Severity",
+          "Clinical Interventions",
+          "Outcome at Discharge",
+          "ICD-11 Code Lookup"
+        ],
+        "options": {
+          "injury_category": [
+            {
+              "value": "head",
+              "label": "Mild"
+            }
+          ],
+          "surgery": [
+            {
+              "value": "yes",
+              "label": "Discharged — Full Recovery"
+            }
+          ],
+          "inj_soft": [
+            {
+              "value": "NA80",
+              "label": "Mild"
+            }
+          ],
+          "outcome": [
+            {
+              "value": "discharged_full",
+              "label": "Discharged — Full Recovery"
+            },
+            {
+              "value": "discharged_partial",
+              "label": "Discharged — Partial Recovery"
+            },
+            {
+              "value": "referred",
+              "label": "Referred to Higher Facility"
+            },
+            {
+              "value": "transferred",
+              "label": "Transferred — Same Level"
+            },
+            {
+              "value": "disability",
+              "label": "Permanent Disability"
+            },
+            {
+              "value": "death_facility",
+              "label": "Death (in-facility)"
+            },
+            {
+              "value": "doa",
+              "label": "Death on Arrival (DOA)"
+            },
+            {
+              "value": "lama",
+              "label": "Left Against Medical Advice"
+            }
+          ],
+          "inj_head": [
+            {
+              "value": "NA07.0",
+              "label": "Mild"
+            }
+          ],
+          "inj_poly": [
+            {
+              "value": "NA9Z",
+              "label": "Mild"
+            }
+          ],
+          "inj_spine": [
+            {
+              "value": "NA22",
+              "label": "Mild"
+            }
+          ],
+          "inj_abdo": [
+            {
+              "value": "NB50",
+              "label": "Mild"
+            }
+          ],
+          "inj_upl": [
+            {
+              "value": "NC10",
+              "label": "Mild"
+            }
+          ],
+          "inj_burn": [
+            {
+              "value": "ND90",
+              "label": "Mild"
+            }
+          ],
+          "severity": [
+            {
+              "value": "mild",
+              "label": "Mild"
+            },
+            {
+              "value": "moderate",
+              "label": "Moderate"
+            },
+            {
+              "value": "severe",
+              "label": "Severe"
+            },
+            {
+              "value": "fatal",
+              "label": "Critical / Fatal"
+            }
+          ],
+          "inj_thorax": [
+            {
+              "value": "NA80",
+              "label": "Mild"
+            }
+          ],
+          "hospitalized": [
+            {
+              "value": "yes",
+              "label": "Discharged — Full Recovery"
+            }
+          ],
+          "inj_lol": [
+            {
+              "value": "NB60",
+              "label": "Mild"
+            }
+          ]
+        }
+      },
+      {
+        "id": "s6",
+        "title": "ADDITIONAL NOTES / CLINICAL NARRATIVE",
+        "fields": [
+          "Clinical Notes / Observations",
+          "Reviewed By",
+          "Review Date"
+        ],
+        "options": {}
+      }
+    ]
+  },
+  "rtc_analytics": {
+    "event_timing": {
+      "crash_by_hour": [
+        {
+          "hour": "00–03",
+          "count": 42
+        },
+        {
+          "hour": "04–07",
+          "count": 68
+        },
+        {
+          "hour": "08–11",
+          "count": 156
+        },
+        {
+          "hour": "12–15",
+          "count": 198
+        },
+        {
+          "hour": "16–19",
+          "count": 224
+        },
+        {
+          "hour": "20–23",
+          "count": 112
+        }
+      ],
+      "onset_of_care": [
+        {
+          "bucket": "Less than 15 minutes",
+          "count": 89
+        },
+        {
+          "bucket": "15 – 30 minutes",
+          "count": 124
+        },
+        {
+          "bucket": "31 – 60 minutes",
+          "count": 98
+        },
+        {
+          "bucket": "1 – 2 hours",
+          "count": 67
+        },
+        {
+          "bucket": "2 – 6 hours",
+          "count": 41
+        },
+        {
+          "bucket": "More than 6 hours",
+          "count": 28
+        },
+        {
+          "bucket": "Unknown",
+          "count": 19
+        }
+      ],
+      "prehospital_delay_median_mins": 38
+    },
+    "crash_location": {
+      "road_type": [
+        {
+          "type": "Urban Road / Street",
+          "count": 142
+        },
+        {
+          "type": "Junction / Intersection",
+          "count": 118
+        },
+        {
+          "type": "Highway / Motorway",
+          "count": 64
+        },
+        {
+          "type": "Rural Road",
+          "count": 52
+        },
+        {
+          "type": "Residential Area",
+          "count": 38
+        },
+        {
+          "type": "Unknown",
+          "count": 12
+        }
+      ],
+      "lighting": [
+        {
+          "condition": "Daylight",
+          "count": 198
+        },
+        {
+          "condition": "Night — with streetlights",
+          "count": 86
+        },
+        {
+          "condition": "Night — no streetlights",
+          "count": 54
+        },
+        {
+          "condition": "Dawn / Dusk",
+          "count": 32
+        },
+        {
+          "condition": "Unknown",
+          "count": 12
+        }
+      ],
+      "weather": [
+        {
+          "condition": "Clear",
+          "count": 210
+        },
+        {
+          "condition": "Rainy",
+          "count": 78
+        },
+        {
+          "condition": "Dusty / Harmattan",
+          "count": 45
+        },
+        {
+          "condition": "Foggy / Misty",
+          "count": 18
+        },
+        {
+          "condition": "Unknown",
+          "count": 11
+        }
+      ],
+      "top_districts": [
+        {
+          "location": "Tamale Central",
+          "count": 94
+        },
+        {
+          "location": "Nyohini",
+          "count": 76
+        },
+        {
+          "location": "Lamashegu",
+          "count": 61
+        },
+        {
+          "location": "Aboabo",
+          "count": 58
+        },
+        {
+          "location": "Kalpohin",
+          "count": 47
+        }
+      ]
+    },
+    "crash_characteristics": {
+      "vehicles_involved": [
+        {
+          "count": "1 vehicle",
+          "cases": 98
+        },
+        {
+          "count": "2 vehicles",
+          "cases": 156
+        },
+        {
+          "count": "3+ vehicles",
+          "cases": 48
+        }
+      ],
+      "collision_type": [
+        {
+          "type": "Angle / T-bone",
+          "count": 112
+        },
+        {
+          "type": "Rear-end",
+          "count": 86
+        },
+        {
+          "type": "Sideswipe",
+          "count": 54
+        },
+        {
+          "type": "Hit fixed object",
+          "count": 64
+        },
+        {
+          "type": "Pedestrian strike",
+          "count": 72
+        },
+        {
+          "type": "Other / Unknown",
+          "count": 14
+        }
+      ],
+      "protective_equipment": [
+        {
+          "measure": "Helmet worn",
+          "count": 68
+        },
+        {
+          "measure": "Helmet not worn",
+          "count": 212
+        },
+        {
+          "measure": "Seatbelt worn",
+          "count": 42
+        },
+        {
+          "measure": "Reflective vest",
+          "count": 28
+        }
+      ],
+      "alcohol_suspected": [
+        {
+          "status": "No",
+          "count": 248
+        },
+        {
+          "status": "Yes — Alcohol",
+          "count": 38
+        },
+        {
+          "status": "Yes — Other substance",
+          "count": 12
+        },
+        {
+          "status": "Unknown",
+          "count": 14
+        }
+      ]
+    },
+    "road_user_crash": {
+      "user_type": [
+        {
+          "type": "Motorcyclist (Rider)",
+          "count": 186,
+          "icd": "PA03"
+        },
+        {
+          "type": "Motorcycle Passenger",
+          "count": 94,
+          "icd": "PA03"
+        },
+        {
+          "type": "Pedestrian",
+          "count": 72,
+          "icd": "PA00"
+        },
+        {
+          "type": "Car Driver",
+          "count": 48,
+          "icd": "PA04"
+        },
+        {
+          "type": "Car Passenger",
+          "count": 36,
+          "icd": "PA04"
+        },
+        {
+          "type": "Cyclist",
+          "count": 22,
+          "icd": "PA02"
+        }
+      ],
+      "age_group": [
+        {
+          "group": "16 – 25",
+          "count": 142
+        },
+        {
+          "group": "26 – 35",
+          "count": 118
+        },
+        {
+          "group": "36 – 45",
+          "count": 76
+        },
+        {
+          "group": "6 – 15",
+          "count": 42
+        },
+        {
+          "group": "46 – 55",
+          "count": 38
+        },
+        {
+          "group": "Other",
+          "count": 42
+        }
+      ],
+      "sex": [
+        {
+          "sex": "Male",
+          "count": 312
+        },
+        {
+          "sex": "Female",
+          "count": 134
+        },
+        {
+          "sex": "Other / Not specified",
+          "count": 14
+        }
+      ],
+      "counterpart_vehicle": [
+        {
+          "vehicle": "Car as counterpart",
+          "count": 98
+        },
+        {
+          "vehicle": "Motorcycle as counterpart",
+          "count": 86
+        },
+        {
+          "vehicle": "Fixed/stationary object",
+          "count": 64
+        },
+        {
+          "vehicle": "Heavy goods vehicle",
+          "count": 38
+        },
+        {
+          "vehicle": "Pedestrian as counterpart",
+          "count": 24
+        }
+      ]
+    },
+    "injury_outcome": {
+      "gcs_distribution": [
+        {
+          "category": "Mild (13–15)",
+          "count": 198
+        },
+        {
+          "category": "Moderate (9–12)",
+          "count": 86
+        },
+        {
+          "category": "Severe (3–8)",
+          "count": 42
+        },
+        {
+          "category": "Unknown",
+          "count": 34
+        }
+      ],
+      "iss_distribution": [
+        {
+          "band": "1–8 (Minor)",
+          "count": 124
+        },
+        {
+          "band": "9–15 (Moderate)",
+          "count": 98
+        },
+        {
+          "band": "16–24 (Serious)",
+          "count": 62
+        },
+        {
+          "band": "25+ (Critical)",
+          "count": 28
+        },
+        {
+          "band": "Not recorded",
+          "count": 48
+        }
+      ],
+      "anatomical_site": [
+        {
+          "site": "Head / Neck",
+          "count": 112
+        },
+        {
+          "site": "Upper limb",
+          "count": 86
+        },
+        {
+          "site": "Lower limb",
+          "count": 124
+        },
+        {
+          "site": "Thorax",
+          "count": 48
+        },
+        {
+          "site": "Abdomen",
+          "count": 36
+        },
+        {
+          "site": "Multiple regions",
+          "count": 54
+        }
+      ],
+      "injury_type": [
+        {
+          "type": "Fracture",
+          "count": 142
+        },
+        {
+          "type": "Laceration / Open wound",
+          "count": 98
+        },
+        {
+          "type": "Contusion",
+          "count": 76
+        },
+        {
+          "type": "Concussion / TBI",
+          "count": 48
+        },
+        {
+          "type": "Internal injury",
+          "count": 32
+        }
+      ],
+      "interventions": [
+        {
+          "intervention": "Surgery required",
+          "count": 68,
+          "pct": 24
+        },
+        {
+          "intervention": "Mechanical ventilation",
+          "count": 22,
+          "pct": 8
+        },
+        {
+          "intervention": "Blood transfusion",
+          "count": 34,
+          "pct": 12
+        },
+        {
+          "intervention": "ICU admission",
+          "count": 41,
+          "pct": 14
+        }
+      ],
+      "discharge_outcome": [
+        {
+          "outcome": "Discharged home",
+          "count": 198
+        },
+        {
+          "outcome": "Transferred",
+          "count": 42
+        },
+        {
+          "outcome": "Admitted (ongoing)",
+          "count": 38
+        },
+        {
+          "outcome": "Deceased",
+          "count": 18
+        },
+        {
+          "outcome": "Unknown",
+          "count": 6
+        }
+      ],
+      "severity_flow": [
+        {
+          "initial": "Mild",
+          "outcome": "Discharged home",
+          "count": 142
+        },
+        {
+          "initial": "Mild",
+          "outcome": "Transferred",
+          "count": 12
+        },
+        {
+          "initial": "Moderate",
+          "outcome": "Discharged home",
+          "count": 48
+        },
+        {
+          "initial": "Moderate",
+          "outcome": "Admitted",
+          "count": 28
+        },
+        {
+          "initial": "Moderate",
+          "outcome": "Deceased",
+          "count": 6
+        },
+        {
+          "initial": "Severe",
+          "outcome": "Admitted",
+          "count": 18
+        },
+        {
+          "initial": "Severe",
+          "outcome": "Deceased",
+          "count": 12
+        },
+        {
+          "initial": "Severe",
+          "outcome": "Transferred",
+          "count": 8
+        }
+      ]
+    },
+    "notes": {
+      "records_with_notes": 246,
+      "total_records": 302,
+      "common_themes": [
+        {
+          "theme": "Helmet not worn",
+          "mentions": 89
+        },
+        {
+          "theme": "Multi-vehicle collision",
+          "mentions": 64
+        },
+        {
+          "theme": "Pedestrian struck at junction",
+          "mentions": 52
+        },
+        {
+          "theme": "Delayed pre-hospital care",
+          "mentions": 41
+        },
+        {
+          "theme": "Alcohol suspected",
+          "mentions": 28
+        }
+      ],
+      "sample_notes": [
+        {
+          "record_id": "RTC-2026-0142",
+          "facility": "Tamale Teaching Hospital",
+          "excerpt": "Rider ejected after T-bone at junction; GCS 11 on arrival; helmet absent.",
+          "reviewed_by": "Dr. A. Mensah",
+          "review_date": "2026-03-12"
+        },
+        {
+          "record_id": "RTC-2026-0098",
+          "facility": "West Hospital",
+          "excerpt": "Passenger with open tibia fracture; onset of care ~45 mins; referred for orthopaedic review.",
+          "reviewed_by": "Dr. F. Yakubu",
+          "review_date": "2026-03-10"
+        },
+        {
+          "record_id": "RTC-2026-0067",
+          "facility": "Tamale Central",
+          "excerpt": "Pedestrian struck in market zone; head injury; ISS 22; ICU admission documented.",
+          "reviewed_by": "Dr. S. Alhassan",
+          "review_date": "2026-03-08"
+        }
+      ]
+    },
+    "_analytics_note": "RTC crash/injury aggregates are illustrative distributions aligned to the RTC Surveillance Form field schema. The public /rti SPA does not expose a crash-records API; traffic metrics are extracted from the live site bundle."
+  }
+}

@@ -1,0 +1,190 @@
+      <!-- ═══ RTI / RTC SURVEILLANCE VIEWS ═══ -->
+      <div id="rti-data-banner" class="mb-6 hidden bg-surface-container-low p-4 text-sm leading-6 text-on-surface-variant"></div>
+
+      <section id="rti-overview-view" data-view="rti-overview" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Mobility intelligence from <a href="https://roaduserintelligence.com/rti" class="underline" target="_blank" rel="noopener">roaduserintelligence.com/rti</a> — Tamale observation network.</p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5" id="rti-overview-metrics"></div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-5">
+            <h3 class="text-lg font-black">Traffic Composition</h3>
+            <div id="rti-composition-bars" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-7">
+            <h3 class="text-lg font-black">Helmet Split</h3>
+            <div id="rti-helmet-bars" class="mt-4 space-y-3"></div>
+            <p id="rti-helmet-total" class="mt-6 border-t border-white/10 pt-4 text-[10px] uppercase tracking-[0.2em] text-white/40"></p>
+          </article>
+        </div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Risk Hotspots</h3>
+            <div id="rti-hotspots-bars" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Observation Sites</h3>
+            <div id="rti-sites-grid" class="mt-4 grid grid-cols-1 gap-3"></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="rti-timing-view" data-view="rti-timing" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Event timing · RTC Form §01 — crash time, hospital arrival, onset of care.</p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3" id="rti-timing-metrics"></div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-5">
+            <h3 class="text-lg font-black">Crashes by Time of Day</h3>
+            <div id="rti-crash-by-hour" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-7">
+            <h3 class="text-lg font-black">Onset of Care</h3>
+            <div id="rti-onset-care" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <article class="bg-surface-container-lowest p-8">
+          <h3 class="text-lg font-black">Traffic Volume by Hour</h3>
+          <div id="rti-hourly-chart" class="mt-4 flex items-end gap-0.5 overflow-x-auto pb-2" style="height:11rem;"></div>
+          <div id="rti-hourly-labels" class="mt-2 flex gap-0.5 overflow-x-auto text-[8px] uppercase text-on-surface-variant"></div>
+        </article>
+        <article class="bg-surface-container-low p-6" id="rti-form-timing"></article>
+      </section>
+
+      <section id="rti-location-view" data-view="rti-location" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Crash location · RTC Form §02 — place, road type, lighting, weather.</p>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Road Type</h3>
+            <div id="rti-road-type" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Top Districts</h3>
+            <div id="rti-districts" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <article class="bg-black p-8 text-white">
+            <h3 class="text-lg font-black">Lighting</h3>
+            <div id="rti-lighting" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Weather</h3>
+            <div id="rti-weather" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <article class="bg-surface-container-low p-6" id="rti-form-location"></article>
+      </section>
+
+      <section id="rti-road-user-view" data-view="rti-road-user" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Road user characteristics · RTC Form §03 — ICD-11 PA / XE codes.</p>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-7">
+            <h3 class="text-lg font-black">Road User Type</h3>
+            <div id="rti-user-type" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-5">
+            <h3 class="text-lg font-black">Sex</h3>
+            <div id="rti-sex" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Age Group</h3>
+            <div id="rti-age" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Counterpart Vehicle</h3>
+            <div id="rti-counterpart" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <article class="bg-surface-container-low p-6" id="rti-form-road-user"></article>
+      </section>
+
+      <section id="rti-crash-view" data-view="rti-crash" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Crash characteristics · RTC Form §04.</p>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-3">
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Vehicles Involved</h3>
+            <div id="rti-vehicles" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-black p-8 text-white">
+            <h3 class="text-lg font-black">Collision Type</h3>
+            <div id="rti-collision" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Alcohol / Substance</h3>
+            <div id="rti-alcohol" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <article class="bg-surface-container-low p-6" id="rti-form-crash"></article>
+      </section>
+
+      <section id="rti-injury-view" data-view="rti-injury" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Injury &amp; clinical outcome · RTC Form §05 — GCS, ISS, anatomy, discharge.</p>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">GCS Distribution</h3>
+            <div id="rti-gcs" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">ISS Distribution</h3>
+            <div id="rti-iss" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-black p-8 text-white xl:col-span-5">
+            <h3 class="text-lg font-black">Anatomical Site</h3>
+            <div id="rti-anatomical" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-surface-container-lowest p-8 xl:col-span-7">
+            <h3 class="text-lg font-black">Injury Type</h3>
+            <div id="rti-injury-type" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
+          <article class="bg-surface-container-lowest p-8">
+            <h3 class="text-lg font-black">Interventions</h3>
+            <div id="rti-interventions" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-black p-8 text-white">
+            <h3 class="text-lg font-black">Discharge Outcome</h3>
+            <div id="rti-discharge" class="mt-4 space-y-3"></div>
+          </article>
+        </div>
+        <article class="bg-surface-container-lowest p-8">
+          <h3 class="text-lg font-black">Severity → Outcome</h3>
+          <div id="rti-severity-flow" class="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3"></div>
+        </article>
+        <article class="bg-surface-container-low p-6" id="rti-form-injury"></article>
+      </section>
+
+      <section id="rti-notes-view" data-view="rti-notes" class="hidden space-y-8">
+        <p class="text-sm text-on-surface-variant">Notes &amp; clinical narrative · RTC Form §06.</p>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-3" id="rti-notes-metrics"></div>
+        <div class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-5">
+            <h3 class="text-lg font-black">Common Themes</h3>
+            <div id="rti-themes" class="mt-4 space-y-3"></div>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-7">
+            <h3 class="text-lg font-black">Documentation Coverage</h3>
+            <div id="rti-notes-coverage" class="mt-4"></div>
+          </article>
+        </div>
+        <article class="bg-surface-container-lowest p-8">
+          <h3 class="mb-4 text-lg font-black">Sample Clinical Notes</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="border-b border-black/10 text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">
+                <tr>
+                  <th class="pb-3 pr-4">Record</th>
+                  <th class="pb-3 pr-4">Facility</th>
+                  <th class="pb-3 pr-4">Excerpt</th>
+                  <th class="pb-3">Review</th>
+                </tr>
+              </thead>
+              <tbody id="rti-notes-table"></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="bg-surface-container-low p-6" id="rti-form-notes"></article>
+      </section>
+      <!-- ═══ / RTI VIEWS ═══ -->
