@@ -84,6 +84,8 @@ class CameraSetupSaveRequest(BaseModel):
     live_feed_type: Optional[str] = None
     live_feed_url: Optional[str] = None
     preview_image_url: Optional[str] = None
+    preview_frame_width: Optional[int] = None
+    preview_frame_height: Optional[int] = None
     counting_lines: List[SetupCountingLineInput] = Field(default_factory=list)
     zebra_zones: List[SetupZebraZoneInput] = Field(default_factory=list)
 
@@ -166,6 +168,8 @@ def save_camera_setup(request: CameraSetupSaveRequest):
         "live_feed_type": request.live_feed_type if request.live_feed_type is not None else existing_camera.get("live_feed_type", "preview"),
         "live_feed_url": request.live_feed_url if request.live_feed_url is not None else existing_camera.get("live_feed_url"),
         "preview_image_url": request.preview_image_url if request.preview_image_url is not None else existing_camera.get("preview_image_url", f"/setup/previews/{preview_camera_id}/frame"),
+        "preview_frame_width": request.preview_frame_width if request.preview_frame_width is not None else existing_camera.get("preview_frame_width"),
+        "preview_frame_height": request.preview_frame_height if request.preview_frame_height is not None else existing_camera.get("preview_frame_height"),
         "counting_lines": normalized_lines,
         "zones": retained_non_zebra_zones + normalized_zebra_zones,
     }

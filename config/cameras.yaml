@@ -21,97 +21,173 @@ defaults:
   crossing_vehicle_min_displacement_px: 12.0
   zones: []
   counting_lines: []
-
 cameras:
-  - id: recam_01
-    url: recamera-node-red
-    location: reCamera_192.168.0.100
-    target_fps: 5
-    live_feed_type: recamera_ws
-    live_feed_url: ws://192.168.0.100:8090
-    pixels_per_meter: 25.0
-    speed_limit_kmh: 50.0
-    speed_tolerance_kmh: 2.0
-    speed_history_size: 8
-    speed_max_kmh: 80.0
-    speed_min_time_delta_seconds: 0.2
-    speed_smoothing_alpha: 0.35
-    speed_outlier_mode: ignore
-
-  - id: sample_video_01
-    url: ../data/sample.mp4
-    location: test_intersection
-    target_fps: 15
-    live_feed_type: preview
-    preview_image_url: https://placehold.co/1280x720/png?text=sample_video_01
-    pixels_per_meter: 20.0
-    speed_limit_kmh: 65.0
-    speed_tolerance_kmh: 10.0
-    severe_speed_delta_kmh: 35.0
-    stopped_duration_seconds: 15
-    max_motorcycle_riders: 4
-    rider_association_window_seconds: 1.5
-    rider_horizontal_margin_ratio: 0.25
-    rider_upper_margin_ratio: 0.6
-    rider_lower_margin_ratio: 0.2
-    stop_line_min_speed_kmh: 8.0
-    pedestrian_crossing_min_speed_kmh: 4.0
-    crossing_min_presence_seconds: 0.35
-    crossing_min_observations: 2
-    crossing_vehicle_min_displacement_px: 10.0
-    counting_lines:
-      - id: main_approach_flow
-        label: Main Approach Flow
-        points:
-          - [380, 470]
-          - [720, 470]
-        classes:
-          - car
-          - motorcycle
-          - bus
-          - truck
-          - bicycle
-        min_crossing_distance_px: 8.0
-        reset_distance_px: 14.0
-        min_displacement_px: 10.0
-        min_observations: 2
-      - id: zebra_walk_flow
-        label: Zebra Walk Flow
-        points:
-          - [610, 250]
-          - [610, 390]
-        classes:
-          - pedestrian
-          - bicycle
-        min_crossing_distance_px: 6.0
-        reset_distance_px: 12.0
-        min_displacement_px: 8.0
-        min_observations: 2
-    zones:
-      - id: school_crossing
-        label: School Crossing
-        type: polygon
-        category: pedestrian_crossing
-        points:
-          - [420, 245]
-          - [810, 245]
-          - [810, 375]
-          - [420, 375]
-      - id: zebra_crossing_demo
-        label: Zebra Crossing
-        type: polygon
-        category: zebra_crossing
-        points:
-          - [450, 260]
-          - [780, 260]
-          - [780, 360]
-          - [450, 360]
-      - id: north_stop_line
-        label: North Stop Line
-        type: polygon
-        category: stop_line
-        points:
-          - [435, 342]
-          - [785, 342]
-          - [785, 366]
-          - [435, 366]
+- id: recam_01
+  url: recamera-node-red
+  location: reCamera_192.168.0.100
+  target_fps: 5
+  live_feed_type: recamera_ws
+  live_feed_url: ws://192.168.0.100:8090
+  pixels_per_meter: 25.0
+  speed_limit_kmh: 50.0
+  speed_tolerance_kmh: 2.0
+  speed_history_size: 8
+  speed_max_kmh: 80.0
+  speed_min_time_delta_seconds: 0.2
+  speed_smoothing_alpha: 0.35
+  speed_outlier_mode: ignore
+- id: sample_video_01
+  url: ../data/sample.mp4
+  location: test_intersection
+  target_fps: 15
+  live_feed_type: preview
+  preview_image_url: https://placehold.co/1280x720/png?text=sample_video_01
+  pixels_per_meter: 20.0
+  speed_limit_kmh: 65.0
+  speed_tolerance_kmh: 10.0
+  severe_speed_delta_kmh: 35.0
+  stopped_duration_seconds: 15
+  max_motorcycle_riders: 4
+  rider_association_window_seconds: 1.5
+  rider_horizontal_margin_ratio: 0.25
+  rider_upper_margin_ratio: 0.6
+  rider_lower_margin_ratio: 0.2
+  stop_line_min_speed_kmh: 8.0
+  pedestrian_crossing_min_speed_kmh: 4.0
+  crossing_min_presence_seconds: 0.35
+  crossing_min_observations: 2
+  crossing_vehicle_min_displacement_px: 10.0
+  counting_lines:
+  - id: main_approach_flow
+    label: Main Approach Flow
+    points:
+    - - 380
+      - 470
+    - - 720
+      - 470
+    classes:
+    - car
+    - motorcycle
+    - bus
+    - truck
+    - bicycle
+    min_crossing_distance_px: 8.0
+    reset_distance_px: 14.0
+    min_displacement_px: 10.0
+    min_observations: 2
+  - id: zebra_walk_flow
+    label: Zebra Walk Flow
+    points:
+    - - 610
+      - 250
+    - - 610
+      - 390
+    classes:
+    - pedestrian
+    - bicycle
+    min_crossing_distance_px: 6.0
+    reset_distance_px: 12.0
+    min_displacement_px: 8.0
+    min_observations: 2
+  zones:
+  - id: school_crossing
+    label: School Crossing
+    type: polygon
+    category: pedestrian_crossing
+    points:
+    - - 420
+      - 245
+    - - 810
+      - 245
+    - - 810
+      - 375
+    - - 420
+      - 375
+  - id: zebra_crossing_demo
+    label: Zebra Crossing
+    type: polygon
+    category: zebra_crossing
+    points:
+    - - 450
+      - 260
+    - - 780
+      - 260
+    - - 780
+      - 360
+    - - 450
+      - 360
+  - id: north_stop_line
+    label: North Stop Line
+    type: polygon
+    category: stop_line
+    points:
+    - - 435
+      - 342
+    - - 785
+      - 342
+    - - 785
+      - 366
+    - - 435
+      - 366
+- id: hthh
+  url: /Users/a2.0/Desktop/Road-User-Intelligence-Platform/data/sample.mp4
+  location: hunter
+  target_fps: 15
+  pixels_per_meter: 25.0
+  speed_limit_kmh: 60.0
+  live_feed_type: preview
+  live_feed_url: null
+  preview_image_url: /setup/previews/hthh/frame
+  preview_frame_width: 1280
+  preview_frame_height: 720
+  counting_lines:
+  - id: count_line_1
+    label: Count Line 1
+    points:
+    - - 587.0
+      - 361.0
+    - - 1098.0
+      - 374.0
+    enabled: true
+    classes:
+    - car
+    - motorcycle
+    - bus
+    - truck
+    - pedestrian
+    - bicycle
+    min_crossing_distance_px: 8.0
+    reset_distance_px: 12.0
+    min_displacement_px: 12.0
+    min_observations: 2
+  zones:
+  - id: zebra_crossing_1
+    label: Zebra Crossing 1
+    type: polygon
+    category: zebra_crossing
+    points:
+    - - 612.0
+      - 315.0
+    - - 583.0
+      - 365.0
+    - - 786.0
+      - 372.0
+    - - 767.0
+      - 306.0
+    - - 610.0
+      - 313.0
+  - id: zebra_crossing_2
+    label: Zebra Crossing 2
+    type: polygon
+    category: zebra_crossing
+    points:
+    - - 1033.0
+      - 327.0
+    - - 1107.0
+      - 374.0
+    - - 940.0
+      - 382.0
+    - - 879.0
+      - 325.0
+    - - 1031.0
+      - 321.0

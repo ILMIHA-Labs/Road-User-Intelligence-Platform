@@ -586,8 +586,8 @@
                 <p class="mt-3 text-sm uppercase tracking-[0.2em]">No live snapshot available</p>
               </div>
             </div>
-            <img id="cd-live-preview" alt="Live camera preview" class="hidden h-full w-full object-cover" />
-            <video id="cd-live-video" class="hidden h-full w-full bg-black object-cover" autoplay muted playsinline controls></video>
+            <img id="cd-live-preview" alt="Live camera preview" class="hidden h-full w-full object-contain" />
+            <video id="cd-live-video" class="hidden h-full w-full bg-black object-contain" autoplay muted playsinline controls></video>
             <div id="cd-live-overlay" class="pointer-events-none absolute inset-0 hidden"></div>
           </div>
         </section>
@@ -1194,17 +1194,35 @@
       return palette[index % palette.length];
     }
 
+    function getCameraFrameSize(camera) {
+      const width = Number(camera?.preview_frame_width || camera?.frame_width || 0);
+      const height = Number(camera?.preview_frame_height || camera?.frame_height || 0);
+      if (width > 0 && height > 0) {
+        return { width, height };
+      }
+
+      const zones = Array.isArray(camera?.zones) ? camera.zones : [];
+      const lines = Array.isArray(camera?.counting_lines) ? camera.counting_lines : [];
+      const allPoints = [
+        ...zones.flatMap((zone) => zone.points || []),
+        ...lines.flatMap((line) => line.points || []),
+      ];
+      if (!allPoints.length) {
+        return { width: 1280, height: 720 };
+      }
+
+      return {
+        width: Math.max(...allPoints.map((point) => point[0]), 1),
+        height: Math.max(...allPoints.map((point) => point[1]), 1),
+      };
+    }
+
     function buildCameraOverlayMarkup(camera) {
       const zones = Array.isArray(camera?.zones) ? camera.zones : [];
       const lines = Array.isArray(camera?.counting_lines) ? camera.counting_lines : [];
       if (!zones.length && !lines.length) return "";
 
-      const allPoints = [
-        ...zones.flatMap((zone) => zone.points || []),
-        ...lines.flatMap((line) => line.points || []),
-      ];
-      const maxX = Math.max(...allPoints.map((point) => point[0]), 1);
-      const maxY = Math.max(...allPoints.map((point) => point[1]), 1);
+      const frameSize = getCameraFrameSize(camera);
 
       const polygons = zones.map((zone) => {
         const style = getZoneCategoryStyle(zone.category);
@@ -1238,7 +1256,7 @@
 
       return `
         <div class="absolute inset-0">
-          <svg viewBox="0 0 ${maxX} ${maxY}" preserveAspectRatio="none" class="h-full w-full">
+          <svg viewBox="0 0 ${frameSize.width} ${frameSize.height}" preserveAspectRatio="xMidYMid meet" class="h-full w-full">
             ${polygons}
             ${lineMarkup}
           </svg>
@@ -1381,7 +1399,7 @@
         `
         : "";
       overlay.innerHTML = `
-        <svg id="setup-overlay-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="h-full w-full cursor-crosshair">
+        <svg id="setup-overlay-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" class="h-full w-full cursor-crosshair">
           ${zebraMarkup}
           ${lineMarkup}
           ${draftMarkup}
@@ -1512,6 +1530,8 @@
         const response = await postJson("/setup/camera-config", {
           ...payload,
           preview_image_url: state.setup.frame ? state.setup.frame.previewUrl : null,
+          preview_frame_width: state.setup.frame ? state.setup.frame.width : null,
+          preview_frame_height: state.setup.frame ? state.setup.frame.height : null,
           counting_lines: state.setup.lines,
           zebra_zones: state.setup.zebraZones,
         });
@@ -2334,15 +2354,15 @@
           ? "bg-surface-container text-on-surface"
           : "bg-error-container text-error";
         const mediaMarkup = hasSnapshot
-          ? `<img data-live-snapshot="${cameraId}" src="${liveSnapshotUrlWithCacheBust(cameraId)}" alt="${cameraId} live preview" class="h-full w-full object-cover" loading="lazy" />`
+          ? `<img data-live-snapshot="${cameraId}" src="${liveSnapshotUrlWithCacheBust(cameraId)}" alt="${cameraId} live preview" class="h-full w-full object-contain" loading="lazy" />`
           : isReCameraWebSocketFeed(camera)
           ? recameraStreamMarkup(cameraId, camera.live_feed_url)
           : isVideoFeed(camera)
-          ? `<video src="${camera.live_feed_url}" class="h-full w-full bg-black object-cover" autoplay muted playsinline controls></video>`
+          ? `<video src="${camera.live_feed_url}" class="h-full w-full bg-black object-contain" autoplay muted playsinline controls></video>`
           : hasStream
-          ? `<img src="${camera.live_feed_url}" alt="${cameraId} live stream" class="h-full w-full object-cover" loading="lazy" />`
+          ? `<img src="${camera.live_feed_url}" alt="${cameraId} live stream" class="h-full w-full object-contain" loading="lazy" />`
           : camera.preview_image_url
-          ? `<img src="${camera.preview_image_url}" alt="${cameraId} preview" class="h-full w-full object-cover" loading="lazy" />`
+          ? `<img src="${camera.preview_image_url}" alt="${cameraId} preview" class="h-full w-full object-contain" loading="lazy" />`
           : `<div class="flex h-full min-h-[16rem] items-center justify-center bg-black text-white">
               <div class="text-center">
                 <span class="material-symbols-outlined text-5xl">videocam_off</span>
