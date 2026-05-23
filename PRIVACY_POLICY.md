@@ -12,6 +12,8 @@ events, and optionally store evidence snapshots. Privacy-sensitive behavior is
 configurable, and the public repository defaults are designed to minimize data
 retention.
 
+This document is part of a research-reference, non-production public release.
+
 ## Data the software can process
 
 Depending on deployment choices, the software may process:

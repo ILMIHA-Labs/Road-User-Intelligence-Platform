@@ -30,7 +30,8 @@ python -m unittest discover -s tests -v
 
 ## 4. Run the local MVP
 
-Provide a licensed local video source or camera source.
+Provide a licensed local video source or camera source. `DEMO_VIDEO_SOURCE` is
+required explicitly for the public demo path.
 
 ```bash
 export DEMO_VIDEO_SOURCE=/absolute/path/to/your/video.mp4
@@ -58,6 +59,8 @@ retention settings as well.
 
 ## 7. Troubleshooting
 
+- If `DEMO_VIDEO_SOURCE` is unset, `run_pipeline.sh` should stop with a guided
+  error before startup.
 - If the startup script fails, inspect the log files it prints.
 - If a dashboard route returns `Not Found`, confirm the expected backend port.
 - If evidence does not appear, confirm that `EVIDENCE_CAPTURE_ENABLED=true` was

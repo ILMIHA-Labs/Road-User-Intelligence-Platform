@@ -6,7 +6,7 @@ PIDS=()
 BACKEND_HOST="${BACKEND_HOST:-127.0.0.1}"
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 MQTT_PORT="${MQTT_PORT:-1883}"
-DEMO_VIDEO_SOURCE="${DEMO_VIDEO_SOURCE:-data/sample.mp4}"
+DEMO_VIDEO_SOURCE="${DEMO_VIDEO_SOURCE:-}"
 DEMO_CAMERA_ID="${DEMO_CAMERA_ID:-sample_video_01}"
 BACKEND_BASE_URL="http://${BACKEND_HOST}:${BACKEND_PORT}"
 
@@ -75,6 +75,13 @@ export VIOLATION_EVIDENCE_RETENTION_SECONDS="${VIOLATION_EVIDENCE_RETENTION_SECO
 # Kill any stale processes from a previous run
 lsof -ti :"$MQTT_PORT" | xargs kill -9 2>/dev/null || true
 lsof -ti :"$BACKEND_PORT" | xargs kill -9 2>/dev/null || true
+
+if [[ -z "$DEMO_VIDEO_SOURCE" ]]; then
+	echo "Error: DEMO_VIDEO_SOURCE is not set."
+	echo "Provide a licensed local clip with:"
+	echo "  export DEMO_VIDEO_SOURCE=/absolute/path/to/your/video.mp4"
+	exit 1
+fi
 
 if [[ ! -f "$DEMO_VIDEO_SOURCE" ]]; then
 	echo "Error: Demo video source not found: $DEMO_VIDEO_SOURCE"

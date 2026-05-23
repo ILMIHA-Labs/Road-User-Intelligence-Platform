@@ -112,3 +112,8 @@ any particular deployment is already certified or legally approved.
 - Deployment-specific lawful basis analysis for any non-research use
 - Confirmation that any future demo datasets included in the repository are
   redistributable under documented terms
+
+For submission handoff, use:
+
+- `docs/dpg_submission_checklist.md`
+- `docs/release_checklist.md`

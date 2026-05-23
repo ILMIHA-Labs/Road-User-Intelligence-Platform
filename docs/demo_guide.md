@@ -9,6 +9,8 @@ Demonstrate a working zebra-crossing safety and traffic-analytics flow using a
 licensed local video source or a live camera source under the operator’s
 control.
 
+This is the canonical public evaluation workflow for outside researchers.
+
 ## Recommended demo surface
 
 Always use the backend-served dashboard and the exact URL printed by the
@@ -54,6 +56,8 @@ Use this narrative:
 If you are onboarding a new camera or a new video before the demo, use the
 `Setup` page in the dashboard first to draw counting lines and zebra-crossing
 bounds directly on a preview frame.
+
+For a release-ready run, also verify the checklist in `docs/release_checklist.md`.
 
 ## What to point out
 

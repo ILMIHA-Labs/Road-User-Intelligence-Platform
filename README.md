@@ -41,7 +41,8 @@ python -m unittest discover -s tests -v
 ## Run the MVP
 
 The public repository does not assume a bundled redistributable demo video.
-Provide your own licensed clip or camera source.
+Provide your own licensed clip or camera source. The canonical public demo path
+uses `run_pipeline.sh` with an explicit `DEMO_VIDEO_SOURCE`.
 
 ```bash
 export DEMO_VIDEO_SOURCE=/absolute/path/to/your/video.mp4
@@ -67,6 +68,17 @@ bash scripts/check_live_pipeline.sh http://127.0.0.1:${BACKEND_PORT:-8000} recam
 
 `reCamera` is optional. Generic webcam, RTSP, and file-based inputs remain
 supported.
+
+## Canonical evaluation workflow
+
+The official researcher path is:
+
+1. install dependencies from `requirements-dev.txt`
+2. run `python -m unittest discover -s tests -v`
+3. provide a licensed local video through `DEMO_VIDEO_SOURCE`
+4. run `bash run_pipeline.sh`
+5. open the printed backend-served `/dashboard/` URL
+6. inspect detections, counts, speeds, safety events, and exports
 
 ## Research use
 
@@ -118,6 +130,9 @@ The authoritative runtime configuration is:
 Helper files in `config/` are calibration or reference assets and should not be
 treated as the canonical runtime source of truth unless explicitly documented.
 
+The bundled `sample_video_01` profile is a demo template only. It does not mean
+that a sample video is guaranteed to ship with the public repository.
+
 ## Documentation map
 
 - `docs/demo_guide.md`
@@ -125,9 +140,12 @@ treated as the canonical runtime source of truth unless explicitly documented.
 - `docs/installation_and_deployment.md`
 - `docs/system_architecture.md`
 - `docs/dpg_readiness.md`
+- `docs/dpg_submission_checklist.md`
 - `docs/data_governance.md`
+- `docs/release_checklist.md`
 - `docs/safety_and_risk.md`
 - `docs/standards_compliance.md`
+- `CHANGELOG.md`
 
 ## Governance files
 

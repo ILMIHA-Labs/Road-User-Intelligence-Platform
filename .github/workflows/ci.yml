@@ -33,7 +33,9 @@ jobs:
           test -f CITATION.cff
           test -f NOTICE
           test -f docs/dpg_readiness.md
+          test -f docs/dpg_submission_checklist.md
           test -f docs/data_governance.md
+          test -f docs/release_checklist.md
           test -f docs/safety_and_risk.md
 
       - name: Check repository hygiene

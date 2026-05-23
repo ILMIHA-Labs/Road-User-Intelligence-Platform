@@ -31,6 +31,7 @@ The maintainer group is responsible for decisions on:
 - privacy and security defaults
 - governance and policy documents
 - acceptance or rejection of contributions
+- release and submission readiness checklists
 
 Changes with material policy impact should be reviewed against:
 

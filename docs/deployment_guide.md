@@ -43,6 +43,9 @@ This file defines:
 Helper files in `config/` are calibration or reference assets and should not be
 treated as the primary runtime source of truth.
 
+Any demo-oriented camera profile in `config/cameras.yaml` should be treated as a
+template that must be pointed at a licensed local source by the operator.
+
 ## 3. Configure environment files
 
 Use the example files in `deploy/env`:
@@ -116,3 +119,4 @@ Before field deployment, review:
 - `SECURITY.md`
 - `docs/data_governance.md`
 - `docs/safety_and_risk.md`
+- `docs/dpg_submission_checklist.md`
