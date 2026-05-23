@@ -1,0 +1,13 @@
+Road User Intelligence Platform
+Copyright (c) 2026 ILMIHA Labs
+
+Primary public release contact:
+- ILMIHA Labs
+- Maintainer of record for this repository: Clement Ampofo
+
+This repository is published as an open-source research-reference MVP for road
+user analytics and zebra-crossing safety monitoring.
+
+Third-party software and model dependencies remain subject to their own
+licenses. See `requirements.txt`, package metadata, and upstream project
+documentation for dependency-specific terms.

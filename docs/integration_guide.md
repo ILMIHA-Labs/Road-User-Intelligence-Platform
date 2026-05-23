@@ -80,7 +80,8 @@ Trajectory Prediction Agent
 
 - All events are published to **MQTT broker** by source agents.
 - **Data Streaming Agent** validates schemas and forwards events to backend.
-- Backend API stores events in PostgreSQL:
+- Backend API stores events in the configured relational database. The public
+  MVP defaults to SQLite:
   - Detections → `detections` table
   - Speeds → `speeds` table
   - Violations → `violations` table
@@ -92,7 +93,7 @@ MQTT Broker
 ↓
 Data Streaming Agent
 ↓
-Backend API (PostgreSQL)
+Backend API (SQLite by default)
 ↓
 Data Engineering Agent → Analytics Dashboard
 
@@ -102,7 +103,7 @@ Data Engineering Agent → Analytics Dashboard
 
 ## 5. Analytics Dashboard
 
-- Queries PostgreSQL/InfluxDB for:
+- Queries the backend analytics endpoints and persisted event store for:
   - Helmet compliance
   - Speed distributions
   - Zebra crossing violations

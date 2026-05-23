@@ -4,7 +4,8 @@ set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
   echo "Usage: $0 <backend-base-url> <camera-id>"
-  echo "Example: $0 http://127.0.0.1:8000 recam_01"
+  echo "Example: $0 http://127.0.0.1:\${BACKEND_PORT:-8000} recam_01"
+  echo "Use the exact backend URL printed by your startup script."
   exit 1
 fi
 

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: "Road User Intelligence Platform"
+message: "If you use this software in research, please cite the repository and the associated organisation."
+type: software
+authors:
+  - family-names: "Ampofo"
+    given-names: "Clement"
+    affiliation: "ILMIHA Labs"
+repository-code: "https://github.com/ILMIHA-Labs/Road-User-Intelligence-Platform"
+license: "MIT"
+abstract: "An open-source research-reference MVP for road-user detection, directional counting, speed estimation, crossing-safety analytics, and evidence-aware dashboard review."
+keywords:
+  - computer vision
+  - traffic analytics
+  - road safety
+  - zebra crossing
+  - intelligent transportation systems

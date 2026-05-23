@@ -1,114 +1,141 @@
 # Road User Intelligence Platform
 
-Road User Intelligence Platform is a camera-based traffic analytics MVP focused on zebra-crossing safety and live traffic operations.
+Road User Intelligence Platform is an open-source, research-reference MVP for
+camera-based traffic analytics with a current emphasis on **zebra-crossing road
+safety**.
 
-It can:
-- detect and classify road users from video
-- estimate speed
-- count directional crossings across configured lines
-- flag safety events such as zebra-crossing conflicts, stop-line events, speeding, and rider overload
-- capture evidence snapshots for safety events
-- let an operator draw counting lines and zebra-crossing bounds before analysis
-- surface live analytics in a dashboard
+The project supports:
 
-## MVP Demo Path
+- road-user detection and classification
+- directional counting across configured lines
+- speed estimation
+- configurable safety-event detection
+- event review with optional evidence capture
+- live dashboard-based monitoring and export
 
-For the strongest MVP flow, use the backend-served dashboard and the sample-video pipeline.
+This public release is framed primarily around **SDG 11 road safety** and is
+intended to help researchers and evaluators study safer urban mobility
+scenarios.
 
-1. Start the sample MVP pipeline:
+## Public release posture
 
-```bash
-cd /Users/a2.0/Desktop/Road-User-Intelligence-Platform
-bash run_pipeline.sh
-```
+This repository is published as:
 
-2. Open the real dashboard surface:
+- open-source software under the MIT license
+- a research-reference MVP
+- a privacy-conscious baseline, not a production-ready surveillance platform
 
-- [http://127.0.0.1:8000/dashboard/](http://127.0.0.1:8000/dashboard/)
-
-3. If you are adding a new camera or video first, use the `Setup` page in the dashboard to:
-- load a frame from the source
-- draw counting lines
-- draw zebra-crossing bounds
-- save the camera profile into [config/cameras.yaml](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/config/cameras.yaml)
-
-Do not present the raw file copy at:
-
-- [src/dashboard/app/index.html](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/src/dashboard/app/index.html)
-
-That `file://` page is useful for editing, but the real MVP runs through the backend so live analytics, evidence, and camera state work correctly.
-
-## Live Device Path
-
-If you want to connect a live `reCamera` or other edge device, use:
+## Quickstart
 
 ```bash
-cd /Users/a2.0/Desktop/Road-User-Intelligence-Platform
-bash scripts/start_central_stack.sh
-```
-
-Then run the edge agent on the device and validate it with:
-
-```bash
-bash scripts/check_live_pipeline.sh http://127.0.0.1:8000 recam_01
-```
-
-More detail is in:
-
-- [docs/live_validation_guide.md](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/docs/live_validation_guide.md)
-
-## Configuration
-
-The main runtime configuration source for the core system is:
-
-- [config/cameras.yaml](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/config/cameras.yaml)
-
-This file defines:
-- camera profiles
-- calibration
-- speed thresholds
-- safety-event tuning
-- zebra / stop-line / pedestrian zones
-- counting lines
-- live preview metadata
-
-Additional files in `config/` such as:
-- [config/traffic_count_line.yaml](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/config/traffic_count_line.yaml)
-- [config/zebra_zone.yaml](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/config/zebra_zone.yaml)
-- [config/zebra_zones.yaml](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/config/zebra_zones.yaml)
-
-are calibration or analysis helpers, not the main authoritative runtime config for the live MVP.
-
-## Core Docs
-
-- [docs/demo_guide.md](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/docs/demo_guide.md)
-- [docs/deployment_guide.md](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/docs/deployment_guide.md)
-- [docs/installation_and_deployment.md](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/docs/installation_and_deployment.md)
-- [docs/system_architecture.md](/Users/a2.0/Desktop/Road-User-Intelligence-Platform/docs/system_architecture.md)
-
-## Current MVP Focus
-
-The platform is general traffic intelligence, but the current deployment focus is:
-
-- zebra-crossing safety
-- pedestrian conflict detection
-- stop-line behavior
-- directional traffic flow counting
-- speed monitoring near crossing approaches
-
-## Verification
-
-Run the test suite with:
-
-```bash
-cd /Users/a2.0/Desktop/Road-User-Intelligence-Platform
+git clone https://github.com/ILMIHA-Labs/Road-User-Intelligence-Platform.git
+cd Road-User-Intelligence-Platform
+python3 -m venv .venv
 source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements-dev.txt
 export PYTHONPATH=$PWD/src
 python -m unittest discover -s tests -v
 ```
 
-## Known MVP Limits
+## Run the MVP
 
-- Live camera viewing is snapshot-based today, not full streaming video transport.
-- Safety-event quality depends on camera placement, calibration, and detection quality.
-- The dashboard is intended to be served by the backend, not opened directly from disk.
+The public repository does not assume a bundled redistributable demo video.
+Provide your own licensed clip or camera source.
+
+```bash
+export DEMO_VIDEO_SOURCE=/absolute/path/to/your/video.mp4
+bash run_pipeline.sh
+```
+
+The script prints the exact backend and dashboard URL it is serving.
+
+Always use the backend-served dashboard. Do not use the raw `file://` copy of
+`src/dashboard/app/index.html` as your primary application surface.
+
+## Live-device path
+
+```bash
+bash scripts/start_central_stack.sh
+```
+
+Then validate a live camera with:
+
+```bash
+bash scripts/check_live_pipeline.sh http://127.0.0.1:${BACKEND_PORT:-8000} recam_01
+```
+
+`reCamera` is optional. Generic webcam, RTSP, and file-based inputs remain
+supported.
+
+## Research use
+
+This release is intended to support:
+
+- traffic analytics experiments
+- zebra-crossing and stop-line safety studies
+- calibration and counting evaluations
+- speed-estimation benchmarking
+- rule-tuning and false-positive review workflows
+
+Expected outputs include:
+
+- detections by class
+- directional counting events
+- speed samples
+- safety-event records
+- dashboard summaries and exports
+
+Known reproducibility limits:
+
+- results depend heavily on camera placement and calibration
+- object detection quality depends on scene conditions and model behavior
+- safety-event logic is scene-sensitive and threshold-sensitive
+- live previews are snapshot-based rather than full streaming transport
+
+## Responsible deployment
+
+If you deploy this software outside a lab or research setting, review:
+
+- `PRIVACY_POLICY.md`
+- `SECURITY.md`
+- `docs/data_governance.md`
+- `docs/safety_and_risk.md`
+- `docs/dpg_readiness.md`
+
+The public release is conservative by default:
+
+- `EVIDENCE_CAPTURE_ENABLED=false`
+- preview and setup-preview artifacts are treated as short-lived runtime files
+- raw video is not archived by the backend by default
+
+## Configuration
+
+The authoritative runtime configuration is:
+
+- `config/cameras.yaml`
+
+Helper files in `config/` are calibration or reference assets and should not be
+treated as the canonical runtime source of truth unless explicitly documented.
+
+## Documentation map
+
+- `docs/demo_guide.md`
+- `docs/deployment_guide.md`
+- `docs/installation_and_deployment.md`
+- `docs/system_architecture.md`
+- `docs/dpg_readiness.md`
+- `docs/data_governance.md`
+- `docs/safety_and_risk.md`
+- `docs/standards_compliance.md`
+
+## Governance files
+
+- `LICENSE`
+- `NOTICE`
+- `CITATION.cff`
+- `CONTRIBUTING.md`
+- `CODE_OF_CONDUCT.md`
+- `GOVERNANCE.md`
+- `SECURITY.md`
+- `PRIVACY_POLICY.md`

@@ -110,16 +110,16 @@
             <p class="text-[10px] font-bold uppercase tracking-[0.25em] text-white/60">Demo Surface Warning</p>
             <h2 class="mt-2 text-xl font-black tracking-tight">You are viewing the raw file copy, not the live MVP app.</h2>
             <p class="mt-2 max-w-3xl text-sm leading-6 text-white/75">
-              For live analytics, safety-event evidence, and real camera state, open the backend-served dashboard instead of the local <code>file://</code> page.
+              For live analytics, safety-event evidence, and real camera state, open the backend-served dashboard instead of the local <code>file://</code> page. Use the exact dashboard URL printed by your startup script.
             </p>
           </div>
           <div class="flex flex-wrap gap-3">
-            <a href="http://127.0.0.1:8000/dashboard/" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-black">
-              Open Live Dashboard
-            </a>
-            <a href="http://127.0.0.1:8000/" class="border border-white/25 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
-              Check Backend
-            </a>
+            <span class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-black">
+              Start the backend to get the live dashboard URL
+            </span>
+            <span class="border border-white/25 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">
+              Then open /dashboard/ from that backend
+            </span>
           </div>
         </div>
       </section>
@@ -1714,7 +1714,7 @@
     }
 
     function apiBaseUrl() {
-      return DASHBOARD_FILE_MODE ? "http://127.0.0.1:8000" : "";
+      return "";
     }
 
     function buildExportUrl(path, params = {}) {
@@ -1865,7 +1865,7 @@
         setLiveStatus("disconnected");
         const detail = document.getElementById("last-updated");
         if (detail) {
-          detail.textContent = "Open http://127.0.0.1:8000/dashboard/ for the live MVP";
+          detail.textContent = "Start the backend, then open its /dashboard/ URL for the live MVP";
         }
         return;
       }

@@ -48,13 +48,13 @@ J[MQTT Broker\nEvent Bus]
 K[Backend API\nFastAPI]
 
 %% DATABASE
-L[(PostgreSQL\nTraffic Data)]
+L[(SQLite by default\nTraffic Data)]
 
 %% DATA PIPELINES
 M[Data Engineering Agent\nETL + Aggregations]
 
 %% ANALYTICS
-N[Analytics Dashboard\nGrafana / Superset]
+N[Analytics Dashboard\nFastAPI-served UI]
 
 %% RESEARCH
 O[Research & Evaluation Agent\nMetrics + Experiments]
@@ -118,7 +118,7 @@ MQTT Event Streaming
         ↓
 Backend API
         ↓
-PostgreSQL Database
+SQLite Database (default)
         ↓
 Data Engineering
         ↓
@@ -144,7 +144,7 @@ Server / GPU Node
 Cloud / Backend
  ├── MQTT Broker
  ├── FastAPI Backend
- ├── PostgreSQL Database
+ ├── SQLite Database (default)
  ├── Data Engineering Pipelines
  └── Analytics Dashboard
 ```
@@ -205,4 +205,3 @@ This allows:
 ```
 
 ---
-

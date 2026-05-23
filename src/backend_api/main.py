@@ -8,7 +8,7 @@ import shutil
 from io import StringIO
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 import cv2
 import yaml
@@ -29,6 +29,24 @@ logger = logging.getLogger("BackendAPI")
 
 app = FastAPI(title="Road User Intelligence Platform API")
 
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        logger.warning("Invalid integer for %s=%r. Falling back to %s.", name, value, default)
+        return default
+
 _CAMERAS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "cameras.yaml"
 _LIVE_FRAMES_DIR = Path(os.getenv("LIVE_PREVIEW_DIR", str(Path(__file__).resolve().parents[2] / "artifacts" / "live_frames")))
 _VIOLATION_EVIDENCE_DIR = Path(
@@ -43,6 +61,10 @@ _SETUP_PREVIEW_DIR = Path(
         str(Path(__file__).resolve().parents[2] / "artifacts" / "setup_previews"),
     )
 )
+_EVIDENCE_CAPTURE_ENABLED = _env_flag("EVIDENCE_CAPTURE_ENABLED", False)
+_VIOLATION_EVIDENCE_RETENTION_SECONDS = _env_int("VIOLATION_EVIDENCE_RETENTION_SECONDS", 7 * 24 * 60 * 60)
+_LIVE_PREVIEW_RETENTION_SECONDS = _env_int("LIVE_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
+_SETUP_PREVIEW_RETENTION_SECONDS = _env_int("SETUP_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
 if dashboard_dir.exists():
@@ -51,6 +73,7 @@ if dashboard_dir.exists():
 @app.on_event("startup")
 def startup_event():
     init_db()
+    _cleanup_runtime_artifacts()
 
 @app.get("/")
 def read_root():
@@ -279,7 +302,37 @@ def _violation_evidence_path(camera_id: str, violation_id: int, violation_type: 
     return _VIOLATION_EVIDENCE_DIR / camera_id / f"{ts_label}_{safe_type}_{violation_id}.jpg"
 
 
+def _iter_retention_targets(root: Path) -> Iterable[Path]:
+    if not root.exists():
+        return []
+    return (path for path in root.rglob("*") if path.is_file())
+
+
+def _cleanup_dir_older_than(root: Path, retention_seconds: int, label: str):
+    if retention_seconds <= 0:
+        return
+    now = datetime.now(timezone.utc).timestamp()
+    removed = 0
+    for path in _iter_retention_targets(root):
+        try:
+            if now - path.stat().st_mtime > retention_seconds:
+                path.unlink(missing_ok=True)
+                removed += 1
+        except FileNotFoundError:
+            continue
+    if removed:
+        logger.info("Removed %s expired %s file(s) from %s", removed, label, root)
+
+
+def _cleanup_runtime_artifacts():
+    _cleanup_dir_older_than(_VIOLATION_EVIDENCE_DIR, _VIOLATION_EVIDENCE_RETENTION_SECONDS, "evidence")
+    _cleanup_dir_older_than(_LIVE_FRAMES_DIR, _LIVE_PREVIEW_RETENTION_SECONDS, "live preview")
+    _cleanup_dir_older_than(_SETUP_PREVIEW_DIR, _SETUP_PREVIEW_RETENTION_SECONDS, "setup preview")
+
+
 def _capture_violation_evidence(db_violation: models.DBViolation) -> Optional[str]:
+    if not _EVIDENCE_CAPTURE_ENABLED:
+        return None
     source_path = _live_snapshot_path(db_violation.camera_id)
     if not source_path.exists():
         return None

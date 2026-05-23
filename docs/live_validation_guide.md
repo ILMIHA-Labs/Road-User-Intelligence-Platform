@@ -1,6 +1,7 @@
 # Live Validation Guide
 
-This guide is for validating one real `reCamera` against the current MVP pipeline.
+This guide is for validating one real edge camera against the current MVP
+pipeline.
 
 ## Goal
 
@@ -8,7 +9,7 @@ Confirm that one physical camera can:
 
 1. publish detection events
 2. produce speed estimates
-3. trigger violations
+3. trigger safety events
 4. appear in the backend and dashboard
 
 ## What to run on the central machine
@@ -23,16 +24,14 @@ bash scripts/start_central_stack.sh
 This starts:
 
 - Mosquitto on `1883`
-- FastAPI backend on `8000`
+- FastAPI backend on the configured backend port
 - MQTT forwarder
 - speed estimation
 - violation detection
 
-The dashboard will be available at:
+The script prints the exact dashboard URL it is serving.
 
-- `http://127.0.0.1:8000/dashboard/`
-
-## What to run on the reCamera
+## What to run on the edge device
 
 On the device:
 
@@ -54,7 +53,7 @@ Use the correct source:
 Once the edge agent is running, on the central machine run:
 
 ```bash
-bash scripts/check_live_pipeline.sh http://127.0.0.1:8000 recam_01
+bash scripts/check_live_pipeline.sh http://127.0.0.1:${BACKEND_PORT:-8000} recam_01
 ```
 
 You should start seeing:
@@ -75,12 +74,12 @@ At minimum:
 Stronger success:
 
 - `/events/recent` contains speeds
-- `/analytics/violations` shows real rule activity
+- `/analytics/violations` shows real safety-event activity
 - dashboard cards update for the live camera
 
 ## What to check if detections do not appear
 
-1. Can the reCamera reach the MQTT broker IP?
+1. Can the device reach the MQTT broker IP?
 2. Is the edge agent logging successful broker connection?
 3. Is the backend stack running on the central machine?
 4. Are there errors in:
@@ -105,7 +104,7 @@ Stronger success:
 ## Suggested first field test
 
 1. Start the central stack.
-2. Start one reCamera with `camera_id=recam_01`.
+2. Start one edge device with `camera_id=recam_01`.
 3. Walk through the frame and confirm detections arrive.
 4. Ride or simulate a motorcycle through frame to confirm tracking.
 5. Confirm the camera appears in the dashboard.

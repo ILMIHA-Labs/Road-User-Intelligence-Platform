@@ -1,63 +1,54 @@
 # Standards and Best Practices Compliance
 
-This document records open standards and engineering best practices used by the Road User Intelligence Platform.
+This document supports the current DPG indicator on **Open Standards and Best
+Practices** by describing the main technical standards used in the repository.
 
-## 1. MQTT Messaging Standard
+## MQTT messaging
 
 - Standard: MQTT publish/subscribe messaging
-- Usage: Event transport across perception, analytics, and backend services
-- Topics:
-  - `camera/detections`
-  - `camera/speeds`
-  - `camera/violations`
-  - `camera/trajectories`
+- Usage: perception, speed, crossing, and safety-event transport
 - Implementation references:
   - `src/edge_vision/publisher.py`
   - `src/speed_estimation/main.py`
   - `src/violation_detection/main.py`
   - `src/data_streaming/mqtt_forwarder.py`
-- Validation approach:
-  - Pipeline smoke tests and topic subscription checks
-  - End-to-end persistence verification in database tables
 
-## 2. REST API and OpenAPI
+## HTTP APIs and OpenAPI
 
-- Standard: OpenAPI via FastAPI automatic schema generation
-- Usage: Backend ingestion endpoints and analytics summary endpoint
+- Standard: FastAPI-generated OpenAPI schemas
+- Usage: ingestion, analytics, exports, and dashboard data access
 - Implementation references:
   - `src/backend_api/main.py`
   - `src/backend_api/schemas.py`
-- Validation approach:
-  - HTTP `201 Created` responses for ingestion endpoints
-  - Endpoint schema validation through FastAPI/Pydantic models
 
-## 3. Data Modeling and Interchange
+## Data interchange
 
-- Standard: JSON event payloads over MQTT and HTTP
-- Usage: Unified event schema for detections, speeds, violations, trajectories
+- Standard: JSON payloads over MQTT and HTTP
+- Usage: detections, speeds, crossings, safety events, and dashboard state
 - Implementation references:
-  - `src/edge_vision/publisher.py`
   - `src/data_streaming/mqtt_forwarder.py`
   - `src/backend_api/schemas.py`
-- Validation approach:
-  - Pydantic schema parsing in backend API
-  - Forwarder JSON decode checks and error logging
+  - `src/common/event_schemas.py`
 
-## 4. Deployment and Operations Best Practices
+## Configuration and portability
 
-- Practice: Service startup checks and fail-fast behavior
-- Practice: Structured logs for troubleshooting
-- Practice: Edge/runtime audit workflow before production rollout
-- Implementation references:
-  - `run_pipeline.sh`
-  - `docs/recamera_deployment_plan.md`
-  - `docs/recamera_runtime_audit.md`
-- Validation approach:
-  - Startup log checks and service health checks
-  - Runtime audit evidence collection
+- Standard: plain-text YAML configuration
+- Usage: authoritative runtime camera configuration in `config/cameras.yaml`
+- Portability stance:
+  - `reCamera` is optional
+  - webcam, RTSP, and file inputs remain supported
 
-## 5. Current Gaps and Planned Additions
+## Software engineering best practices in the public release
 
-- Formal API versioning and contract governance document
-- Expanded integration and fault-injection test suites
-- Security hardening and policy artifacts under dedicated governance docs
+- reproducible Python environment via `requirements.txt`,
+  `requirements-dev.txt`, and `pyproject.toml`
+- automated test run in CI
+- repository hygiene checks for tracked runtime junk
+- governance and security policy files published at the repository root
+
+## Related governance references
+
+- `docs/dpg_readiness.md`
+- `PRIVACY_POLICY.md`
+- `SECURITY.md`
+- `docs/data_governance.md`

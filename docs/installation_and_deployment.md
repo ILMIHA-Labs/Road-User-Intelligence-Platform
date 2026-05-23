@@ -1,15 +1,16 @@
 # Installation and Deployment Guide
 
-This guide covers local setup and MVP deployment flow for the Road User Intelligence Platform.
+This guide covers local setup for researchers and the default MVP deployment
+flow.
 
 ## 1. Prerequisites
 
 - Python 3.9+
-- macOS/Linux shell
+- macOS or Linux shell
 - Git
 - Optional system MQTT broker fallback: Mosquitto
 
-## 2. Clone and Environment Setup
+## 2. Clone and environment setup
 
 ```bash
 git clone https://github.com/ILMIHA-Labs/Road-User-Intelligence-Platform.git
@@ -17,67 +18,47 @@ cd Road-User-Intelligence-Platform
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
+export PYTHONPATH=$PWD/src
 ```
 
-## 3. MQTT Broker Setup
-
-The pipeline startup script attempts broker startup with this order:
-
-1. `amqtt`
-2. `python -m amqtt`
-3. `mosquitto` fallback using `mosquitto.conf`
-
-If you want system Mosquitto on macOS:
+## 3. Verify the installation
 
 ```bash
-brew install mosquitto
+python -m unittest discover -s tests -v
 ```
 
-## 4. Run the MVP Pipeline
+## 4. Run the local MVP
+
+Provide a licensed local video source or camera source.
 
 ```bash
-source .venv/bin/activate
+export DEMO_VIDEO_SOURCE=/absolute/path/to/your/video.mp4
 bash run_pipeline.sh
 ```
 
-Services started by pipeline script:
+The script prints the exact backend and dashboard URL it is serving.
 
-- MQTT broker
-- Backend API
-- Data streaming forwarder
-- Speed estimation agent
-- Violation detection agent
-- Edge vision pipeline
+## 5. Live deployment topology
 
-## 5. Verify Persistence
+- Edge device: edge vision capture, detect, and publish
+- Central server: MQTT broker, backend API, speed estimation, safety-event
+  detection, dashboard
 
-```bash
-sqlite3 road_user_platform.db "select 'detections', count(*) from detections union all select 'speeds', count(*) from speeds union all select 'violations', count(*) from violations union all select 'trajectories', count(*) from trajectories;"
-```
+## 6. Privacy-aware defaults
 
-## 6. Deployment Topology (MVP)
+The public release defaults are conservative:
 
-- Edge device: edge vision capture/detect/publish
-- Server/GPU node: speed estimation, violation detection, trajectory prediction
-- Backend node: MQTT broker, API, database, data engineering
+- `EVIDENCE_CAPTURE_ENABLED=false`
+- preview and setup-preview artifacts are short-lived runtime files
+- raw video is not archived by the backend by default
 
-## 7. ReCamera Edge Rollout
+If you change these defaults for a deployment, update your local policy and
+retention settings as well.
 
-For staged ReCamera deployment, follow:
+## 7. Troubleshooting
 
-- `docs/recamera_deployment_plan.md`
-- `docs/recamera_runtime_audit.md`
-- `docs/recamera_runtime_audit_results.md`
-
-## 8. Troubleshooting
-
-If startup fails, inspect logs at repository root:
-
-- `mqtt.log`
-- `backend.log`
-- `streaming.log`
-- `speed.log`
-- `violation.log`
-
-If broker startup fails due to Python dependency constraints, install Mosquitto and rerun pipeline.
+- If the startup script fails, inspect the log files it prints.
+- If a dashboard route returns `Not Found`, confirm the expected backend port.
+- If evidence does not appear, confirm that `EVIDENCE_CAPTURE_ENABLED=true` was
+  intentionally set.

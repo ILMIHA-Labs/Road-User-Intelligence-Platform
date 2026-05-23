@@ -2,6 +2,7 @@
 *.pt
 venv/
 .venv/
+src/venv/
 *.log
 post/
 *.db
@@ -9,3 +10,12 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+artifacts/
+logs/
+notebooks/
+backend.log
+mosquitto.log
+mqtt.log
+speed.log
+streaming.log
+violation.log

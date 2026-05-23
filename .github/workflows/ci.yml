@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Check public governance files
+        run: |
+          test -f LICENSE
+          test -f PRIVACY_POLICY.md
+          test -f SECURITY.md
+          test -f CODE_OF_CONDUCT.md
+          test -f CONTRIBUTING.md
+          test -f GOVERNANCE.md
+          test -f CITATION.cff
+          test -f NOTICE
+          test -f docs/dpg_readiness.md
+          test -f docs/data_governance.md
+          test -f docs/safety_and_risk.md
+
+      - name: Check repository hygiene
+        run: |
+          ! git ls-files | grep -E '(^|/)(\.DS_Store|road_user_platform\.db)$'
+
+      - name: Run test suite
+        env:
+          PYTHONPATH: ${{ github.workspace }}/src
+        run: python -m unittest discover -s tests -v

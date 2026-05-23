@@ -38,8 +38,16 @@ class TestBackendAPI(unittest.TestCase):
         self.original_live_frames_dir = backend_main._LIVE_FRAMES_DIR
         self.original_violation_evidence_dir = backend_main._VIOLATION_EVIDENCE_DIR
         self.original_cameras_config_path = backend_main._CAMERAS_CONFIG_PATH
+        self.original_evidence_capture_enabled = backend_main._EVIDENCE_CAPTURE_ENABLED
+        self.original_violation_evidence_retention = backend_main._VIOLATION_EVIDENCE_RETENTION_SECONDS
+        self.original_live_preview_retention = backend_main._LIVE_PREVIEW_RETENTION_SECONDS
+        self.original_setup_preview_retention = backend_main._SETUP_PREVIEW_RETENTION_SECONDS
         backend_main._LIVE_FRAMES_DIR = Path(self.live_preview_tmp.name)
         backend_main._VIOLATION_EVIDENCE_DIR = Path(self.evidence_tmp.name)
+        backend_main._EVIDENCE_CAPTURE_ENABLED = True
+        backend_main._VIOLATION_EVIDENCE_RETENTION_SECONDS = 7 * 24 * 60 * 60
+        backend_main._LIVE_PREVIEW_RETENTION_SECONDS = 24 * 60 * 60
+        backend_main._SETUP_PREVIEW_RETENTION_SECONDS = 24 * 60 * 60
         temp_config_path = Path(self.config_tmp.name) / "cameras.yaml"
         shutil.copy2(self.original_cameras_config_path, temp_config_path)
         backend_main._CAMERAS_CONFIG_PATH = temp_config_path
@@ -51,6 +59,10 @@ class TestBackendAPI(unittest.TestCase):
         backend_main._LIVE_FRAMES_DIR = self.original_live_frames_dir
         backend_main._VIOLATION_EVIDENCE_DIR = self.original_violation_evidence_dir
         backend_main._CAMERAS_CONFIG_PATH = self.original_cameras_config_path
+        backend_main._EVIDENCE_CAPTURE_ENABLED = self.original_evidence_capture_enabled
+        backend_main._VIOLATION_EVIDENCE_RETENTION_SECONDS = self.original_violation_evidence_retention
+        backend_main._LIVE_PREVIEW_RETENTION_SECONDS = self.original_live_preview_retention
+        backend_main._SETUP_PREVIEW_RETENTION_SECONDS = self.original_setup_preview_retention
         self.live_preview_tmp.cleanup()
         self.evidence_tmp.cleanup()
         self.config_tmp.cleanup()
@@ -268,6 +280,26 @@ class TestBackendAPI(unittest.TestCase):
         data = response.json()
         self.assertEqual(len(data["items"]), 1)
         self.assertTrue(data["items"][0]["evidence_url"])
+
+    def test_violation_evidence_is_disabled_when_capture_flag_is_false(self):
+        backend_main._EVIDENCE_CAPTURE_ENABLED = False
+        camera_dir = Path(self.live_preview_tmp.name) / "no_evidence_cam"
+        camera_dir.mkdir(parents=True, exist_ok=True)
+        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+
+        response = self.client.post("/violations", json={
+            "violation_type": "speed_violation",
+            "object_id": 3,
+            "camera_id": "no_evidence_cam",
+            "timestamp": "2023-10-27T10:00:02Z",
+        })
+        self.assertEqual(response.status_code, 201)
+
+        recent_response = self.client.get("/events/recent?camera_id=no_evidence_cam")
+        self.assertEqual(recent_response.status_code, 200)
+        recent_data = recent_response.json()
+        self.assertEqual(len(recent_data["violations"]), 1)
+        self.assertIsNone(recent_data["violations"][0]["evidence_url"])
 
     def test_violation_detail_returns_related_context(self):
         camera_dir = Path(self.live_preview_tmp.name) / "detail_cam"
