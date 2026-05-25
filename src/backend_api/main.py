@@ -49,6 +49,7 @@ def _env_int(name: str, default: int) -> int:
 
 _CAMERAS_CONFIG_PATH = Path(__file__).resolve().parents[2] / "config" / "cameras.yaml"
 _LIVE_FRAMES_DIR = Path(os.getenv("LIVE_PREVIEW_DIR", str(Path(__file__).resolve().parents[2] / "artifacts" / "live_frames")))
+_LIVE_CLIPS_DIR = Path(os.getenv("LIVE_CLIP_DIR", str(Path(__file__).resolve().parents[2] / "artifacts" / "live_clips")))
 _VIOLATION_EVIDENCE_DIR = Path(
     os.getenv(
         "VIOLATION_EVIDENCE_DIR",
@@ -64,6 +65,7 @@ _SETUP_PREVIEW_DIR = Path(
 _EVIDENCE_CAPTURE_ENABLED = _env_flag("EVIDENCE_CAPTURE_ENABLED", False)
 _VIOLATION_EVIDENCE_RETENTION_SECONDS = _env_int("VIOLATION_EVIDENCE_RETENTION_SECONDS", 7 * 24 * 60 * 60)
 _LIVE_PREVIEW_RETENTION_SECONDS = _env_int("LIVE_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
+_LIVE_CLIP_RETENTION_SECONDS = _env_int("LIVE_CLIP_RETENTION_SECONDS", 24 * 60 * 60)
 _SETUP_PREVIEW_RETENTION_SECONDS = _env_int("SETUP_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
@@ -296,10 +298,15 @@ def _live_snapshot_path(camera_id: str) -> Path:
     return _LIVE_FRAMES_DIR / camera_id / "latest.jpg"
 
 
-def _violation_evidence_path(camera_id: str, violation_id: int, violation_type: str, timestamp: datetime) -> Path:
+def _live_clip_path(camera_id: str) -> Path:
+    return _LIVE_CLIPS_DIR / camera_id / "latest.mp4"
+
+
+def _violation_evidence_path(camera_id: str, violation_id: int, violation_type: str, timestamp: datetime, extension: str) -> Path:
     safe_type = violation_type.replace("/", "_").replace(" ", "_")
     ts_label = timestamp.strftime("%Y%m%dT%H%M%S")
-    return _VIOLATION_EVIDENCE_DIR / camera_id / f"{ts_label}_{safe_type}_{violation_id}.jpg"
+    normalized_extension = extension if extension.startswith(".") else f".{extension}"
+    return _VIOLATION_EVIDENCE_DIR / camera_id / f"{ts_label}_{safe_type}_{violation_id}{normalized_extension}"
 
 
 def _iter_retention_targets(root: Path) -> Iterable[Path]:
@@ -327,34 +334,56 @@ def _cleanup_dir_older_than(root: Path, retention_seconds: int, label: str):
 def _cleanup_runtime_artifacts():
     _cleanup_dir_older_than(_VIOLATION_EVIDENCE_DIR, _VIOLATION_EVIDENCE_RETENTION_SECONDS, "evidence")
     _cleanup_dir_older_than(_LIVE_FRAMES_DIR, _LIVE_PREVIEW_RETENTION_SECONDS, "live preview")
+    _cleanup_dir_older_than(_LIVE_CLIPS_DIR, _LIVE_CLIP_RETENTION_SECONDS, "live clip")
     _cleanup_dir_older_than(_SETUP_PREVIEW_DIR, _SETUP_PREVIEW_RETENTION_SECONDS, "setup preview")
 
 
-def _capture_violation_evidence(db_violation: models.DBViolation) -> Optional[str]:
+def _capture_violation_evidence(db_violation: models.DBViolation):
     if not _EVIDENCE_CAPTURE_ENABLED:
-        return None
-    source_path = _live_snapshot_path(db_violation.camera_id)
+        return None, None
+    source_path = _live_clip_path(db_violation.camera_id)
+    media_type = "video/mp4"
     if not source_path.exists():
-        return None
+        source_path = _live_snapshot_path(db_violation.camera_id)
+        media_type = "image/jpeg"
+    if not source_path.exists():
+        return None, None
 
     evidence_path = _violation_evidence_path(
         camera_id=db_violation.camera_id,
         violation_id=db_violation.id,
         violation_type=db_violation.violation_type,
         timestamp=db_violation.timestamp,
+        extension=source_path.suffix or (".mp4" if media_type.startswith("video/") else ".jpg"),
     )
     evidence_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_path, evidence_path)
-    return str(evidence_path)
+    return str(evidence_path), media_type
+
+
+def _violation_evidence_path_and_type(row: models.DBViolation):
+    evidence_path_str = row.evidence_media_path or row.evidence_image_path
+    if not evidence_path_str:
+        return None, None
+    evidence_path = Path(evidence_path_str)
+    if not evidence_path.exists():
+        return None, None
+    media_type = row.evidence_media_type
+    if not media_type:
+        media_type = "video/mp4" if evidence_path.suffix.lower() == ".mp4" else "image/jpeg"
+    return evidence_path, media_type
 
 
 def _violation_evidence_url(row: models.DBViolation) -> Optional[str]:
-    if not row.evidence_image_path:
-        return None
-    evidence_path = Path(row.evidence_image_path)
-    if not evidence_path.exists():
+    evidence_path, _ = _violation_evidence_path_and_type(row)
+    if evidence_path is None:
         return None
     return f"/violations/{row.id}/evidence"
+
+
+def _violation_evidence_media_type(row: models.DBViolation) -> Optional[str]:
+    _, media_type = _violation_evidence_path_and_type(row)
+    return media_type
 
 
 def _normalize_review_status(value: str) -> str:
@@ -477,13 +506,12 @@ def get_live_camera_snapshot(camera_id: str):
 @app.get("/violations/{violation_id}/evidence")
 def get_violation_evidence(violation_id: int, db: Session = Depends(get_db)):
     row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
-    if row is None or not row.evidence_image_path:
+    if row is None:
         raise HTTPException(status_code=404, detail="No evidence available")
-
-    evidence_path = Path(row.evidence_image_path)
-    if not evidence_path.exists():
+    evidence_path, media_type = _violation_evidence_path_and_type(row)
+    if evidence_path is None or media_type is None:
         raise HTTPException(status_code=404, detail="No evidence available")
-    return FileResponse(evidence_path, media_type="image/jpeg")
+    return FileResponse(evidence_path, media_type=media_type)
 
 
 @app.get("/violations/detail/{violation_id}")
@@ -552,6 +580,7 @@ def _serialize_recent_violations(rows):
             "camera_id": row.camera_id,
             "timestamp": row.timestamp,
             "evidence_url": _violation_evidence_url(row),
+            "evidence_media_type": _violation_evidence_media_type(row),
             "review_status": row.review_status or "needs_review",
             "review_notes": row.review_notes,
             "reviewed_at": row.reviewed_at,
@@ -646,6 +675,7 @@ def _get_violation_detail_data(db: Session, violation_id: int):
         "camera_id": row.camera_id,
         "timestamp": row.timestamp,
         "evidence_url": _violation_evidence_url(row),
+        "evidence_media_type": _violation_evidence_media_type(row),
         "review_status": row.review_status or "needs_review",
         "review_notes": row.review_notes,
         "reviewed_at": row.reviewed_at,
@@ -1126,6 +1156,7 @@ def _get_safety_event_export_rows(
             "violation_type": row.violation_type,
             "object_id": row.object_id,
             "evidence_url": _violation_evidence_url(row) or "",
+            "evidence_media_type": _violation_evidence_media_type(row) or "",
         }
         for row in rows
     ]
@@ -1212,7 +1243,11 @@ def create_violation(event: schemas.ViolationEvent, db: Session = Depends(get_db
     try:
         db.commit()
         db.refresh(db_violation)
-        db_violation.evidence_image_path = _capture_violation_evidence(db_violation)
+        evidence_path, evidence_media_type = _capture_violation_evidence(db_violation)
+        db_violation.evidence_media_path = evidence_path
+        db_violation.evidence_media_type = evidence_media_type
+        if evidence_path and evidence_media_type == "image/jpeg":
+            db_violation.evidence_image_path = evidence_path
         db.commit()
     except Exception as e:
         db.rollback()
@@ -1366,7 +1401,7 @@ def export_safety_events_csv(
     filename = _build_export_filename("safety_events", "csv", camera_id, start, end)
     return _csv_download_response(
         filename,
-        ["id", "timestamp", "camera_id", "violation_type", "object_id", "evidence_url"],
+        ["id", "timestamp", "camera_id", "violation_type", "object_id", "evidence_url", "evidence_media_type"],
         rows,
     )
 

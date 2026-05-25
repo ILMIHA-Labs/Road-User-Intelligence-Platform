@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from camera_capture import CameraCapture
 from detection import EdgeDetector
 from line_counter import LineCrossingCounter
-from live_preview import LivePreviewWriter
+from live_preview import LivePreviewWriter, RollingEvidenceClipWriter
 from publisher import MQTTPublisher
 from common.camera_config import build_camera_profile_map
 
@@ -71,6 +71,24 @@ def main():
         default=os.getenv("CAMERA_CONFIG_PATH", "config/cameras.yaml"),
         help="Camera configuration file with calibration, zones, and counting lines",
     )
+    parser.add_argument(
+        "--live-clip-dir",
+        type=str,
+        default=os.getenv("LIVE_CLIP_DIR", "artifacts/live_clips"),
+        help="Directory used to publish the latest short annotated evidence clips for each camera",
+    )
+    parser.add_argument(
+        "--live-clip-duration",
+        type=float,
+        default=float(os.getenv("LIVE_CLIP_DURATION_SECONDS", "4.0")),
+        help="Duration in seconds for rolling evidence clips",
+    )
+    parser.add_argument(
+        "--live-clip-interval",
+        type=float,
+        default=float(os.getenv("LIVE_CLIP_INTERVAL_SECONDS", "1.0")),
+        help="Seconds between rolling evidence clip updates",
+    )
     args = parser.parse_args()
 
     # Initialize components
@@ -84,6 +102,13 @@ def main():
         base_dir=args.live_preview_dir,
         interval_seconds=args.live_preview_interval,
         enabled=True,
+    )
+    clip_writer = RollingEvidenceClipWriter(
+        base_dir=args.live_clip_dir,
+        clip_duration_seconds=args.live_clip_duration,
+        write_interval_seconds=args.live_clip_interval,
+        enabled=True,
+        fps=float(camera_profile.get("target_fps") or 10.0),
     )
 
     if not capture.connect():
@@ -123,6 +148,7 @@ def main():
             )
             published_crossings = publisher.publish_crossings(crossings)
             preview_writer.write_frame(args.camera_id, annotated_frame)
+            clip_writer.add_frame(args.camera_id, annotated_frame, fps=float(camera_profile.get("target_fps") or 10.0))
             
             fps = 1.0 / (time.time() - start_time)
             if frame_number % 30 == 0:

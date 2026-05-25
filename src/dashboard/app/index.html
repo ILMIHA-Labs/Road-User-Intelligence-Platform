@@ -890,10 +890,11 @@
               <div id="vd-evidence-shell" class="mt-4 aspect-[16/9] overflow-hidden bg-black">
                 <div id="vd-evidence-empty" class="flex h-full items-center justify-center text-center text-white/60">
                   <div>
-                    <span class="material-symbols-outlined text-5xl">image_not_supported</span>
-                    <p class="mt-3 text-sm uppercase tracking-[0.2em]">No evidence image</p>
+                    <span class="material-symbols-outlined text-5xl">video_library</span>
+                    <p class="mt-3 text-sm uppercase tracking-[0.2em]">No evidence clip</p>
                   </div>
                 </div>
+                <video id="vd-evidence-video" class="hidden h-full w-full object-cover" controls playsinline preload="metadata"></video>
                 <img id="vd-evidence-image" alt="Safety event evidence" class="hidden h-full w-full object-cover" />
               </div>
             </section>
@@ -2799,6 +2800,7 @@
       }
       state.violationLog.items.forEach((v, idx) => {
         const meta = getViolationMeta(v.violation_type);
+        const hasVideoEvidence = (v.evidence_media_type || "").startsWith("video/");
         const tr = document.createElement("tr");
         tr.className = "hover:bg-surface-container-low transition-colors group " + (idx % 2 !== 0 ? "bg-surface-container-low/30" : "");
         tr.innerHTML = `
@@ -2822,8 +2824,10 @@
           <td class="px-6 py-5 text-center">
             <div class="flex flex-col items-center gap-2">
               ${v.evidence_url ? `<a href="${v.evidence_url}" target="_blank" rel="noreferrer" class="block overflow-hidden border border-outline-variant bg-surface-container-low">
-                <img src="${v.evidence_url}" alt="${meta.label} evidence" class="h-14 w-24 object-cover" loading="lazy" />
-              </a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No image</span>'}
+                ${hasVideoEvidence
+                  ? `<video src="${v.evidence_url}" class="h-14 w-24 object-cover" muted playsinline preload="metadata"></video>`
+                  : `<img src="${v.evidence_url}" alt="${meta.label} evidence" class="h-14 w-24 object-cover" loading="lazy" />`}
+              </a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No clip</span>'}
               <button class="inline-flex items-center gap-1 border border-black px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors evidence-btn"
                 data-violation-id="${v.id}">
                 Details <span class="material-symbols-outlined text-xs">arrow_forward</span>
@@ -2896,16 +2900,30 @@
       document.getElementById("vd-title").textContent = meta.label;
       document.getElementById("vd-subtitle").textContent = `${detail.camera_id} • Object ${detail.object_id ?? "—"} • ${formatTimestamp(detail.timestamp)}`;
 
+      const evidenceVideo = document.getElementById("vd-evidence-video");
       const evidenceImage = document.getElementById("vd-evidence-image");
       const evidenceEmpty = document.getElementById("vd-evidence-empty");
       const evidenceLink = document.getElementById("vd-open-evidence");
+      const hasVideoEvidence = (detail.evidence_media_type || "").startsWith("video/");
       if (detail.evidence_url) {
-        evidenceImage.src = detail.evidence_url;
-        evidenceImage.classList.remove("hidden");
+        if (hasVideoEvidence) {
+          evidenceVideo.src = detail.evidence_url;
+          evidenceVideo.classList.remove("hidden");
+          evidenceImage.classList.add("hidden");
+          evidenceImage.removeAttribute("src");
+        } else {
+          evidenceImage.src = detail.evidence_url;
+          evidenceImage.classList.remove("hidden");
+          evidenceVideo.classList.add("hidden");
+          evidenceVideo.removeAttribute("src");
+        }
         evidenceEmpty.classList.add("hidden");
         evidenceLink.href = detail.evidence_url;
+        evidenceLink.textContent = hasVideoEvidence ? "Open Clip" : "Open Evidence";
         evidenceLink.classList.remove("hidden");
       } else {
+        evidenceVideo.classList.add("hidden");
+        evidenceVideo.removeAttribute("src");
         evidenceImage.classList.add("hidden");
         evidenceImage.removeAttribute("src");
         evidenceEmpty.classList.remove("hidden");
@@ -3293,6 +3311,7 @@
         const tr = document.createElement("tr");
         tr.className = idx % 2 === 0 ? "hover:bg-surface-container-low" : "bg-surface-container-low/50 hover:bg-surface-container";
         const meta = getViolationMeta(v.violation_type);
+        const hasVideoEvidence = (v.evidence_media_type || "").startsWith("video/");
         tr.innerHTML = `
           <td class="px-4 py-3 text-xs tabular-nums text-on-surface-variant">${formatTimestamp(v.timestamp)}</td>
           <td class="px-4 py-3">
@@ -3310,7 +3329,7 @@
           <td class="px-4 py-3 text-xs font-mono text-on-surface-variant">${v.object_id ?? "—"}</td>
           <td class="px-4 py-3">
             <div class="flex flex-wrap items-center gap-2">
-              ${v.evidence_url ? `<a href="${v.evidence_url}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 border border-outline-variant bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:border-black hover:bg-black hover:text-white transition-colors">Open Evidence</a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No image</span>'}
+              ${v.evidence_url ? `<a href="${v.evidence_url}" target="_blank" rel="noreferrer" class="inline-flex items-center gap-2 border border-outline-variant bg-surface-container-low px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:border-black hover:bg-black hover:text-white transition-colors">${hasVideoEvidence ? "Open Clip" : "Open Evidence"}</a>` : '<span class="text-[10px] uppercase tracking-[0.15em] text-on-surface-variant">No clip</span>'}
               <button class="inline-flex items-center gap-2 border border-black px-3 py-2 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-black hover:text-white transition-colors cd-violation-detail-btn" data-violation-id="${v.id}">
                 Review
               </button>

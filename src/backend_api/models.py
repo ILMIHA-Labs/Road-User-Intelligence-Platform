@@ -39,6 +39,8 @@ class DBViolation(Base):
     camera_id = Column(String, index=True)
     timestamp = Column(DateTime, index=True)
     evidence_image_path = Column(String, nullable=True)
+    evidence_media_path = Column(String, nullable=True)
+    evidence_media_type = Column(String, nullable=True)
     review_status = Column(String, nullable=True, index=True)
     review_notes = Column(String, nullable=True)
     reviewed_at = Column(DateTime, nullable=True)

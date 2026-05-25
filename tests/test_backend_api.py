@@ -33,20 +33,25 @@ class TestBackendAPI(unittest.TestCase):
         Base.metadata.create_all(bind=engine)
         init_db()
         self.live_preview_tmp = tempfile.TemporaryDirectory()
+        self.live_clip_tmp = tempfile.TemporaryDirectory()
         self.evidence_tmp = tempfile.TemporaryDirectory()
         self.config_tmp = tempfile.TemporaryDirectory()
         self.original_live_frames_dir = backend_main._LIVE_FRAMES_DIR
+        self.original_live_clips_dir = backend_main._LIVE_CLIPS_DIR
         self.original_violation_evidence_dir = backend_main._VIOLATION_EVIDENCE_DIR
         self.original_cameras_config_path = backend_main._CAMERAS_CONFIG_PATH
         self.original_evidence_capture_enabled = backend_main._EVIDENCE_CAPTURE_ENABLED
         self.original_violation_evidence_retention = backend_main._VIOLATION_EVIDENCE_RETENTION_SECONDS
         self.original_live_preview_retention = backend_main._LIVE_PREVIEW_RETENTION_SECONDS
+        self.original_live_clip_retention = backend_main._LIVE_CLIP_RETENTION_SECONDS
         self.original_setup_preview_retention = backend_main._SETUP_PREVIEW_RETENTION_SECONDS
         backend_main._LIVE_FRAMES_DIR = Path(self.live_preview_tmp.name)
+        backend_main._LIVE_CLIPS_DIR = Path(self.live_clip_tmp.name)
         backend_main._VIOLATION_EVIDENCE_DIR = Path(self.evidence_tmp.name)
         backend_main._EVIDENCE_CAPTURE_ENABLED = True
         backend_main._VIOLATION_EVIDENCE_RETENTION_SECONDS = 7 * 24 * 60 * 60
         backend_main._LIVE_PREVIEW_RETENTION_SECONDS = 24 * 60 * 60
+        backend_main._LIVE_CLIP_RETENTION_SECONDS = 24 * 60 * 60
         backend_main._SETUP_PREVIEW_RETENTION_SECONDS = 24 * 60 * 60
         temp_config_path = Path(self.config_tmp.name) / "cameras.yaml"
         shutil.copy2(self.original_cameras_config_path, temp_config_path)
@@ -57,13 +62,16 @@ class TestBackendAPI(unittest.TestCase):
     def tearDown(self):
         self.client_cm.__exit__(None, None, None)
         backend_main._LIVE_FRAMES_DIR = self.original_live_frames_dir
+        backend_main._LIVE_CLIPS_DIR = self.original_live_clips_dir
         backend_main._VIOLATION_EVIDENCE_DIR = self.original_violation_evidence_dir
         backend_main._CAMERAS_CONFIG_PATH = self.original_cameras_config_path
         backend_main._EVIDENCE_CAPTURE_ENABLED = self.original_evidence_capture_enabled
         backend_main._VIOLATION_EVIDENCE_RETENTION_SECONDS = self.original_violation_evidence_retention
         backend_main._LIVE_PREVIEW_RETENTION_SECONDS = self.original_live_preview_retention
+        backend_main._LIVE_CLIP_RETENTION_SECONDS = self.original_live_clip_retention
         backend_main._SETUP_PREVIEW_RETENTION_SECONDS = self.original_setup_preview_retention
         self.live_preview_tmp.cleanup()
+        self.live_clip_tmp.cleanup()
         self.evidence_tmp.cleanup()
         self.config_tmp.cleanup()
         Base.metadata.drop_all(bind=engine)
@@ -241,9 +249,9 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_violation_evidence_is_captured_and_served(self):
-        camera_dir = Path(self.live_preview_tmp.name) / "test_cam"
+        camera_dir = Path(self.live_clip_tmp.name) / "test_cam"
         camera_dir.mkdir(parents=True, exist_ok=True)
-        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        (camera_dir / "latest.mp4").write_bytes(b"fake-mp4-data")
 
         response = self.client.post("/violations", json={
             "violation_type": "speed_violation",
@@ -262,12 +270,12 @@ class TestBackendAPI(unittest.TestCase):
 
         evidence_response = self.client.get(evidence_url)
         self.assertEqual(evidence_response.status_code, 200)
-        self.assertEqual(evidence_response.headers["content-type"], "image/jpeg")
+        self.assertEqual(evidence_response.headers["content-type"], "video/mp4")
 
     def test_violation_log_returns_evidence_url_when_available(self):
-        camera_dir = Path(self.live_preview_tmp.name) / "cam_recent"
+        camera_dir = Path(self.live_clip_tmp.name) / "cam_recent"
         camera_dir.mkdir(parents=True, exist_ok=True)
-        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        (camera_dir / "latest.mp4").write_bytes(b"fake-mp4-data")
         self.client.post("/violations", json={
             "violation_type": "speed_violation",
             "object_id": 1,
@@ -280,6 +288,7 @@ class TestBackendAPI(unittest.TestCase):
         data = response.json()
         self.assertEqual(len(data["items"]), 1)
         self.assertTrue(data["items"][0]["evidence_url"])
+        self.assertEqual(data["items"][0]["evidence_media_type"], "video/mp4")
 
     def test_violation_evidence_is_disabled_when_capture_flag_is_false(self):
         backend_main._EVIDENCE_CAPTURE_ENABLED = False
@@ -302,9 +311,9 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIsNone(recent_data["violations"][0]["evidence_url"])
 
     def test_violation_detail_returns_related_context(self):
-        camera_dir = Path(self.live_preview_tmp.name) / "detail_cam"
+        camera_dir = Path(self.live_clip_tmp.name) / "detail_cam"
         camera_dir.mkdir(parents=True, exist_ok=True)
-        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        (camera_dir / "latest.mp4").write_bytes(b"fake-mp4-data")
 
         self.client.post("/detections", json={
             "camera_id": "detail_cam",
@@ -349,15 +358,16 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(detail["camera_id"], "detail_cam")
         self.assertEqual(detail["object_id"], 14)
         self.assertTrue(detail["evidence_url"])
+        self.assertEqual(detail["evidence_media_type"], "video/mp4")
         self.assertEqual(len(detail["related"]["detections"]), 1)
         self.assertEqual(len(detail["related"]["speeds"]), 1)
         self.assertEqual(len(detail["related"]["crossings"]), 1)
         self.assertEqual(detail["review_status"], "needs_review")
 
     def test_violation_review_update_persists_status_and_notes(self):
-        camera_dir = Path(self.live_preview_tmp.name) / "review_cam"
+        camera_dir = Path(self.live_clip_tmp.name) / "review_cam"
         camera_dir.mkdir(parents=True, exist_ok=True)
-        (camera_dir / "latest.jpg").write_bytes(b"\xff\xd8\xff\xd9")
+        (camera_dir / "latest.mp4").write_bytes(b"fake-mp4-data")
 
         self.client.post("/violations", json={
             "violation_type": "speed_violation",
