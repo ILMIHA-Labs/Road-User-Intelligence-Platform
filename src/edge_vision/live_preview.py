@@ -60,6 +60,7 @@ class RollingEvidenceClipWriter:
         self.default_fps = max(float(fps), 1.0)
         self.last_write_by_camera = {}
         self.frames_by_camera = defaultdict(deque)
+        self._codec_by_camera = {}
 
     def add_frame(self, camera_id, frame, timestamp_seconds=None, fps=None):
         if not self.enabled or frame is None or not camera_id:
@@ -91,13 +92,36 @@ class RollingEvidenceClipWriter:
         output_path = camera_dir / "latest.mp4"
         temp_path = camera_dir / ".latest.tmp.mp4"
 
-        writer = cv2.VideoWriter(
-            str(temp_path),
-            cv2.VideoWriter_fourcc(*"mp4v"),
-            max(float(fps), 1.0),
-            (width, height),
-        )
-        if not writer.isOpened():
+        codec = self._codec_by_camera.get(camera_id)
+        writer = None
+        if codec is not None:
+            writer = cv2.VideoWriter(
+                str(temp_path),
+                cv2.VideoWriter_fourcc(*codec),
+                max(float(fps), 1.0),
+                (width, height),
+            )
+            if not writer.isOpened():
+                writer.release()
+                writer = None
+                self._codec_by_camera.pop(camera_id, None)
+
+        if writer is None:
+            for candidate in ("avc1", "H264", "mp4v"):
+                candidate_writer = cv2.VideoWriter(
+                    str(temp_path),
+                    cv2.VideoWriter_fourcc(*candidate),
+                    max(float(fps), 1.0),
+                    (width, height),
+                )
+                if candidate_writer.isOpened():
+                    writer = candidate_writer
+                    self._codec_by_camera[camera_id] = candidate
+                    logger.info("Using %s codec for rolling evidence clips on %s", candidate, camera_id)
+                    break
+                candidate_writer.release()
+
+        if writer is None or not writer.isOpened():
             logger.warning("Failed to open evidence clip writer for %s", camera_id)
             return None
 
