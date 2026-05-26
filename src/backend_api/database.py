@@ -3,13 +3,16 @@ from sqlalchemy.orm import sessionmaker
 from .models import Base
 import os
 
-# Use SQLite for MVP, easy to swap to postgresql://user:pass@host/db later
+# SQLite remains convenient locally; production-sized registries should set a
+# server database URL such as PostgreSQL.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./road_user_platform.db")
 
-# connect_args={"check_same_thread": False} is needed only for SQLite
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False} 
-)
+engine_options = {}
+if DATABASE_URL.startswith("sqlite"):
+    # This flag is SQLite-only and is needed when FastAPI uses worker threads.
+    engine_options["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_options)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():

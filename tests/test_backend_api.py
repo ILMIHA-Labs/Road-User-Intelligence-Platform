@@ -14,7 +14,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 import backend_api.main as backend_main
-from backend_api.database import init_db
+from backend_api.database import init_db, SessionLocal
 from backend_api.main import app, engine
 from backend_api.models import Base
 
@@ -87,6 +87,8 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("Traffic Operations Dashboard", response.text)
         self.assertNotIn("Refresh Data", response.text)
         self.assertIn("Connecting", response.text)
+        self.assertIn("config-search", response.text)
+        self.assertIn("config-next-page", response.text)
 
     def test_camera_config_endpoint_returns_defaults_and_merged_profiles(self):
         response = self.client.get("/cameras/config")
@@ -94,12 +96,37 @@ class TestBackendAPI(unittest.TestCase):
         data = response.json()
         self.assertIn("defaults", data)
         self.assertIn("cameras", data)
+        self.assertIn("total", data)
+        self.assertIn("has_more", data)
         self.assertGreaterEqual(len(data["cameras"]), 1)
         sample_camera = next(camera for camera in data["cameras"] if camera["id"] == "sample_video_01")
         self.assertIn("speed_limit_kmh", sample_camera)
         self.assertIn("max_motorcycle_riders", sample_camera)
         self.assertIn("zones", sample_camera)
         self.assertIn("counting_lines", sample_camera)
+
+    def test_camera_registry_supports_bounded_search_and_pagination(self):
+        cameras = [
+            {"id": f"fleet_cam_{index:05d}", "location": f"Corridor {index:05d}"}
+            for index in range(125)
+        ]
+        with SessionLocal() as db:
+            for camera in cameras:
+                backend_main._upsert_camera_profile(db, camera, source="test_fixture")
+            db.commit()
+
+        first_page = self.client.get("/cameras/config?q=fleet_cam&limit=20&offset=0").json()
+        second_page = self.client.get("/cameras/config?q=fleet_cam&limit=20&offset=20").json()
+        location_match = self.client.get("/cameras/config?q=Corridor%2000124&limit=20").json()
+        detail = self.client.get("/cameras/config/fleet_cam_00124")
+
+        self.assertEqual(first_page["total"], 125)
+        self.assertEqual(len(first_page["cameras"]), 20)
+        self.assertTrue(first_page["has_more"])
+        self.assertEqual(second_page["cameras"][0]["id"], "fleet_cam_00020")
+        self.assertEqual(location_match["cameras"][0]["id"], "fleet_cam_00124")
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.json()["location"], "Corridor 00124")
 
     def test_setup_preview_frame_supports_local_image_source(self):
         image_path = Path(self.config_tmp.name) / "preview.png"
@@ -590,9 +617,33 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("summary", payload)
         self.assertIn("crossings", payload)
         self.assertIn("stream", payload)
+        self.assertTrue(payload["camera_configs"]["bounded"])
         self.assertEqual(payload["summary"]["camera_id"], "cam_live")
         self.assertEqual(payload["crossings"]["counts_by_line"]["main_gate"], 1)
         self.assertEqual(payload["camera_detail"]["camera_id"], "cam_live")
+
+    def test_live_dashboard_snapshot_bounds_camera_configuration_payload(self):
+        with SessionLocal() as db:
+            for index in range(40):
+                backend_main._upsert_camera_profile(
+                    db, {"id": f"bounded_cam_{index:03d}"}, source="test_fixture"
+                )
+            db.commit()
+
+        with self.client.stream("GET", "/live/dashboard?once=true") as response:
+            self.assertEqual(response.status_code, 200)
+            payload = None
+            for chunk in response.iter_text():
+                for line in chunk.splitlines():
+                    if line.startswith("data: "):
+                        payload = json.loads(line[6:])
+                        break
+                if payload is not None:
+                    break
+
+        self.assertIsNotNone(payload)
+        self.assertGreaterEqual(payload["camera_configs"]["total"], 40)
+        self.assertLessEqual(len(payload["camera_configs"]["cameras"]), 24)
 
     def test_analytics_violation_breakdown(self):
         self.client.post("/violations", json={

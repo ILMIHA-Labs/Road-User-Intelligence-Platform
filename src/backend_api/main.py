@@ -15,7 +15,7 @@ import yaml
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse, StreamingResponse
 from starlette.staticfiles import StaticFiles
@@ -67,6 +67,7 @@ _VIOLATION_EVIDENCE_RETENTION_SECONDS = _env_int("VIOLATION_EVIDENCE_RETENTION_S
 _LIVE_PREVIEW_RETENTION_SECONDS = _env_int("LIVE_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
 _LIVE_CLIP_RETENTION_SECONDS = _env_int("LIVE_CLIP_RETENTION_SECONDS", 24 * 60 * 60)
 _SETUP_PREVIEW_RETENTION_SECONDS = _env_int("SETUP_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
+_CAMERA_DEFAULTS_CACHE = {"path": None, "mtime_ns": None, "defaults": {}}
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
 if dashboard_dir.exists():
@@ -75,6 +76,11 @@ if dashboard_dir.exists():
 @app.on_event("startup")
 def startup_event():
     init_db()
+    db = SessionLocal()
+    try:
+        _seed_camera_registry(db)
+    finally:
+        db.close()
     _cleanup_runtime_artifacts()
 
 @app.get("/")
@@ -121,22 +127,22 @@ class ViolationReviewUpdateRequest(BaseModel):
 
 
 @app.get("/cameras/config")
-def get_cameras_config():
-    """Return merged camera profiles from cameras.yaml (defaults + per-camera overrides)."""
-    try:
-        with open(_CAMERAS_CONFIG_PATH, "r") as f:
-            raw = yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        return {"defaults": {}, "cameras": []}
-    defaults = raw.get("defaults", {})
-    cameras = raw.get("cameras", [])
-    merged = []
-    for cam in cameras:
-        profile = {**defaults, **cam}
-        profile["zones"] = normalize_zone_definitions(profile.get("zones"))
-        profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
-        merged.append(profile)
-    return {"defaults": defaults, "cameras": merged}
+def get_cameras_config(
+    q: str = Query(default=None, max_length=120),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """Return a bounded page of effective camera profiles from the registry."""
+    return _list_camera_profiles(db, q=q, offset=offset, limit=limit)
+
+
+@app.get("/cameras/config/{camera_id}")
+def get_camera_config(camera_id: str, db: Session = Depends(get_db)):
+    profile = _get_camera_profile(db, camera_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="Camera configuration not found")
+    return profile
 
 
 @app.post("/setup/preview-frame")
@@ -168,17 +174,19 @@ def get_setup_preview(camera_id: str):
 
 
 @app.post("/setup/camera-config")
-def save_camera_setup(request: CameraSetupSaveRequest):
+def save_camera_setup(request: CameraSetupSaveRequest, db: Session = Depends(get_db)):
     preview_camera_id = _sanitize_camera_id(request.camera_id)
     raw = _read_raw_camera_config()
     defaults = raw.get("defaults", {})
-    cameras = raw.get("cameras", [])
+    yaml_cameras = raw.get("cameras", [])
 
     normalized_lines = _normalize_setup_counting_lines(request.counting_lines)
     normalized_zebra_zones = _normalize_setup_zebra_zones(request.zebra_zones)
 
-    existing_index = next((index for index, camera in enumerate(cameras) if camera.get("id") == request.camera_id), None)
-    existing_camera = cameras[existing_index] if existing_index is not None else {}
+    existing_row = db.query(models.DBCameraConfig).filter(
+        models.DBCameraConfig.camera_id == request.camera_id
+    ).first()
+    existing_camera = dict(existing_row.profile) if existing_row is not None else {}
     existing_zones = normalize_zone_definitions(existing_camera.get("zones"))
     retained_non_zebra_zones = [zone for zone in existing_zones if zone.get("category") != "zebra_crossing"]
 
@@ -199,18 +207,23 @@ def save_camera_setup(request: CameraSetupSaveRequest):
         "zones": retained_non_zebra_zones + normalized_zebra_zones,
     }
 
-    if existing_index is not None:
-        cameras[existing_index] = camera_payload
-    else:
-        cameras.append(camera_payload)
+    row = _upsert_camera_profile(db, camera_payload, source="dashboard_setup")
+    db.commit()
 
-    raw["cameras"] = cameras
+    # Keep the file-driven runtime agents compatible while the registry powers
+    # bounded fleet management in the dashboard.
+    yaml_index = next(
+        (index for index, camera in enumerate(yaml_cameras) if camera.get("id") == request.camera_id),
+        None,
+    )
+    if yaml_index is None:
+        yaml_cameras.append(camera_payload)
+    else:
+        yaml_cameras[yaml_index] = camera_payload
+    raw["cameras"] = yaml_cameras
     _write_raw_camera_config(raw)
 
-    profile = {**defaults, **camera_payload}
-    profile["zones"] = normalize_zone_definitions(profile.get("zones"))
-    profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
-    return {"message": "Camera setup saved", "camera": profile}
+    return {"message": "Camera setup saved", "camera": _effective_camera_profile(defaults, row.profile)}
 
 
 def _resolve_source_path(source: str) -> Path:
@@ -263,6 +276,112 @@ def _write_raw_camera_config(raw_config: dict):
     _CAMERAS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(_CAMERAS_CONFIG_PATH, "w") as f:
         yaml.safe_dump(raw_config, f, sort_keys=False)
+
+
+def _get_camera_defaults() -> dict:
+    try:
+        mtime_ns = _CAMERAS_CONFIG_PATH.stat().st_mtime_ns
+    except FileNotFoundError:
+        mtime_ns = None
+    path_key = str(_CAMERAS_CONFIG_PATH)
+    if (
+        _CAMERA_DEFAULTS_CACHE["path"] == path_key
+        and _CAMERA_DEFAULTS_CACHE["mtime_ns"] == mtime_ns
+    ):
+        return dict(_CAMERA_DEFAULTS_CACHE["defaults"])
+    defaults = _read_raw_camera_config().get("defaults", {})
+    _CAMERA_DEFAULTS_CACHE.update(
+        {"path": path_key, "mtime_ns": mtime_ns, "defaults": dict(defaults)}
+    )
+    return dict(defaults)
+
+
+def _effective_camera_profile(defaults: dict, camera_payload: dict) -> dict:
+    profile = {**defaults, **(camera_payload or {})}
+    profile["zones"] = normalize_zone_definitions(profile.get("zones"))
+    profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
+    return profile
+
+
+def _upsert_camera_profile(db: Session, camera_payload: dict, source: str):
+    camera_id = str(camera_payload.get("id", "")).strip()
+    if not camera_id:
+        raise HTTPException(status_code=400, detail="Camera profile must include an id")
+    normalized_payload = dict(camera_payload)
+    normalized_payload["id"] = camera_id
+    normalized_payload["zones"] = normalize_zone_definitions(normalized_payload.get("zones"))
+    normalized_payload["counting_lines"] = normalize_counting_line_definitions(
+        normalized_payload.get("counting_lines")
+    )
+    row = db.query(models.DBCameraConfig).filter(
+        models.DBCameraConfig.camera_id == camera_id
+    ).first()
+    if row is None:
+        row = models.DBCameraConfig(
+            camera_id=camera_id,
+            location=normalized_payload.get("location"),
+            enabled=bool(normalized_payload.get("enabled", True)),
+            profile=normalized_payload,
+            source=source,
+            version=1,
+            updated_at=datetime.utcnow(),
+        )
+        db.add(row)
+    else:
+        row.location = normalized_payload.get("location")
+        row.enabled = bool(normalized_payload.get("enabled", True))
+        row.profile = normalized_payload
+        row.source = source
+        row.version = int(row.version or 0) + 1
+        row.updated_at = datetime.utcnow()
+    return row
+
+
+def _seed_camera_registry(db: Session):
+    """Mirror authoritative YAML profiles into the indexed frontend registry."""
+    raw = _read_raw_camera_config()
+    for camera in raw.get("cameras", []):
+        camera_id = str(camera.get("id", "")).strip()
+        if not camera_id:
+            continue
+        _upsert_camera_profile(db, camera, source="yaml_runtime")
+    db.commit()
+
+
+def _camera_profile_query(db: Session, q: Optional[str] = None):
+    query = db.query(models.DBCameraConfig)
+    if q:
+        term = f"{q.strip()}%"
+        query = query.filter(
+            or_(
+                models.DBCameraConfig.camera_id.ilike(term),
+                models.DBCameraConfig.location.ilike(term),
+            )
+        )
+    return query
+
+
+def _list_camera_profiles(db: Session, q: Optional[str] = None, offset: int = 0, limit: int = 50):
+    defaults = _get_camera_defaults()
+    query = _camera_profile_query(db, q)
+    total = query.count()
+    rows = query.order_by(models.DBCameraConfig.camera_id.asc()).offset(offset).limit(limit).all()
+    return {
+        "defaults": defaults,
+        "cameras": [_effective_camera_profile(defaults, row.profile) for row in rows],
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(rows) < total,
+    }
+
+
+def _get_camera_profile(db: Session, camera_id: str):
+    defaults = _get_camera_defaults()
+    row = db.query(models.DBCameraConfig).filter(
+        models.DBCameraConfig.camera_id == camera_id
+    ).first()
+    return _effective_camera_profile(defaults, row.profile) if row is not None else None
 
 
 def _normalize_setup_counting_lines(lines: List[SetupCountingLineInput]):
@@ -643,33 +762,28 @@ def _camera_health_snapshot(camera_id: str, db: Session):
     }
 
 
-def _read_camera_profiles():
-    try:
-        with open(_CAMERAS_CONFIG_PATH, "r") as f:
-            raw = yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        return {}, []
-    defaults = raw.get("defaults", {})
-    cameras = raw.get("cameras", [])
-    merged = []
-    for cam in cameras:
-        profile = {**defaults, **cam}
-        profile["zones"] = normalize_zone_definitions(profile.get("zones"))
-        profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
-        merged.append(profile)
-    return defaults, merged
-
-
 @app.get("/live/cameras")
-def get_live_camera_statuses(db: Session = Depends(get_db)):
-    _, cameras = _read_camera_profiles()
+def get_live_camera_statuses(
+    q: str = Query(default=None, max_length=120),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=24, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    config_page = _list_camera_profiles(db, q=q, offset=offset, limit=limit)
+    cameras = config_page["cameras"]
     statuses = []
     for camera in cameras:
         camera_id = camera.get("id")
         if not camera_id:
             continue
         statuses.append(_camera_health_snapshot(camera_id, db))
-    return {"cameras": statuses}
+    return {
+        "cameras": statuses,
+        "total": config_page["total"],
+        "offset": offset,
+        "limit": limit,
+        "has_more": config_page["has_more"],
+    }
 
 
 @app.get("/live/cameras/{camera_id}")
@@ -822,8 +936,8 @@ def _get_violation_detail_data(db: Session, violation_id: int):
     if row is None:
         raise HTTPException(status_code=404, detail="Safety event not found")
 
-    camera_defaults, camera_profiles = _read_camera_profiles()
-    camera_profile = next((camera for camera in camera_profiles if camera.get("id") == row.camera_id), None)
+    camera_defaults = _get_camera_defaults()
+    camera_profile = _get_camera_profile(db, row.camera_id)
     from datetime import timedelta
     timestamp = row.timestamp
     start = timestamp - timedelta(seconds=5)
@@ -1277,8 +1391,23 @@ def _get_dashboard_snapshot_data(
     end: datetime = None,
     detail_camera_id: str = None,
 ):
-    camera_defaults, camera_profiles = _read_camera_profiles()
-    live_feeds = {"cameras": [_camera_health_snapshot(camera["id"], db) for camera in camera_profiles if camera.get("id")]}
+    config_page = _list_camera_profiles(db, offset=0, limit=24)
+    camera_profiles = list(config_page["cameras"])
+    selected_camera_ids = {value for value in (camera_id, detail_camera_id) if value}
+    loaded_ids = {camera.get("id") for camera in camera_profiles}
+    for selected_id in selected_camera_ids - loaded_ids:
+        profile = _get_camera_profile(db, selected_id)
+        if profile:
+            camera_profiles.append(profile)
+    live_feeds = {
+        "cameras": [
+            _camera_health_snapshot(camera["id"], db)
+            for camera in camera_profiles
+            if camera.get("id")
+        ],
+        "total": config_page["total"],
+        "limit": 24,
+    }
     snapshot = {
         "summary": _get_analytics_summary_data(db, camera_id, start, end),
         "by_camera": _get_analytics_by_camera_data(db, start, end),
@@ -1288,8 +1417,11 @@ def _get_dashboard_snapshot_data(
         "recent": _get_recent_events_data(db, camera_id, start, end, limit=20, offset=0),
         "speed_distribution": _get_speed_distribution_data(db, camera_id, start, end),
         "camera_configs": {
-            "defaults": camera_defaults,
+            "defaults": config_page["defaults"],
             "cameras": camera_profiles,
+            "total": config_page["total"],
+            "limit": 24,
+            "bounded": True,
         },
         "live_feeds": live_feeds,
         "stream": {

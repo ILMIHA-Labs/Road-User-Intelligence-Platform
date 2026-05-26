@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+from datetime import datetime
+
+from sqlalchemy import Boolean, Column, Integer, String, Float, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -8,6 +10,20 @@ class DBDevice(Base):
     id = Column(Integer, primary_key=True, index=True)
     device_id = Column(String, unique=True, index=True)
     location = Column(String, nullable=True)
+
+
+class DBCameraConfig(Base):
+    """Persisted control-plane configuration for a single camera node."""
+
+    __tablename__ = "camera_configs"
+    camera_id = Column(String, primary_key=True, index=True)
+    location = Column(String, nullable=True, index=True)
+    enabled = Column(Boolean, nullable=False, default=True, index=True)
+    profile = Column(JSON, nullable=False)
+    source = Column(String, nullable=False, default="api")
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
 
 class DBDetection(Base):
     __tablename__ = "detections"

@@ -405,9 +405,9 @@
           </article>
           <article class="bg-surface-container-lowest p-8 xl:col-span-2">
             <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Configuration Surface</p>
-            <p class="mt-3 text-2xl font-black tracking-tight">Read-only operational tuning</p>
+            <p class="mt-3 text-2xl font-black tracking-tight">Fleet-ready configuration registry</p>
             <p class="mt-3 max-w-2xl text-sm leading-6 text-on-surface-variant">
-              These values are the effective runtime settings loaded from camera YAML. They are displayed here for validation and operator visibility, not editing.
+              Search and inspect effective camera settings in bounded pages, so large device fleets remain fast to navigate and validate.
             </p>
           </article>
         </div>
@@ -432,7 +432,24 @@
               </div>
               <span id="config-summary-caption" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant"></span>
             </div>
+            <div class="mb-6 flex flex-col gap-3 border-y border-black/5 py-4 md:flex-row md:items-center">
+              <label class="flex-1">
+                <span class="sr-only">Search camera configurations</span>
+                <input id="config-search" type="search" class="w-full border-0 bg-surface-container-low px-4 py-3 text-sm focus:ring-0" placeholder="Find camera ID or location prefix" />
+              </label>
+              <select id="config-page-size" class="border-0 bg-surface-container-low px-3 py-3 text-xs font-bold uppercase tracking-[0.15em] focus:ring-0">
+                <option value="10">10 / page</option>
+                <option value="20" selected>20 / page</option>
+                <option value="50">50 / page</option>
+              </select>
+              <button id="config-search-button" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">Search</button>
+            </div>
             <div id="config-camera-grid" class="grid grid-cols-1 gap-6 2xl:grid-cols-2"></div>
+            <div class="mt-6 flex items-center justify-between gap-4 border-t border-black/5 pt-5">
+              <button id="config-prev-page" class="border border-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.15em] disabled:cursor-not-allowed disabled:opacity-30">Previous</button>
+              <span id="config-page-caption" class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">No profiles</span>
+              <button id="config-next-page" class="border border-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.15em] disabled:cursor-not-allowed disabled:opacity-30">Next</button>
+            </div>
           </article>
         </section>
       </section>
@@ -447,7 +464,7 @@
             <p class="text-[10px] uppercase tracking-[0.2em] text-white/50">Operator workflow</p>
             <p class="mt-3 text-2xl font-black tracking-tight">Load a frame, draw counting lines and zebra bounds, then save the camera profile.</p>
             <p class="mt-3 max-w-3xl text-sm leading-6 text-white/70">
-              This setup surface is meant for adding a new camera or preparing a new video before analysis. It writes the drawn counting lines and zebra-crossing zones into the main camera config so the live system can use them directly.
+              This setup surface is meant for adding a new camera or preparing a new video before analysis. It registers the profile for fleet browsing and keeps the runtime camera configuration in sync for analysis.
             </p>
           </article>
         </div>
@@ -1056,6 +1073,16 @@
       speedDist: [],
       cameraDefaults: {},
       cameraConfigs: [],
+      cameraConfigTotal: 0,
+      configBrowser: {
+        cameras: [],
+        total: 0,
+        offset: 0,
+        limit: 20,
+        query: "",
+        initialized: false,
+        loading: false,
+      },
       liveFeeds: {},
       recent: { detections: [], speeds: [], violations: [], crossings: [] },
       cameraDetailData: null,
@@ -1537,7 +1564,8 @@
           zebra_zones: state.setup.zebraZones,
         });
         await refreshDashboard();
-        setSetupStatus(`Saved setup for ${response.camera.id} into cameras.yaml.`);
+        setSetupStatus(`Saved setup for ${response.camera.id}. It is now available in the fleet registry.`);
+        loadConfigProfiles(true);
       } catch (error) {
         console.error(error);
         setSetupStatus(error.message);
@@ -1582,6 +1610,9 @@
       }
       if (viewName === "violations" && !state.isRefreshing) {
         loadViolationLog();
+      }
+      if (viewName === "configs") {
+        loadConfigProfiles(!state.configBrowser.initialized);
       }
     }
 
@@ -1839,6 +1870,7 @@
       state.speedDist = snapshot.speed_distribution?.buckets || [];
       state.cameraDefaults = snapshot.camera_configs?.defaults || {};
       state.cameraConfigs = snapshot.camera_configs?.cameras || [];
+      state.cameraConfigTotal = snapshot.camera_configs?.total || state.cameraConfigs.length;
       state.liveFeeds = Object.fromEntries((snapshot.live_feeds?.cameras || []).map((camera) => [camera.camera_id, camera]));
       state.cameraDetailData = snapshot.camera_detail || null;
       updateExportActions();
@@ -2317,11 +2349,11 @@
         return getLiveFeedState(cameraId).snapshot_available || Boolean(camera.live_feed_url);
       });
 
-      document.getElementById("live-camera-count").textContent = allCameras.length.toLocaleString();
+      document.getElementById("live-camera-count").textContent = (state.cameraConfigTotal || allCameras.length).toLocaleString();
       document.getElementById("live-ready-count").textContent = readyFeeds.length.toLocaleString();
       document.getElementById("live-feed-caption").textContent = readyFeeds.length
-        ? `${readyFeeds.length} live feed${readyFeeds.length !== 1 ? "s" : ""} available`
-        : "No live feeds available yet";
+        ? `${readyFeeds.length} live feed${readyFeeds.length !== 1 ? "s" : ""} in this preview window`
+        : `Showing ${allCameras.length} configured preview node${allCameras.length !== 1 ? "s" : ""}`;
 
       liveGrid.querySelectorAll("[data-recamera-stream]").forEach((node) => {
         if (typeof node._stopReCameraStream === "function") node._stopReCameraStream();
@@ -2450,11 +2482,11 @@
         return getLiveFeedState(cameraId).snapshot_available || Boolean(camera.live_feed_url);
       });
 
-      document.getElementById("live-camera-count").textContent = allCameras.length.toLocaleString();
+      document.getElementById("live-camera-count").textContent = (state.cameraConfigTotal || allCameras.length).toLocaleString();
       document.getElementById("live-ready-count").textContent = readyFeeds.length.toLocaleString();
       document.getElementById("live-feed-caption").textContent = readyFeeds.length
-        ? `${readyFeeds.length} live feed${readyFeeds.length !== 1 ? "s" : ""} available`
-        : "No live feeds available yet";
+        ? `${readyFeeds.length} live feed${readyFeeds.length !== 1 ? "s" : ""} in this preview window`
+        : `Showing ${allCameras.length} configured preview node${allCameras.length !== 1 ? "s" : ""}`;
 
       allCameras.forEach((camera) => {
         const cameraId = camera.id || camera.camera_id;
@@ -2474,17 +2506,48 @@
       });
     }
 
+    async function loadConfigProfiles(reset = false) {
+      if (state.configBrowser.loading) return;
+      if (reset) state.configBrowser.offset = 0;
+      state.configBrowser.loading = true;
+      try {
+        const result = await loadJson(`/cameras/config${buildQuery({
+          q: state.configBrowser.query || undefined,
+          offset: state.configBrowser.offset,
+          limit: state.configBrowser.limit,
+        })}`);
+        state.configBrowser.cameras = result.cameras || [];
+        state.configBrowser.total = result.total ?? state.configBrowser.cameras.length;
+        state.configBrowser.initialized = true;
+        state.cameraDefaults = result.defaults || state.cameraDefaults;
+        renderConfigs();
+      } catch (error) {
+        console.error("Configuration registry fetch failed", error);
+      } finally {
+        state.configBrowser.loading = false;
+      }
+    }
+
     function renderConfigs() {
       const defaultsList = document.getElementById("config-defaults-list");
       const cameraGrid = document.getElementById("config-camera-grid");
       const defaults = state.cameraDefaults || {};
-      const cameras = state.cameraConfigs || [];
+      const browser = state.configBrowser;
+      const cameras = browser.initialized ? browser.cameras : state.cameraConfigs || [];
+      const total = browser.initialized ? browser.total : state.cameraConfigTotal || cameras.length;
+      const pageStart = total && cameras.length ? browser.offset + 1 : 0;
+      const pageEnd = total && cameras.length ? browser.offset + cameras.length : 0;
 
-      document.getElementById("config-camera-count").textContent = cameras.length.toLocaleString();
+      document.getElementById("config-camera-count").textContent = total.toLocaleString();
       document.getElementById("config-default-count").textContent = Object.keys(defaults).length.toLocaleString();
       document.getElementById("config-summary-caption").textContent = cameras.length
-        ? `${cameras.length} effective profile${cameras.length !== 1 ? "s" : ""}`
+        ? `Showing ${pageStart.toLocaleString()}-${pageEnd.toLocaleString()} of ${total.toLocaleString()} profiles`
         : "No camera profiles loaded";
+      document.getElementById("config-page-caption").textContent = cameras.length
+        ? `${pageStart.toLocaleString()}-${pageEnd.toLocaleString()} of ${total.toLocaleString()}`
+        : "No profiles";
+      document.getElementById("config-prev-page").disabled = !browser.initialized || browser.offset === 0;
+      document.getElementById("config-next-page").disabled = !browser.initialized || pageEnd >= total;
 
       defaultsList.innerHTML = "";
       const defaultFields = CONFIG_FIELDS.filter(([key]) => defaults[key] !== undefined);
@@ -3069,6 +3132,14 @@
     }
 
     async function openCameraDetail(cameraId) {
+      if (!state.cameraConfigs.some((camera) => camera.id === cameraId)) {
+        try {
+          const profile = await loadJson(`/cameras/config/${encodeURIComponent(cameraId)}`);
+          state.cameraConfigs = [...state.cameraConfigs, profile];
+        } catch (error) {
+          console.error("Camera configuration lookup failed", error);
+        }
+      }
       setActiveView("camera-detail");
       state.currentCameraDetailId = cameraId;
       connectDashboardStream();
@@ -3642,6 +3713,30 @@
       state.violationLog.page = 1;
       updateExportActions();
       connectDashboardStream();
+    });
+
+    document.getElementById("config-search-button").addEventListener("click", () => {
+      state.configBrowser.query = document.getElementById("config-search").value.trim();
+      loadConfigProfiles(true);
+    });
+    document.getElementById("config-search").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        document.getElementById("config-search-button").click();
+      }
+    });
+    document.getElementById("config-page-size").addEventListener("change", (event) => {
+      state.configBrowser.limit = Number(event.target.value) || 20;
+      loadConfigProfiles(true);
+    });
+    document.getElementById("config-prev-page").addEventListener("click", () => {
+      state.configBrowser.offset = Math.max(0, state.configBrowser.offset - state.configBrowser.limit);
+      loadConfigProfiles();
+    });
+    document.getElementById("config-next-page").addEventListener("click", () => {
+      if (state.configBrowser.offset + state.configBrowser.limit < state.configBrowser.total) {
+        state.configBrowser.offset += state.configBrowser.limit;
+        loadConfigProfiles();
+      }
     });
 
     document.getElementById("setup-load-preview").addEventListener("click", loadSetupPreview);
