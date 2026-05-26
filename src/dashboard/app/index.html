@@ -103,6 +103,15 @@
       </div>
     </header>
 
+    <nav class="sticky top-[73px] z-20 flex gap-2 overflow-x-auto border-b border-black/5 bg-surface px-6 py-3 md:hidden" aria-label="Dashboard sections">
+      <button data-mobile-nav data-view-button="overview" class="nav-btn shrink-0 rounded-sm bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.18em] text-black shadow-sm">Overview</button>
+      <button data-mobile-nav data-view-button="cameras" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Cameras</button>
+      <button data-mobile-nav data-view-button="live" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Live Feed</button>
+      <button data-mobile-nav data-view-button="configs" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Configs</button>
+      <button data-mobile-nav data-view-button="setup" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Setup</button>
+      <button data-mobile-nav data-view-button="violations" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Safety Events</button>
+    </nav>
+
     <section class="mx-auto max-w-[1440px] p-6 md:p-8">
       <section id="file-mode-banner" class="hidden mb-8 border border-black bg-black px-5 py-4 text-white">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

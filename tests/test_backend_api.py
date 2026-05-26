@@ -93,6 +93,7 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("Connecting", response.text)
         self.assertIn("config-search", response.text)
         self.assertIn("config-next-page", response.text)
+        self.assertIn("data-mobile-nav", response.text)
 
     def test_camera_config_endpoint_returns_defaults_and_merged_profiles(self):
         response = self.client.get("/cameras/config")
