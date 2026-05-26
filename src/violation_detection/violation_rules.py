@@ -400,6 +400,7 @@ class ViolationRulesEngine:
                  "helmet_violation_triggered": False,
                  "stopped_since": None,
                  "stopped_vehicle_violation_triggered": False,
+                 "stopped_vehicle_zone_id": None,
                  "multiple_riders_violation_triggered": False,
                  "stop_line_violation_triggered": False,
                  "pedestrian_crossing_violation_triggered": False,
@@ -497,10 +498,16 @@ class ViolationRulesEngine:
         applicable_stopped_class = state["class"] in self.stopped_vehicle_classes
         current_time = _parse_timestamp(state.get("last_seen")) or datetime.now(timezone.utc)
 
+        zebra_zone_matches = self._matching_zones(
+            "zebra_crossing",
+            state.get("anchor_point") or self._bbox_bottom_center(state.get("bbox") or []),
+        )
+
         if (
             applicable_stopped_class
             and self.stopped_duration_seconds > 0
             and current_speed <= self.stopped_speed_threshold_kmh
+            and zebra_zone_matches
         ):
             if state.get("stopped_since") is None:
                 state["stopped_since"] = state.get("last_seen")
@@ -514,9 +521,15 @@ class ViolationRulesEngine:
                 ):
                     violations.append("stopped_vehicle_violation")
                     state["stopped_vehicle_violation_triggered"] = True
+                    state["stopped_vehicle_zone_id"] = zebra_zone_matches[0].get("id")
         elif (not applicable_stopped_class) or current_speed >= self.stopped_resume_speed_kmh:
             state["stopped_since"] = None
             state["stopped_vehicle_violation_triggered"] = False
+            state["stopped_vehicle_zone_id"] = None
+        elif not zebra_zone_matches:
+            state["stopped_since"] = None
+            state["stopped_vehicle_violation_triggered"] = False
+            state["stopped_vehicle_zone_id"] = None
 
         # Rule 5: Stop Line Violation
         stop_line_matches = []

@@ -144,12 +144,24 @@ class TestViolationDetection(unittest.TestCase):
             stopped_speed_threshold_kmh=3.0,
             stopped_duration_seconds=20,
             stopped_resume_speed_kmh=8.0,
+            zones=[
+                {
+                    "id": "zebra_demo",
+                    "category": "zebra_crossing",
+                    "points": [[250.0, 360.0], [540.0, 360.0], [540.0, 560.0], [250.0, 560.0]],
+                }
+            ],
         )
 
         obj_id = 5
         engine.update_state(
             obj_id,
-            detection_event={"class": "car", "camera_id": "cam_04", "timestamp": "2025-01-01T10:00:00Z"},
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_04",
+                "timestamp": "2025-01-01T10:00:00Z",
+                "bbox": [300.0, 420.0, 500.0, 520.0],
+            },
         )
         engine.update_state(
             obj_id,
@@ -162,6 +174,38 @@ class TestViolationDetection(unittest.TestCase):
             speed_event={"speed_kmh": 0.5, "timestamp": "2025-01-01T10:00:30Z"},
         )
         self.assertIn("stopped_vehicle_violation", engine.evaluate_violations(obj_id))
+        self.assertEqual(engine.object_states[obj_id]["stopped_vehicle_zone_id"], "zebra_demo")
+
+    def test_stopped_vehicle_violation_requires_zebra_zone(self):
+        engine = ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            stopped_speed_threshold_kmh=3.0,
+            stopped_duration_seconds=20,
+            stopped_resume_speed_kmh=8.0,
+            zones=[
+                {
+                    "id": "zebra_demo",
+                    "category": "zebra_crossing",
+                    "points": [[250.0, 360.0], [540.0, 360.0], [540.0, 560.0], [250.0, 560.0]],
+                }
+            ],
+        )
+
+        obj_id = 501
+        engine.update_state(
+            obj_id,
+            detection_event={
+                "class": "car",
+                "camera_id": "cam_04",
+                "timestamp": "2025-01-01T10:00:00Z",
+                "bbox": [50.0, 120.0, 180.0, 220.0],
+            },
+        )
+        engine.update_state(
+            obj_id,
+            speed_event={"speed_kmh": 0.0, "timestamp": "2025-01-01T10:00:25Z"},
+        )
+        self.assertEqual(engine.evaluate_violations(obj_id), [])
 
     def test_stop_line_violation(self):
         engine = ViolationRulesEngine(
@@ -172,7 +216,12 @@ class TestViolationDetection(unittest.TestCase):
                     "id": "north_stop_line",
                     "category": "stop_line",
                     "points": [[100.0, 180.0], [220.0, 180.0], [220.0, 230.0], [100.0, 230.0]],
-                }
+                },
+                {
+                    "id": "north_zebra",
+                    "category": "zebra_crossing",
+                    "points": [[100.0, 140.0], [220.0, 140.0], [220.0, 230.0], [100.0, 230.0]],
+                },
             ],
         )
 
