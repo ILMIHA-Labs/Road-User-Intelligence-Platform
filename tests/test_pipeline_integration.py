@@ -1,11 +1,17 @@
 import json
 import os
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
+# Never let table-reset integration tests touch an operator's local runtime database.
+_TEST_DATABASE_DIR = tempfile.TemporaryDirectory()
+os.environ["DATABASE_URL"] = f"sqlite:///{Path(_TEST_DATABASE_DIR.name) / 'pipeline_integration_test.db'}"
 
 from backend_api.database import SessionLocal, init_db
 from backend_api.main import app, engine

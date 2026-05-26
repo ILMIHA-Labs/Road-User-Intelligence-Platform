@@ -13,6 +13,10 @@ import numpy as np
 # Ensure src is in the path for importing backend_api
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
+# Never let table-reset tests touch an operator's local runtime database.
+_TEST_DATABASE_DIR = tempfile.TemporaryDirectory()
+os.environ["DATABASE_URL"] = f"sqlite:///{Path(_TEST_DATABASE_DIR.name) / 'backend_api_test.db'}"
+
 import backend_api.main as backend_main
 from backend_api.database import init_db, SessionLocal
 from backend_api.main import app, engine
