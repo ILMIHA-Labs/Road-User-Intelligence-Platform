@@ -30,11 +30,6 @@ class ViolationDetectionService:
         stopped_speed_threshold_kmh=3.0,
         stopped_duration_seconds=20,
         stopped_resume_speed_kmh=8.0,
-        max_motorcycle_riders=2,
-        rider_association_window_seconds=2,
-        rider_horizontal_margin_ratio=0.35,
-        rider_upper_margin_ratio=0.75,
-        rider_lower_margin_ratio=0.25,
         state_ttl_seconds=120,
         stop_line_min_speed_kmh=5.0,
         pedestrian_crossing_min_speed_kmh=5.0,
@@ -53,11 +48,6 @@ class ViolationDetectionService:
         self.default_stopped_speed_threshold_kmh = stopped_speed_threshold_kmh
         self.default_stopped_duration_seconds = stopped_duration_seconds
         self.default_stopped_resume_speed_kmh = stopped_resume_speed_kmh
-        self.default_max_motorcycle_riders = max_motorcycle_riders
-        self.default_rider_association_window_seconds = rider_association_window_seconds
-        self.default_rider_horizontal_margin_ratio = rider_horizontal_margin_ratio
-        self.default_rider_upper_margin_ratio = rider_upper_margin_ratio
-        self.default_rider_lower_margin_ratio = rider_lower_margin_ratio
         self.default_state_ttl_seconds = state_ttl_seconds
         self.default_stop_line_min_speed_kmh = stop_line_min_speed_kmh
         self.default_pedestrian_crossing_min_speed_kmh = pedestrian_crossing_min_speed_kmh
@@ -102,25 +92,6 @@ class ViolationDetectionService:
         stopped_resume_speed_kmh = camera_profile.get(
             "stopped_resume_speed_kmh", self.default_stopped_resume_speed_kmh
         )
-        max_motorcycle_riders = camera_profile.get(
-            "max_motorcycle_riders", self.default_max_motorcycle_riders
-        )
-        rider_association_window_seconds = camera_profile.get(
-            "rider_association_window_seconds",
-            self.default_rider_association_window_seconds,
-        )
-        rider_horizontal_margin_ratio = camera_profile.get(
-            "rider_horizontal_margin_ratio",
-            self.default_rider_horizontal_margin_ratio,
-        )
-        rider_upper_margin_ratio = camera_profile.get(
-            "rider_upper_margin_ratio",
-            self.default_rider_upper_margin_ratio,
-        )
-        rider_lower_margin_ratio = camera_profile.get(
-            "rider_lower_margin_ratio",
-            self.default_rider_lower_margin_ratio,
-        )
         state_ttl_seconds = camera_profile.get(
             "state_ttl_seconds", self.default_state_ttl_seconds
         )
@@ -156,11 +127,6 @@ class ViolationDetectionService:
             stopped_speed_threshold_kmh=stopped_speed_threshold_kmh,
             stopped_duration_seconds=stopped_duration_seconds,
             stopped_resume_speed_kmh=stopped_resume_speed_kmh,
-            max_motorcycle_riders=max_motorcycle_riders,
-            rider_association_window_seconds=rider_association_window_seconds,
-            rider_horizontal_margin_ratio=rider_horizontal_margin_ratio,
-            rider_upper_margin_ratio=rider_upper_margin_ratio,
-            rider_lower_margin_ratio=rider_lower_margin_ratio,
             state_ttl_seconds=state_ttl_seconds,
             zones=zones,
             stop_line_min_speed_kmh=stop_line_min_speed_kmh,
@@ -294,36 +260,6 @@ def main():
         help="Speed above which a stopped-vehicle state resets",
     )
     parser.add_argument(
-        "--max-motorcycle-riders",
-        type=int,
-        default=int(os.getenv("MAX_MOTORCYCLE_RIDERS", "2")),
-        help="Maximum allowed riders on a motorcycle before triggering a violation",
-    )
-    parser.add_argument(
-        "--rider-association-window-seconds",
-        type=float,
-        default=float(os.getenv("RIDER_ASSOCIATION_WINDOW_SECONDS", "2")),
-        help="Maximum timestamp gap allowed when linking rider detections to a motorcycle",
-    )
-    parser.add_argument(
-        "--rider-horizontal-margin-ratio",
-        type=float,
-        default=float(os.getenv("RIDER_HORIZONTAL_MARGIN_RATIO", "0.35")),
-        help="Horizontal expansion around motorcycle boxes used when linking riders",
-    )
-    parser.add_argument(
-        "--rider-upper-margin-ratio",
-        type=float,
-        default=float(os.getenv("RIDER_UPPER_MARGIN_RATIO", "0.75")),
-        help="How far above the motorcycle box a rider center can be and still count as associated",
-    )
-    parser.add_argument(
-        "--rider-lower-margin-ratio",
-        type=float,
-        default=float(os.getenv("RIDER_LOWER_MARGIN_RATIO", "0.25")),
-        help="How far below the motorcycle box a rider center can be and still count as associated",
-    )
-    parser.add_argument(
         "--stop-line-min-speed",
         type=float,
         default=float(os.getenv("STOP_LINE_MIN_SPEED_KMH", "5.0")),
@@ -378,11 +314,6 @@ def main():
         stopped_speed_threshold_kmh=args.stopped_speed_threshold,
         stopped_duration_seconds=args.stopped_duration_seconds,
         stopped_resume_speed_kmh=args.stopped_resume_speed,
-        max_motorcycle_riders=args.max_motorcycle_riders,
-        rider_association_window_seconds=args.rider_association_window_seconds,
-        rider_horizontal_margin_ratio=args.rider_horizontal_margin_ratio,
-        rider_upper_margin_ratio=args.rider_upper_margin_ratio,
-        rider_lower_margin_ratio=args.rider_lower_margin_ratio,
         state_ttl_seconds=args.state_ttl_seconds,
         stop_line_min_speed_kmh=args.stop_line_min_speed,
         pedestrian_crossing_min_speed_kmh=args.pedestrian_crossing_min_speed,

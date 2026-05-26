@@ -99,7 +99,7 @@ Stronger success:
 
 1. The configured `speed_limit_kmh` may be too high.
 2. Helmet status is currently only as good as the upstream detection signal.
-3. `multiple_riders_violation` depends on pedestrian-to-motorcycle association and may need camera-specific tuning.
+3. Crossing safety events require a moving vehicle and stable pedestrian presence within the same configured crossing zone.
 
 ## Suggested first field test
 

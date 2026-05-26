@@ -69,11 +69,6 @@ class ViolationRulesEngine:
         helmet_required_classes=None,
         helmet_violation_statuses=None,
         stopped_vehicle_classes=None,
-        max_motorcycle_riders=2,
-        rider_association_window_seconds=2,
-        rider_horizontal_margin_ratio=0.35,
-        rider_upper_margin_ratio=0.75,
-        rider_lower_margin_ratio=0.25,
         zones=None,
         stop_line_min_speed_kmh=5.0,
         stop_line_vehicle_classes=None,
@@ -100,11 +95,6 @@ class ViolationRulesEngine:
         self.stopped_vehicle_classes = set(
             stopped_vehicle_classes or {"car", "bus", "truck"}
         )
-        self.max_motorcycle_riders = max_motorcycle_riders
-        self.rider_association_window_seconds = rider_association_window_seconds
-        self.rider_horizontal_margin_ratio = rider_horizontal_margin_ratio
-        self.rider_upper_margin_ratio = rider_upper_margin_ratio
-        self.rider_lower_margin_ratio = rider_lower_margin_ratio
         self.zones = zones or []
         self.stop_line_min_speed_kmh = stop_line_min_speed_kmh
         self.stop_line_vehicle_classes = set(
@@ -169,20 +159,6 @@ class ViolationRulesEngine:
                 zone_observations.pop(key, None)
 
             active_zone_ids[category] = sorted(current_zone_ids)
-
-    def _is_recent_pair_with_window(self, state_a, state_b, window_seconds):
-        ts_a = _parse_timestamp(state_a.get("last_seen"))
-        ts_b = _parse_timestamp(state_b.get("last_seen"))
-        if ts_a is None or ts_b is None:
-            return False
-        return abs((ts_a - ts_b).total_seconds()) <= window_seconds
-
-    def _is_recent_pair(self, state_a, state_b):
-        return self._is_recent_pair_with_window(
-            state_a,
-            state_b,
-            self.rider_association_window_seconds,
-        )
 
     def _is_same_crossing_interaction(self, vehicle_state, pedestrian_state):
         vehicle_frame = vehicle_state.get("last_detection_frame_number")
@@ -265,90 +241,6 @@ class ViolationRulesEngine:
     def _zebra_crossing_matches(self, vehicle_object_id):
         return self._crossing_matches(vehicle_object_id, "zebra_crossing")
 
-    def _is_pedestrian_on_motorcycle(self, motorcycle_state, pedestrian_state):
-        mbox = motorcycle_state.get("bbox") or []
-        pbox = pedestrian_state.get("bbox") or []
-        if len(mbox) != 4 or len(pbox) != 4:
-            return False
-
-        mx1, my1, mx2, my2 = mbox
-        px1, py1, px2, py2 = pbox
-        mwidth = max(mx2 - mx1, 1.0)
-        mheight = max(my2 - my1, 1.0)
-        pcx = (px1 + px2) / 2.0
-        pcy = (py1 + py2) / 2.0
-
-        within_x = (mx1 - mwidth * self.rider_horizontal_margin_ratio) <= pcx <= (
-            mx2 + mwidth * self.rider_horizontal_margin_ratio
-        )
-        within_y = (my1 - mheight * self.rider_upper_margin_ratio) <= pcy <= (
-            my2 + mheight * self.rider_lower_margin_ratio
-        )
-        return within_x and within_y
-
-    def _association_score(self, motorcycle_state, pedestrian_state):
-        if not self._is_recent_pair(motorcycle_state, pedestrian_state):
-            return None
-        if not self._is_pedestrian_on_motorcycle(motorcycle_state, pedestrian_state):
-            return None
-
-        mbox = motorcycle_state.get("bbox") or []
-        pbox = pedestrian_state.get("bbox") or []
-        if len(mbox) != 4 or len(pbox) != 4:
-            return None
-
-        mx1, my1, mx2, my2 = mbox
-        px1, py1, px2, py2 = pbox
-        mwidth = max(mx2 - mx1, 1.0)
-        mheight = max(my2 - my1, 1.0)
-        mcx = (mx1 + mx2) / 2.0
-        mcy = (my1 + my2) / 2.0
-        pcx = (px1 + px2) / 2.0
-        pcy = (py1 + py2) / 2.0
-
-        horizontal_offset = abs(pcx - mcx) / mwidth
-        vertical_offset = abs(pcy - mcy) / mheight
-        return horizontal_offset + vertical_offset
-
-    def _best_motorcycle_match(self, pedestrian_object_id):
-        pedestrian_state = self.object_states.get(pedestrian_object_id)
-        if not pedestrian_state or pedestrian_state.get("class") != "pedestrian":
-            return None
-
-        camera_id = pedestrian_state.get("camera_id")
-        best_match_id = None
-        best_score = None
-        for object_id, state in self.object_states.items():
-            if state.get("class") != "motorcycle":
-                continue
-            if state.get("camera_id") != camera_id:
-                continue
-            score = self._association_score(state, pedestrian_state)
-            if score is None:
-                continue
-            if best_score is None or score < best_score:
-                best_score = score
-                best_match_id = object_id
-        return best_match_id
-
-    def _count_motorcycle_riders(self, motorcycle_object_id):
-        motorcycle_state = self.object_states.get(motorcycle_object_id)
-        if not motorcycle_state or motorcycle_state.get("class") != "motorcycle":
-            return 0
-
-        camera_id = motorcycle_state.get("camera_id")
-        rider_count = 1  # driver/rider on the motorcycle itself
-        for object_id, state in self.object_states.items():
-            if object_id == motorcycle_object_id:
-                continue
-            if state.get("class") != "pedestrian":
-                continue
-            if state.get("camera_id") != camera_id:
-                continue
-            if self._best_motorcycle_match(object_id) == motorcycle_object_id:
-                rider_count += 1
-        return rider_count
-
     def get_related_object_ids(self, object_id):
         state = self.object_states.get(object_id)
         if not state:
@@ -356,9 +248,6 @@ class ViolationRulesEngine:
 
         related_ids = {object_id}
         if state.get("class") == "pedestrian":
-            best_match_id = self._best_motorcycle_match(object_id)
-            if best_match_id is not None:
-                related_ids.add(best_match_id)
             for candidate_id, candidate_state in self.object_states.items():
                 if candidate_state.get("class") not in self.pedestrian_crossing_vehicle_classes:
                     continue
@@ -413,7 +302,6 @@ class ViolationRulesEngine:
                  "stopped_since": None,
                  "stopped_vehicle_violation_triggered": False,
                  "stopped_vehicle_zone_id": None,
-                 "multiple_riders_violation_triggered": False,
                  "stop_line_violation_triggered": False,
                  "pedestrian_crossing_violation_triggered": False,
                  "zebra_crossing_violation_triggered": False,
@@ -502,17 +390,7 @@ class ViolationRulesEngine:
                  violations.append("helmet_violation")
                  state["helmet_violation_triggered"] = True
 
-        # Rule 3: Too many riders on a motorcycle
-        if state["class"] == "motorcycle" and self.max_motorcycle_riders > 0:
-            rider_count = self._count_motorcycle_riders(object_id)
-            state["estimated_rider_count"] = rider_count
-            if rider_count <= self.max_motorcycle_riders:
-                state["multiple_riders_violation_triggered"] = False
-            elif not state.get("multiple_riders_violation_triggered", False):
-                violations.append("multiple_riders_violation")
-                state["multiple_riders_violation_triggered"] = True
-
-        # Rule 4: Stopped Vehicle Violation
+        # Rule 3: Stopped Vehicle Violation
         applicable_stopped_class = state["class"] in self.stopped_vehicle_classes
         current_time = _parse_timestamp(state.get("last_seen")) or datetime.now(timezone.utc)
 
@@ -549,7 +427,7 @@ class ViolationRulesEngine:
             state["stopped_vehicle_violation_triggered"] = False
             state["stopped_vehicle_zone_id"] = None
 
-        # Rule 5: Stop Line Violation
+        # Rule 4: Stop Line Violation
         stop_line_matches = []
         if state["class"] in self.stop_line_vehicle_classes and current_speed >= self.stop_line_min_speed_kmh:
             anchor_point = self._bbox_bottom_center(state.get("bbox") or [])
@@ -564,7 +442,7 @@ class ViolationRulesEngine:
             state["stop_line_violation_triggered"] = False
             state["stop_line_zone_id"] = None
 
-        # Rule 6: Pedestrian Crossing Violation
+        # Rule 5: Pedestrian Crossing Violation
         crossing_matches = self._pedestrian_crossing_matches(object_id)
         if crossing_matches:
             if not state.get("pedestrian_crossing_violation_triggered", False):
@@ -575,7 +453,7 @@ class ViolationRulesEngine:
             state["pedestrian_crossing_violation_triggered"] = False
             state["pedestrian_crossing_zone_id"] = None
 
-        # Rule 7: Zebra Crossing Violation
+        # Rule 6: Zebra Crossing Violation
         zebra_matches = self._zebra_crossing_matches(object_id)
         if zebra_matches:
             if not state.get("zebra_crossing_violation_triggered", False):

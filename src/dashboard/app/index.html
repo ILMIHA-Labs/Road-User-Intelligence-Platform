@@ -870,7 +870,7 @@
             <div class="mb-6 flex items-center justify-between">
               <div>
                 <h3 class="text-xl font-black tracking-tight">Behavioral Safety Events</h3>
-                <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">Speed, helmet, rider-count, stoppage</p>
+                <p class="mt-1 text-[10px] uppercase tracking-[0.2em] text-white/40">Speed, helmet, crossing conflict, stoppage</p>
               </div>
               <span id="vl-behavior-count-label" class="text-[10px] uppercase tracking-[0.2em] text-white/40"></span>
             </div>
@@ -1036,11 +1036,6 @@
         chip: "bg-emerald-200 text-emerald-950",
         description: "Moving vehicle entered a configured zebra crossing zone while a pedestrian was present."
       },
-      multiple_riders_violation: {
-        label: "Multiple Riders",
-        chip: "bg-sky-200 text-sky-950",
-        description: "Estimated rider count on a motorcycle exceeded the allowed limit."
-      },
       red_light: {
         label: "Red Light",
         chip: "bg-error text-white",
@@ -1136,11 +1131,6 @@
       ["stopped_duration_seconds", "Stopped Duration"],
       ["stopped_resume_speed_kmh", "Stopped Resume Speed"],
       ["state_ttl_seconds", "State TTL"],
-      ["max_motorcycle_riders", "Max Motorcycle Riders"],
-      ["rider_association_window_seconds", "Rider Association Window"],
-      ["rider_horizontal_margin_ratio", "Rider Horizontal Margin"],
-      ["rider_upper_margin_ratio", "Rider Upper Margin"],
-      ["rider_lower_margin_ratio", "Rider Lower Margin"],
       ["zones", "Configured Zones"],
       ["counting_lines", "Counting Lines"],
       ["live_feed_type", "Live Feed Type"],
@@ -2086,7 +2076,6 @@
         "speed_violation",
         "severe_speed_violation",
         "stopped_vehicle_violation",
-        "multiple_riders_violation",
       ];
       coverage.innerHTML = "";
       coverageCount.textContent = `${featuredTypes.length} rule${featuredTypes.length !== 1 ? "s" : ""}`;

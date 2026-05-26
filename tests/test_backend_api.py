@@ -5,6 +5,7 @@ import os
 import tempfile
 import json
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import cv2
@@ -20,7 +21,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{Path(_TEST_DATABASE_DIR.name) / 'backe
 import backend_api.main as backend_main
 from backend_api.database import init_db, SessionLocal
 from backend_api.main import app, engine
-from backend_api.models import Base
+from backend_api.models import Base, DBViolation
 
 class TestBackendAPI(unittest.TestCase):
     
@@ -106,7 +107,8 @@ class TestBackendAPI(unittest.TestCase):
         self.assertGreaterEqual(len(data["cameras"]), 1)
         sample_camera = next(camera for camera in data["cameras"] if camera["id"] == "sample_video_01")
         self.assertIn("speed_limit_kmh", sample_camera)
-        self.assertIn("max_motorcycle_riders", sample_camera)
+        self.assertNotIn("max_motorcycle_riders", sample_camera)
+        self.assertNotIn("rider_association_window_seconds", sample_camera)
         self.assertIn("zones", sample_camera)
         self.assertIn("counting_lines", sample_camera)
 
@@ -264,6 +266,40 @@ class TestBackendAPI(unittest.TestCase):
         }
         response = self.client.post("/violations", json=payload)
         self.assertEqual(response.status_code, 201)
+
+    def test_retired_multiple_riders_violation_is_rejected(self):
+        response = self.client.post("/violations", json={
+            "violation_type": "multiple_riders_violation",
+            "object_id": 99,
+            "camera_id": "test_cam",
+            "timestamp": "2023-10-27T10:00:02Z",
+        })
+        self.assertEqual(response.status_code, 410)
+
+    def test_retired_multiple_riders_records_are_hidden_from_operational_views(self):
+        with SessionLocal() as db:
+            db.add(DBViolation(
+                violation_type="multiple_riders_violation",
+                object_id=1,
+                camera_id="history_cam",
+                timestamp=datetime.fromisoformat("2023-10-27T10:00:01+00:00"),
+            ))
+            db.add(DBViolation(
+                violation_type="speed_violation",
+                object_id=2,
+                camera_id="history_cam",
+                timestamp=datetime.fromisoformat("2023-10-27T10:00:02+00:00"),
+            ))
+            db.commit()
+
+        summary = self.client.get("/analytics/summary?camera_id=history_cam").json()
+        breakdown = self.client.get("/analytics/violations?camera_id=history_cam").json()
+        log = self.client.get("/violations/log?camera_id=history_cam").json()
+
+        self.assertEqual(summary["total_violations_logged"], 1)
+        self.assertEqual(breakdown["violations"], [{"violation_type": "speed_violation", "count": 1}])
+        self.assertEqual(log["total"], 1)
+        self.assertEqual(log["items"][0]["violation_type"], "speed_violation")
 
     def test_create_crossing(self):
         payload = {

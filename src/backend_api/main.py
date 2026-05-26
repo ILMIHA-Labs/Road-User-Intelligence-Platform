@@ -68,6 +68,14 @@ _LIVE_PREVIEW_RETENTION_SECONDS = _env_int("LIVE_PREVIEW_RETENTION_SECONDS", 24 
 _LIVE_CLIP_RETENTION_SECONDS = _env_int("LIVE_CLIP_RETENTION_SECONDS", 24 * 60 * 60)
 _SETUP_PREVIEW_RETENTION_SECONDS = _env_int("SETUP_PREVIEW_RETENTION_SECONDS", 24 * 60 * 60)
 _CAMERA_DEFAULTS_CACHE = {"path": None, "mtime_ns": None, "defaults": {}}
+_RETIRED_VIOLATION_TYPES = ("multiple_riders_violation",)
+_RETIRED_CAMERA_CONFIG_FIELDS = {
+    "max_motorcycle_riders",
+    "rider_association_window_seconds",
+    "rider_horizontal_margin_ratio",
+    "rider_upper_margin_ratio",
+    "rider_lower_margin_ratio",
+}
 
 dashboard_dir = Path(__file__).resolve().parents[1] / "dashboard" / "app"
 if dashboard_dir.exists():
@@ -296,8 +304,16 @@ def _get_camera_defaults() -> dict:
     return dict(defaults)
 
 
+def _without_retired_camera_fields(payload: dict) -> dict:
+    visible_payload = dict(payload or {})
+    for key in _RETIRED_CAMERA_CONFIG_FIELDS:
+        visible_payload.pop(key, None)
+    return visible_payload
+
+
 def _effective_camera_profile(defaults: dict, camera_payload: dict) -> dict:
     profile = {**defaults, **(camera_payload or {})}
+    profile = _without_retired_camera_fields(profile)
     profile["zones"] = normalize_zone_definitions(profile.get("zones"))
     profile["counting_lines"] = normalize_counting_line_definitions(profile.get("counting_lines"))
     return profile
@@ -367,7 +383,7 @@ def _list_camera_profiles(db: Session, q: Optional[str] = None, offset: int = 0,
     total = query.count()
     rows = query.order_by(models.DBCameraConfig.camera_id.asc()).offset(offset).limit(limit).all()
     return {
-        "defaults": defaults,
+        "defaults": _without_retired_camera_fields(defaults),
         "cameras": [_effective_camera_profile(defaults, row.profile) for row in rows],
         "total": total,
         "offset": offset,
@@ -722,9 +738,10 @@ def _camera_health_snapshot(camera_id: str, db: Session):
     last_speed = db.query(func.max(models.DBSpeed.timestamp)).filter(
         models.DBSpeed.camera_id == camera_id
     ).scalar()
-    last_violation = db.query(func.max(models.DBViolation.timestamp)).filter(
+    last_violation_query = db.query(func.max(models.DBViolation.timestamp)).filter(
         models.DBViolation.camera_id == camera_id
-    ).scalar()
+    )
+    last_violation = _apply_supported_violation_filter(last_violation_query).scalar()
     last_crossing = db.query(func.max(models.DBCrossing.timestamp)).filter(
         models.DBCrossing.camera_id == camera_id
     ).scalar()
@@ -801,7 +818,9 @@ def get_live_camera_snapshot(camera_id: str):
 
 @app.get("/violations/{violation_id}/evidence")
 def get_violation_evidence(violation_id: int, db: Session = Depends(get_db)):
-    row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
+    row = _apply_supported_violation_filter(db.query(models.DBViolation)).filter(
+        models.DBViolation.id == violation_id
+    ).first()
     if row is None:
         raise HTTPException(status_code=404, detail="No evidence available")
     evidence_path, media_type = _violation_evidence_path_and_type(row)
@@ -827,6 +846,10 @@ def _apply_camera_filter(query, model, camera_id: str = None):
     if camera_id:
         query = query.filter(model.camera_id == camera_id)
     return query
+
+
+def _apply_supported_violation_filter(query):
+    return query.filter(models.DBViolation.violation_type.notin_(_RETIRED_VIOLATION_TYPES))
 
 
 def _serialize_detection_class_rows(rows):
@@ -932,11 +955,13 @@ def _json_download_response(filename: str, payload: dict):
 
 
 def _get_violation_detail_data(db: Session, violation_id: int):
-    row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
+    row = _apply_supported_violation_filter(db.query(models.DBViolation)).filter(
+        models.DBViolation.id == violation_id
+    ).first()
     if row is None:
         raise HTTPException(status_code=404, detail="Safety event not found")
 
-    camera_defaults = _get_camera_defaults()
+    camera_defaults = _without_retired_camera_fields(_get_camera_defaults())
     camera_profile = _get_camera_profile(db, row.camera_id)
     from datetime import timedelta
     timestamp = row.timestamp
@@ -1024,6 +1049,7 @@ def _get_analytics_summary_data(db: Session, camera_id: str = None, start: datet
     detection_query = _apply_time_filters(detection_query, models.DBDetection, start, end)
 
     violation_query = db.query(models.DBViolation)
+    violation_query = _apply_supported_violation_filter(violation_query)
     violation_query = _apply_camera_filter(violation_query, models.DBViolation, camera_id)
     violation_query = _apply_time_filters(violation_query, models.DBViolation, start, end)
 
@@ -1124,6 +1150,7 @@ def _get_analytics_by_camera_data(db: Session, start: datetime = None, end: date
         models.DBViolation.camera_id,
         func.count(models.DBViolation.id).label("violations"),
     )
+    violation_query = _apply_supported_violation_filter(violation_query)
     violation_query = _apply_time_filters(violation_query, models.DBViolation, start, end)
     violation_rows = violation_query.group_by(models.DBViolation.camera_id).all()
 
@@ -1160,6 +1187,7 @@ def _get_violation_breakdown_data(db: Session, camera_id: str = None, start: dat
         models.DBViolation.violation_type,
         func.count(models.DBViolation.id).label("count"),
     )
+    query = _apply_supported_violation_filter(query)
     query = _apply_camera_filter(query, models.DBViolation, camera_id)
     query = _apply_time_filters(query, models.DBViolation, start, end)
     rows = query.group_by(models.DBViolation.violation_type).all()
@@ -1295,6 +1323,7 @@ def _get_recent_events_data(
     speeds = speeds_query.order_by(models.DBSpeed.timestamp.desc()).offset(offset).limit(limit).all()
 
     violations_query = db.query(models.DBViolation)
+    violations_query = _apply_supported_violation_filter(violations_query)
     violations_query = _apply_camera_filter(violations_query, models.DBViolation, camera_id)
     violations_query = _apply_time_filters(violations_query, models.DBViolation, start, end)
     violations = violations_query.order_by(models.DBViolation.timestamp.desc()).offset(offset).limit(limit).all()
@@ -1365,6 +1394,7 @@ def _get_violation_log_data(
     page_size: int = 25,
 ):
     query = db.query(models.DBViolation)
+    query = _apply_supported_violation_filter(query)
     if camera_id:
         query = query.filter(models.DBViolation.camera_id == camera_id)
     if violation_type:
@@ -1455,6 +1485,7 @@ def _get_safety_event_export_rows(
     end: datetime = None,
 ):
     query = db.query(models.DBViolation)
+    query = _apply_supported_violation_filter(query)
     if camera_id:
         query = query.filter(models.DBViolation.camera_id == camera_id)
     if violation_type:
@@ -1552,6 +1583,8 @@ def create_speed(event: schemas.SpeedEvent, db: Session = Depends(get_db)):
 
 @app.post("/violations", status_code=201)
 def create_violation(event: schemas.ViolationEvent, db: Session = Depends(get_db)):
+    if event.violation_type in _RETIRED_VIOLATION_TYPES:
+        raise HTTPException(status_code=410, detail="Safety event type is retired")
     db_violation = models.DBViolation(**event.model_dump())
     db.add(db_violation)
     try:
@@ -1576,7 +1609,9 @@ def update_violation_review(
     request: ViolationReviewUpdateRequest,
     db: Session = Depends(get_db),
 ):
-    row = db.query(models.DBViolation).filter(models.DBViolation.id == violation_id).first()
+    row = _apply_supported_violation_filter(db.query(models.DBViolation)).filter(
+        models.DBViolation.id == violation_id
+    ).first()
     if row is None:
         raise HTTPException(status_code=404, detail="Safety event not found")
 

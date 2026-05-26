@@ -632,86 +632,7 @@ class TestViolationDetection(unittest.TestCase):
 
                 self.assertIn(violation_type, engine.evaluate_violations(106))
 
-    def test_multiple_riders_violation(self):
-        engine = ViolationRulesEngine(
-            speed_limit_kmh=60.0,
-            max_motorcycle_riders=2,
-        )
-
-        bike_id = 6
-        engine.update_state(
-            bike_id,
-            detection_event={
-                "class": "motorcycle",
-                "camera_id": "cam_bike",
-                "bbox": [100.0, 100.0, 200.0, 200.0],
-                "timestamp": "2025-01-01T10:00:00Z",
-            },
-        )
-        engine.update_state(
-            61,
-            detection_event={
-                "class": "pedestrian",
-                "camera_id": "cam_bike",
-                "bbox": [110.0, 70.0, 150.0, 150.0],
-                "timestamp": "2025-01-01T10:00:00Z",
-            },
-        )
-        self.assertEqual(engine.evaluate_violations(bike_id), [])
-
-        engine.update_state(
-            62,
-            detection_event={
-                "class": "pedestrian",
-                "camera_id": "cam_bike",
-                "bbox": [150.0, 80.0, 190.0, 160.0],
-                "timestamp": "2025-01-01T10:00:01Z",
-            },
-        )
-        self.assertIn("multiple_riders_violation", engine.evaluate_violations(bike_id))
-        self.assertEqual(engine.object_states[bike_id]["estimated_rider_count"], 3)
-
-    def test_rider_association_picks_single_best_motorcycle(self):
-        engine = ViolationRulesEngine(
-            speed_limit_kmh=60.0,
-            max_motorcycle_riders=1,
-        )
-
-        engine.update_state(
-            80,
-            detection_event={
-                "class": "motorcycle",
-                "camera_id": "cam_assoc",
-                "bbox": [100.0, 100.0, 200.0, 200.0],
-                "timestamp": "2025-01-01T10:00:00Z",
-            },
-        )
-        engine.update_state(
-            81,
-            detection_event={
-                "class": "motorcycle",
-                "camera_id": "cam_assoc",
-                "bbox": [230.0, 100.0, 330.0, 200.0],
-                "timestamp": "2025-01-01T10:00:00Z",
-            },
-        )
-        engine.update_state(
-            82,
-            detection_event={
-                "class": "pedestrian",
-                "camera_id": "cam_assoc",
-                "bbox": [115.0, 75.0, 155.0, 155.0],
-                "timestamp": "2025-01-01T10:00:01Z",
-            },
-        )
-
-        self.assertEqual(engine._best_motorcycle_match(82), 80)
-        self.assertEqual(engine._count_motorcycle_riders(80), 2)
-        self.assertEqual(engine._count_motorcycle_riders(81), 1)
-        self.assertIn("multiple_riders_violation", engine.evaluate_violations(80))
-        self.assertEqual(engine.evaluate_violations(81), [])
-
-    def test_service_emits_multiple_riders_violation_from_detection_flow(self):
+    def test_service_does_not_emit_retired_multiple_riders_violation(self):
         service = ViolationDetectionService(
             broker_host="localhost",
             broker_port=1883,
@@ -757,7 +678,7 @@ class TestViolationDetection(unittest.TestCase):
 
         published_payloads = [json.loads(payload) for _, payload in service.client.published]
         violation_types = {payload["violation_type"] for payload in published_payloads}
-        self.assertIn("multiple_riders_violation", violation_types)
+        self.assertNotIn("multiple_riders_violation", violation_types)
 
     def test_service_emits_stop_line_violation_from_detection_and_speed(self):
         service = ViolationDetectionService(
@@ -1059,11 +980,6 @@ class TestViolationDetection(unittest.TestCase):
             speed_tolerance_kmh=0.0,
             severe_speed_delta_kmh=20.0,
             speed_reset_delta_kmh=5.0,
-            max_motorcycle_riders=2,
-            rider_association_window_seconds=2,
-            rider_horizontal_margin_ratio=0.35,
-            rider_upper_margin_ratio=0.75,
-            rider_lower_margin_ratio=0.25,
             state_ttl_seconds=120,
             camera_profiles={
                 "school_zone": {
@@ -1074,11 +990,6 @@ class TestViolationDetection(unittest.TestCase):
                     "stopped_speed_threshold_kmh": 2.5,
                     "stopped_duration_seconds": 15,
                     "stopped_resume_speed_kmh": 7.0,
-                    "max_motorcycle_riders": 3,
-                    "rider_association_window_seconds": 3,
-                    "rider_horizontal_margin_ratio": 0.45,
-                    "rider_upper_margin_ratio": 0.9,
-                    "rider_lower_margin_ratio": 0.2,
                     "state_ttl_seconds": 45,
                     "stop_line_min_speed_kmh": 7.0,
                     "pedestrian_crossing_min_speed_kmh": 9.0,
@@ -1110,11 +1021,6 @@ class TestViolationDetection(unittest.TestCase):
         self.assertEqual(school_zone_engine.stopped_speed_threshold_kmh, 2.5)
         self.assertEqual(school_zone_engine.stopped_duration_seconds, 15)
         self.assertEqual(school_zone_engine.stopped_resume_speed_kmh, 7.0)
-        self.assertEqual(school_zone_engine.max_motorcycle_riders, 3)
-        self.assertEqual(school_zone_engine.rider_association_window_seconds, 3)
-        self.assertEqual(school_zone_engine.rider_horizontal_margin_ratio, 0.45)
-        self.assertEqual(school_zone_engine.rider_upper_margin_ratio, 0.9)
-        self.assertEqual(school_zone_engine.rider_lower_margin_ratio, 0.2)
         self.assertEqual(school_zone_engine.state_ttl_seconds, 45)
         self.assertEqual(school_zone_engine.stop_line_min_speed_kmh, 7.0)
         self.assertEqual(school_zone_engine.pedestrian_crossing_min_speed_kmh, 9.0)
