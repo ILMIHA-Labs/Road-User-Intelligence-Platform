@@ -302,6 +302,38 @@ def _live_clip_path(camera_id: str) -> Path:
     return _LIVE_CLIPS_DIR / camera_id / "latest.mp4"
 
 
+def _live_clip_manifest_path(camera_id: str) -> Path:
+    return _LIVE_CLIPS_DIR / camera_id / "latest.json"
+
+
+def _select_live_clip_source(camera_id: str, violation_timestamp: datetime):
+    camera_dir = _LIVE_CLIPS_DIR / camera_id
+    if not camera_dir.exists():
+        return _live_clip_path(camera_id), _live_clip_manifest_path(camera_id)
+
+    violation_epoch = violation_timestamp.replace(tzinfo=timezone.utc).timestamp() if violation_timestamp.tzinfo is None else violation_timestamp.timestamp()
+    best_match = None
+    for manifest_path in sorted(camera_dir.glob("clip_*.json")):
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        timestamp_values = [item.get("timestamp_seconds") for item in manifest if item.get("timestamp_seconds") is not None]
+        if not timestamp_values:
+            continue
+        start_ts = min(timestamp_values)
+        end_ts = max(timestamp_values)
+        if start_ts <= violation_epoch <= end_ts:
+            distance = abs(end_ts - violation_epoch)
+            if best_match is None or distance < best_match[0]:
+                best_match = (distance, manifest_path.with_suffix(".mp4"), manifest_path)
+
+    if best_match is not None:
+        return best_match[1], best_match[2]
+
+    return _live_clip_path(camera_id), _live_clip_manifest_path(camera_id)
+
+
 def _violation_evidence_path(camera_id: str, violation_id: int, violation_type: str, timestamp: datetime, extension: str) -> Path:
     safe_type = violation_type.replace("/", "_").replace(" ", "_")
     ts_label = timestamp.strftime("%Y%m%dT%H%M%S")
@@ -341,7 +373,7 @@ def _cleanup_runtime_artifacts():
 def _capture_violation_evidence(db_violation: models.DBViolation):
     if not _EVIDENCE_CAPTURE_ENABLED:
         return None, None
-    source_path = _live_clip_path(db_violation.camera_id)
+    source_path, source_manifest_path = _select_live_clip_source(db_violation.camera_id, db_violation.timestamp)
     media_type = "video/mp4"
     if not source_path.exists():
         source_path = _live_snapshot_path(db_violation.camera_id)
@@ -357,8 +389,154 @@ def _capture_violation_evidence(db_violation: models.DBViolation):
         extension=source_path.suffix or (".mp4" if media_type.startswith("video/") else ".jpg"),
     )
     evidence_path.parent.mkdir(parents=True, exist_ok=True)
+    if media_type == "video/mp4":
+        shutil.copy2(source_path, evidence_path)
+        if source_manifest_path.exists():
+            shutil.copy2(source_manifest_path, evidence_path.with_suffix(".json"))
+        _ensure_violation_video_rendered(db_violation, evidence_path)
+        return str(evidence_path), media_type
     shutil.copy2(source_path, evidence_path)
     return str(evidence_path), media_type
+
+
+def _open_video_writer(path: Path, fps: float, width: int, height: int):
+    for candidate in ("avc1", "H264", "mp4v"):
+        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*candidate), max(float(fps), 1.0), (width, height))
+        if writer.isOpened():
+            return writer
+        writer.release()
+    return None
+
+
+def _draw_evidence_box(frame, bbox, object_id):
+    if not bbox or len(bbox) != 4:
+        return frame
+    x1, y1, x2, y2 = [int(round(v)) for v in bbox]
+    x1 = max(0, x1)
+    y1 = max(0, y1)
+    x2 = min(frame.shape[1] - 1, x2)
+    y2 = min(frame.shape[0] - 1, y2)
+    box_color = (24, 38, 230)
+    text_color = (255, 255, 255)
+    cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 5)
+    label = f"ID {object_id}"
+    (text_w, text_h), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.9, 2)
+    label_y1 = max(0, y1 - text_h - baseline - 8)
+    label_y2 = max(text_h + baseline + 8, y1)
+    label_x2 = min(frame.shape[1] - 1, x1 + text_w + 12)
+    cv2.rectangle(frame, (x1, label_y1), (label_x2, label_y2), box_color, -1)
+    cv2.putText(frame, label, (x1 + 6, label_y2 - baseline - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.9, text_color, 2, cv2.LINE_AA)
+    return frame
+
+
+def _render_violation_evidence_clip(
+    db_violation: models.DBViolation,
+    clip_path: Path,
+    evidence_path: Path,
+    manifest_path: Path,
+):
+    if not manifest_path.exists():
+        return None
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    if not manifest:
+        return None
+
+    frame_numbers = [item.get("frame_number") for item in manifest if item.get("frame_number") is not None]
+    timestamp_values = [item.get("timestamp_seconds") for item in manifest if item.get("timestamp_seconds") is not None]
+    if not frame_numbers:
+        return None
+
+    capture = cv2.VideoCapture(str(clip_path))
+    if not capture.isOpened():
+        return None
+
+    fps = capture.get(cv2.CAP_PROP_FPS) or 10.0
+    width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH) or 0)
+    height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0)
+    if width <= 0 or height <= 0:
+        capture.release()
+        return None
+
+    writer = _open_video_writer(evidence_path, fps, width, height)
+    if writer is None:
+        capture.release()
+        return None
+
+    start_frame = min(frame_numbers)
+    end_frame = max(frame_numbers)
+    start_time = datetime.fromtimestamp(min(timestamp_values), tz=timezone.utc).replace(tzinfo=None) if timestamp_values else None
+    end_time = datetime.fromtimestamp(max(timestamp_values), tz=timezone.utc).replace(tzinfo=None) if timestamp_values else None
+    db = SessionLocal()
+    try:
+        detection_query = db.query(models.DBDetection).filter(
+            models.DBDetection.camera_id == db_violation.camera_id,
+            models.DBDetection.object_id == db_violation.object_id,
+        )
+        if start_time is not None and end_time is not None:
+            detection_query = detection_query.filter(
+                models.DBDetection.timestamp >= start_time,
+                models.DBDetection.timestamp <= end_time,
+            )
+        else:
+            detection_query = detection_query.filter(
+                models.DBDetection.frame_number >= start_frame,
+                models.DBDetection.frame_number <= end_frame,
+            )
+        detections = detection_query.all()
+    finally:
+        db.close()
+
+    detections_by_frame = {
+        row.frame_number: row
+        for row in detections
+        if row.frame_number is not None and row.bbox
+    }
+
+    matched_frames = 0
+    started = False
+    try:
+        for item in manifest:
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                break
+            frame_number = item.get("frame_number")
+            detection = detections_by_frame.get(frame_number)
+            if detection is not None:
+                frame = _draw_evidence_box(frame, detection.bbox, db_violation.object_id)
+                matched_frames += 1
+                started = True
+            if not started:
+                continue
+            writer.write(frame)
+    finally:
+        writer.release()
+        capture.release()
+
+    if matched_frames <= 0:
+        evidence_path.unlink(missing_ok=True)
+        return None
+
+    return evidence_path if evidence_path.exists() else None
+
+
+def _ensure_violation_video_rendered(db_violation: models.DBViolation, evidence_path: Path):
+    manifest_path = evidence_path.with_suffix(".json")
+    if not manifest_path.exists() or not evidence_path.exists():
+        return evidence_path if evidence_path.exists() else None
+
+    temp_path = evidence_path.with_name(f"{evidence_path.stem}.rendering{evidence_path.suffix}")
+    temp_path.unlink(missing_ok=True)
+    rendered = _render_violation_evidence_clip(db_violation, evidence_path, temp_path, manifest_path)
+    if rendered is None:
+        temp_path.unlink(missing_ok=True)
+        return evidence_path
+
+    temp_path.replace(evidence_path)
+    manifest_path.unlink(missing_ok=True)
+    return evidence_path
 
 
 def _violation_evidence_path_and_type(row: models.DBViolation):
@@ -371,6 +549,10 @@ def _violation_evidence_path_and_type(row: models.DBViolation):
     media_type = row.evidence_media_type
     if not media_type:
         media_type = "video/mp4" if evidence_path.suffix.lower() == ".mp4" else "image/jpeg"
+    if media_type == "video/mp4":
+        evidence_path = _ensure_violation_video_rendered(row, evidence_path)
+        if evidence_path is None or not evidence_path.exists():
+            return None, None
     return evidence_path, media_type
 
 

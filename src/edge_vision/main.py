@@ -148,7 +148,12 @@ def main():
             )
             published_crossings = publisher.publish_crossings(crossings)
             preview_writer.write_frame(args.camera_id, annotated_frame)
-            clip_writer.add_frame(args.camera_id, annotated_frame, fps=float(camera_profile.get("target_fps") or 10.0))
+            clip_writer.add_frame(
+                args.camera_id,
+                frame,
+                fps=float(camera_profile.get("target_fps") or 10.0),
+                frame_number=frame_number,
+            )
             
             fps = 1.0 / (time.time() - start_time)
             if frame_number % 30 == 0:
