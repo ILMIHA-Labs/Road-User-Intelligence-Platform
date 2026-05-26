@@ -67,6 +67,23 @@ class TestViolationDetection(unittest.TestCase):
                 "timestamp": timestamp_end,
             },
         )
+
+    def _build_crossing_engine(self, category, zones=None):
+        return ViolationRulesEngine(
+            speed_limit_kmh=60.0,
+            pedestrian_crossing_min_speed_kmh=5.0,
+            pedestrian_crossing_window_seconds=2.0,
+            crossing_min_presence_seconds=0.5,
+            crossing_min_observations=2,
+            crossing_vehicle_min_displacement_px=12.0,
+            zones=zones or [
+                {
+                    "id": "crossing_demo",
+                    "category": category,
+                    "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                }
+            ],
+        )
     
     def test_speed_violation(self):
         engine = ViolationRulesEngine(speed_limit_kmh=60.0)
@@ -444,6 +461,176 @@ class TestViolationDetection(unittest.TestCase):
             "2025-01-01T10:00:01Z",
         )
         self.assertIn("zebra_crossing_violation", engine.evaluate_violations(vehicle_id))
+
+    def test_crossing_violations_reject_recent_but_non_overlapping_presence(self):
+        for category, violation_type in (
+            ("pedestrian_crossing", "pedestrian_crossing_violation"),
+            ("zebra_crossing", "zebra_crossing_violation"),
+        ):
+            with self.subTest(category=category):
+                engine = self._build_crossing_engine(category)
+                self._prime_crossing_pedestrian(
+                    engine,
+                    101,
+                    "cam_conflict",
+                    "2025-01-01T10:00:00Z",
+                    "2025-01-01T10:00:01Z",
+                )
+                self._prime_crossing_vehicle(
+                    engine,
+                    100,
+                    "cam_conflict",
+                    "2025-01-01T10:00:01Z",
+                    "2025-01-01T10:00:02Z",
+                )
+
+                self.assertNotIn(violation_type, engine.evaluate_violations(100))
+
+    def test_crossing_violations_reject_stopped_vehicle(self):
+        for category, violation_type in (
+            ("pedestrian_crossing", "pedestrian_crossing_violation"),
+            ("zebra_crossing", "zebra_crossing_violation"),
+        ):
+            with self.subTest(category=category):
+                engine = self._build_crossing_engine(category)
+                self._prime_crossing_vehicle(
+                    engine,
+                    102,
+                    "cam_conflict",
+                    "2025-01-01T10:00:00Z",
+                    "2025-01-01T10:00:01Z",
+                )
+                engine.update_state(
+                    102,
+                    speed_event={"speed_kmh": 0.0, "timestamp": "2025-01-01T10:00:01Z"},
+                )
+                self._prime_crossing_pedestrian(
+                    engine,
+                    103,
+                    "cam_conflict",
+                    "2025-01-01T10:00:00Z",
+                    "2025-01-01T10:00:01Z",
+                )
+
+                self.assertNotIn(violation_type, engine.evaluate_violations(102))
+
+    def test_crossing_violations_require_stable_pedestrian_presence(self):
+        for category, violation_type in (
+            ("pedestrian_crossing", "pedestrian_crossing_violation"),
+            ("zebra_crossing", "zebra_crossing_violation"),
+        ):
+            with self.subTest(category=category):
+                engine = self._build_crossing_engine(category)
+                self._prime_crossing_vehicle(
+                    engine,
+                    108,
+                    "cam_conflict",
+                    "2025-01-01T10:00:00Z",
+                    "2025-01-01T10:00:01Z",
+                )
+                engine.update_state(
+                    109,
+                    detection_event={
+                        "class": "pedestrian",
+                        "camera_id": "cam_conflict",
+                        "bbox": [150.0, 220.0, 190.0, 300.0],
+                        "timestamp": "2025-01-01T10:00:01Z",
+                    },
+                )
+
+                self.assertNotIn(violation_type, engine.evaluate_violations(108))
+
+    def test_crossing_violations_require_same_zone(self):
+        for category, violation_type in (
+            ("pedestrian_crossing", "pedestrian_crossing_violation"),
+            ("zebra_crossing", "zebra_crossing_violation"),
+        ):
+            with self.subTest(category=category):
+                engine = self._build_crossing_engine(
+                    category,
+                    zones=[
+                        {
+                            "id": "zone_a",
+                            "category": category,
+                            "points": [[100.0, 220.0], [260.0, 220.0], [260.0, 320.0], [100.0, 320.0]],
+                        },
+                        {
+                            "id": "zone_b",
+                            "category": category,
+                            "points": [[300.0, 220.0], [460.0, 220.0], [460.0, 320.0], [300.0, 320.0]],
+                        },
+                    ],
+                )
+                self._prime_crossing_vehicle(
+                    engine,
+                    104,
+                    "cam_conflict",
+                    "2025-01-01T10:00:00Z",
+                    "2025-01-01T10:00:01Z",
+                )
+                for bbox, timestamp in (
+                    ([320.0, 220.0, 360.0, 300.0], "2025-01-01T10:00:00Z"),
+                    ([322.0, 220.0, 362.0, 300.0], "2025-01-01T10:00:01Z"),
+                ):
+                    engine.update_state(
+                        105,
+                        detection_event={
+                            "class": "pedestrian",
+                            "camera_id": "cam_conflict",
+                            "bbox": bbox,
+                            "timestamp": timestamp,
+                        },
+                    )
+
+                self.assertNotIn(violation_type, engine.evaluate_violations(104))
+
+    def test_crossing_violations_accept_adjacent_live_frames(self):
+        for category, violation_type in (
+            ("pedestrian_crossing", "pedestrian_crossing_violation"),
+            ("zebra_crossing", "zebra_crossing_violation"),
+        ):
+            with self.subTest(category=category):
+                engine = self._build_crossing_engine(category)
+                engine.update_state(
+                    106,
+                    detection_event={
+                        "class": "car",
+                        "camera_id": "cam_conflict",
+                        "bbox": [60.0, 170.0, 140.0, 245.0],
+                        "timestamp": "2025-01-01T10:00:00Z",
+                        "frame_number": 10,
+                    },
+                )
+                engine.update_state(
+                    106,
+                    detection_event={
+                        "class": "car",
+                        "camera_id": "cam_conflict",
+                        "bbox": [120.0, 180.0, 220.0, 260.0],
+                        "timestamp": "2025-01-01T10:00:01Z",
+                        "frame_number": 11,
+                    },
+                )
+                engine.update_state(
+                    106,
+                    speed_event={"speed_kmh": 14.0, "timestamp": "2025-01-01T10:00:01Z"},
+                )
+                for frame_number, timestamp in (
+                    (11, "2025-01-01T10:00:00Z"),
+                    (12, "2025-01-01T10:00:01Z"),
+                ):
+                    engine.update_state(
+                        107,
+                        detection_event={
+                            "class": "pedestrian",
+                            "camera_id": "cam_conflict",
+                            "bbox": [150.0, 220.0, 190.0, 300.0],
+                            "timestamp": timestamp,
+                            "frame_number": frame_number,
+                        },
+                    )
+
+                self.assertIn(violation_type, engine.evaluate_violations(106))
 
     def test_multiple_riders_violation(self):
         engine = ViolationRulesEngine(

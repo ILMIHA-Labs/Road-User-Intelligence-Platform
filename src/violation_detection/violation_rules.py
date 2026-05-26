@@ -184,6 +184,18 @@ class ViolationRulesEngine:
             self.rider_association_window_seconds,
         )
 
+    def _is_same_crossing_interaction(self, vehicle_state, pedestrian_state):
+        vehicle_frame = vehicle_state.get("last_detection_frame_number")
+        pedestrian_frame = pedestrian_state.get("last_detection_frame_number")
+        if vehicle_frame is not None and pedestrian_frame is not None:
+            return abs(int(vehicle_frame) - int(pedestrian_frame)) <= 1
+
+        vehicle_time = _parse_timestamp(vehicle_state.get("last_detection_at"))
+        pedestrian_time = _parse_timestamp(pedestrian_state.get("last_detection_at"))
+        if vehicle_time is None or pedestrian_time is None:
+            return False
+        return vehicle_time == pedestrian_time
+
     def _crossing_matches(self, vehicle_object_id, category):
         vehicle_state = self.object_states.get(vehicle_object_id)
         if not vehicle_state:
@@ -209,7 +221,6 @@ class ViolationRulesEngine:
 
         zone_ids = {zone.get("id") for zone in matching_vehicle_zones}
         camera_id = vehicle_state.get("camera_id")
-        current_time = _parse_timestamp(vehicle_state.get("last_seen"))
         active_matches = []
         for state in self.object_states.values():
             if state.get("class") not in self.pedestrian_classes:
@@ -218,9 +229,7 @@ class ViolationRulesEngine:
                 continue
             if state.get("detection_observations", 0) < self.crossing_min_observations:
                 continue
-            if not self._is_recent_pair_with_window(
-                vehicle_state, state, self.pedestrian_crossing_window_seconds
-            ):
+            if not self._is_same_crossing_interaction(vehicle_state, state):
                 continue
             pedestrian_point = state.get("anchor_point") or self._bbox_bottom_center(
                 state.get("bbox") or []
@@ -228,16 +237,17 @@ class ViolationRulesEngine:
             crossing_zones = self._matching_zones(category, pedestrian_point)
             for zone in crossing_zones:
                 zone_id = zone.get("id")
-                if zone_id not in zone_ids or current_time is None:
+                if zone_id not in zone_ids:
                     continue
+                pedestrian_time = _parse_timestamp(state.get("last_detection_at"))
                 entered_at = _parse_timestamp(
                     state.get("zone_entered_at", {}).get(
                         self._zone_state_key(category, zone_id)
                     )
                 )
                 dwell_seconds = 0.0
-                if entered_at is not None:
-                    dwell_seconds = (current_time - entered_at).total_seconds()
+                if entered_at is not None and pedestrian_time is not None:
+                    dwell_seconds = (pedestrian_time - entered_at).total_seconds()
                 if (
                     dwell_seconds >= self.crossing_min_presence_seconds
                     and state.get("zone_observations", {}).get(
@@ -394,6 +404,8 @@ class ViolationRulesEngine:
                  "speed_kmh": 0.0,
                  "bbox": [],
                  "last_seen": "",
+                 "last_detection_at": None,
+                 "last_detection_frame_number": None,
                  "camera_id": "unknown",
                  "speed_violation_triggered": False,
                  "severe_speed_violation_triggered": False,
@@ -421,6 +433,12 @@ class ViolationRulesEngine:
             state["helmet_status"] = detection_event.get("helmet_status", state["helmet_status"])
             state["bbox"] = detection_event.get("bbox", state["bbox"])
             state["last_seen"] = detection_event.get("timestamp", state["last_seen"])
+            state["last_detection_at"] = detection_event.get(
+                "timestamp", state["last_detection_at"]
+            )
+            state["last_detection_frame_number"] = detection_event.get(
+                "frame_number", state["last_detection_frame_number"]
+            )
             # Required for multi-camera deduplication later on in MVP
             state["camera_id"] = detection_event.get("camera_id")
             state["detection_observations"] = state.get("detection_observations", 0) + 1
