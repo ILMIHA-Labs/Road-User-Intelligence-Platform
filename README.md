@@ -62,7 +62,8 @@ to analyze a permitted prerecorded clip without adding it to live operations:
 1. open the backend-served `/dashboard/` URL and choose `Video Analysis`
 2. upload an `.mp4`, `.mov`, `.avi`, `.mkv`, or `.webm` source you are
    permitted to analyze
-3. draw one or more counting lines and at least one zebra-crossing polygon
+3. draw one or more counting lines; add zebra-crossing polygons only when
+   zone-specific safety analysis is needed
 4. set pixels-per-metre, zebra speed threshold, and approach deadband
 5. run the temporary analysis and review the annotated video and downloadable
    JSON/CSV reports

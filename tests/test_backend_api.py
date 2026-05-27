@@ -109,6 +109,7 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("data-mobile-nav", response.text)
         self.assertIn('data-view-button="analysis"', response.text)
         self.assertIn('id="analysis-file"', response.text)
+        self.assertIn("Optional Zebra Safety Zone", response.text)
 
     def _analysis_video_bytes(self):
         path = Path(self.config_tmp.name) / "upload_fixture.mp4"
@@ -124,6 +125,30 @@ class TestBackendAPI(unittest.TestCase):
             data={"label": "Permitted study clip", "camera_id": "upload_cam"},
             files={"file": ("study.mp4", self._analysis_video_bytes(), "video/mp4")},
         )
+
+    def _fake_analysis_outputs(self, job, progress_callback):
+        progress_callback(1, 2)
+        progress_callback(2, 2)
+        artifact_dir = Path(job.artifact_dir)
+        (artifact_dir / "annotated.mp4").write_bytes(b"temporary-annotated-video")
+        for filename in ("summary.json", "metrics.json"):
+            (artifact_dir / filename).write_text("{}", encoding="utf-8")
+        for filename in ("crossings.csv", "zebra_events.csv", "zebra_occupancy.csv", "tracks.csv"):
+            (artifact_dir / filename).write_text("id\n", encoding="utf-8")
+        return {
+            "video": {"path": str(artifact_dir / "source.mp4"), "processed_frames": 2},
+            "zebra_zones": [{"id": "generated_zebra"}],
+            "metrics": {
+                "total_crossings": 1,
+                "flow_rate_per_minute": 1.0,
+                "counts_by_class": {"car": 1},
+                "counts_by_line": {"count_line_1": 1},
+                "counts_by_direction": {"a_to_b": 1},
+                "speed_metrics_by_class": {},
+            },
+            "zebra_metrics": {"events": 1, "by_zone": {"zebra_1": {"events": 1}}},
+            "outputs": {},
+        }
 
     def test_video_analysis_upload_creates_preview_and_rejects_invalid_media(self):
         response = self._upload_analysis_video()
@@ -162,31 +187,7 @@ class TestBackendAPI(unittest.TestCase):
     def test_video_analysis_completes_in_isolation_and_serves_allowlisted_artifacts(self):
         job_id = self._upload_analysis_video().json()["job_id"]
         original_analyzer = backend_main._analyze_uploaded_video
-
-        def fake_analyzer(job, progress_callback):
-            progress_callback(1, 2)
-            progress_callback(2, 2)
-            artifact_dir = Path(job.artifact_dir)
-            (artifact_dir / "annotated.mp4").write_bytes(b"temporary-annotated-video")
-            for filename in ("summary.json", "metrics.json"):
-                (artifact_dir / filename).write_text("{}", encoding="utf-8")
-            for filename in ("crossings.csv", "zebra_events.csv", "zebra_occupancy.csv", "tracks.csv"):
-                (artifact_dir / filename).write_text("id\n", encoding="utf-8")
-            return {
-                "video": {"path": str(artifact_dir / "source.mp4"), "processed_frames": 2},
-                "metrics": {
-                    "total_crossings": 1,
-                    "flow_rate_per_minute": 1.0,
-                    "counts_by_class": {"car": 1},
-                    "counts_by_line": {"count_line_1": 1},
-                    "counts_by_direction": {"a_to_b": 1},
-                    "speed_metrics_by_class": {},
-                },
-                "zebra_metrics": {"events": 0, "by_zone": {}},
-                "outputs": {},
-            }
-
-        backend_main._analyze_uploaded_video = fake_analyzer
+        backend_main._analyze_uploaded_video = self._fake_analysis_outputs
         try:
             response = self.client.post(
                 f"/video-analysis/jobs/{job_id}/run",
@@ -212,6 +213,9 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(job["progress_percent"], 100.0)
         self.assertEqual(job["result_summary"]["video"]["path"], "study.mp4")
         self.assertIn("annotated_video", job["artifacts"])
+        self.assertIn("zebra_metrics", job["result_summary"])
+        self.assertIn("zebra_events_csv", job["artifacts"])
+        self.assertEqual(self.client.get(job["artifacts"]["zebra_events_csv"]).status_code, 200)
         self.assertEqual(self.client.get(job["artifacts"]["metrics_json"]).status_code, 200)
         self.assertEqual(self.client.get(f"/video-analysis/jobs/{job_id}/artifacts/source").status_code, 404)
         summary = self.client.get("/analytics/summary").json()
@@ -222,6 +226,41 @@ class TestBackendAPI(unittest.TestCase):
         delete_response = self.client.delete(f"/video-analysis/jobs/{job_id}")
         self.assertEqual(delete_response.status_code, 200)
         self.assertEqual(self.client.get(f"/video-analysis/jobs/{job_id}/preview").status_code, 410)
+
+    def test_video_analysis_line_only_hides_zebra_results_and_artifacts(self):
+        job_id = self._upload_analysis_video().json()["job_id"]
+        original_analyzer = backend_main._analyze_uploaded_video
+        backend_main._analyze_uploaded_video = self._fake_analysis_outputs
+        try:
+            response = self.client.post(
+                f"/video-analysis/jobs/{job_id}/run",
+                json={
+                    "counting_lines": [{"id": "count_line_1", "points": [[1, 1], [20, 20]]}],
+                    "zebra_zones": [],
+                    "pixels_per_meter": 25,
+                },
+            )
+            self.assertEqual(response.status_code, 202)
+            job = None
+            for _ in range(80):
+                job = self.client.get(f"/video-analysis/jobs/{job_id}").json()
+                if job["status"] == "completed":
+                    break
+                time.sleep(0.01)
+        finally:
+            backend_main._analyze_uploaded_video = original_analyzer
+
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["result_summary"]["metrics"]["counts_by_class"], {"car": 1})
+        self.assertNotIn("zebra_metrics", job["result_summary"])
+        self.assertNotIn("zebra_zones", job["result_summary"])
+        self.assertNotIn("zebra_events_csv", job["artifacts"])
+        self.assertNotIn("zebra_occupancy_csv", job["artifacts"])
+        self.assertEqual(self.client.get(f"/video-analysis/jobs/{job_id}/artifacts/zebra_events_csv").status_code, 404)
+        public_summary = self.client.get(job["artifacts"]["summary_json"]).json()
+        self.assertNotIn("zebra_metrics", public_summary)
+        self.assertNotIn("zebra_zones", public_summary)
+        self.assertEqual(self.client.get("/analytics/summary").json()["total_crossings_logged"], 0)
 
     def test_video_analysis_failure_exposes_diagnostic_without_operational_records(self):
         job_id = self._upload_analysis_video().json()["job_id"]

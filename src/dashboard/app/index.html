@@ -607,11 +607,11 @@
                   <input id="analysis-ppm" type="number" min="0.01" step="0.1" value="25" class="w-full border-0 bg-white px-3 py-3 text-sm focus:ring-0" />
                 </label>
                 <label class="block">
-                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Zebra km/h</span>
+                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Zebra km/h (optional)</span>
                   <input id="analysis-speed-threshold" type="number" min="0" step="0.1" value="15" class="w-full border-0 bg-white px-3 py-3 text-sm focus:ring-0" />
                 </label>
                 <label class="block">
-                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Deadband</span>
+                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Zebra trend (optional)</span>
                   <input id="analysis-deadband" type="number" min="0" step="0.1" value="2" class="w-full border-0 bg-white px-3 py-3 text-sm focus:ring-0" />
                 </label>
               </div>
@@ -628,13 +628,13 @@
             <div class="mb-5 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">2. Geometry</p>
-                <h3 class="mt-1 text-2xl font-black tracking-tight">Draw lines and zebra bounds</h3>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Draw lines; optionally add zebra bounds</h3>
               </div>
               <span id="analysis-frame-meta" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">No frame loaded</span>
             </div>
             <div class="mb-5 flex flex-wrap gap-3">
               <button id="analysis-new-line" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">New Counting Line</button>
-              <button id="analysis-new-zebra" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">New Zebra Zone</button>
+              <button id="analysis-new-zebra" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Optional Zebra Safety Zone</button>
               <button id="analysis-finish-zone" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Finish Zone</button>
               <button id="analysis-undo" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Undo Point</button>
               <button id="analysis-clear" class="bg-surface-container-highest px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Clear Draft</button>
@@ -655,7 +655,7 @@
                 <div id="analysis-lines-list" class="space-y-3 text-sm text-on-surface-variant"></div>
               </section>
               <section class="bg-white p-5">
-                <div class="mb-4 flex justify-between"><h4 class="text-[10px] font-bold uppercase tracking-[0.2em]">Zebra Zones</h4><span id="analysis-zebra-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">0 configured</span></div>
+                <div class="mb-4 flex justify-between"><h4 class="text-[10px] font-bold uppercase tracking-[0.2em]">Optional Zebra Safety Zones</h4><span id="analysis-zebra-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">0 configured</span></div>
                 <div id="analysis-zebra-list" class="space-y-3 text-sm text-on-surface-variant"></div>
               </section>
             </div>
@@ -665,13 +665,13 @@
         <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
           <article class="bg-surface-container-lowest p-8 xl:col-span-8">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">3. Analysis Report</p>
-            <div id="analysis-result-empty" class="mt-6 bg-white p-8 text-sm text-on-surface-variant">Complete an analysis to review annotated video, traffic-flow metrics, and zebra-zone interaction data.</div>
+            <div id="analysis-result-empty" class="mt-6 bg-white p-8 text-sm text-on-surface-variant">Complete an analysis to review annotated video and traffic-flow metrics. Add a zebra safety zone only when zone-specific analysis is needed.</div>
             <div id="analysis-result" class="mt-6 hidden space-y-6">
               <video id="analysis-result-video" class="aspect-video w-full bg-black" controls playsinline></video>
               <div id="analysis-result-metrics" class="grid grid-cols-2 gap-4 md:grid-cols-4"></div>
               <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div id="analysis-result-counts" class="bg-white p-5"></div>
-                <div id="analysis-result-zebra" class="bg-black p-5 text-white"></div>
+                <div id="analysis-result-zebra" class="hidden bg-black p-5 text-white"></div>
               </div>
               <div id="analysis-result-downloads" class="flex flex-wrap gap-3"></div>
             </div>
@@ -1753,7 +1753,7 @@
               </div>
             </div>
           `).join("")
-        : `<p>No zebra zones drawn yet.</p>`;
+        : `<p>No zebra safety zones drawn. Traffic-flow analysis can still run.</p>`;
       linesList.querySelectorAll("[data-analysis-remove-line]").forEach((button) => {
         button.addEventListener("click", () => {
           state.videoAnalysis.lines = state.videoAnalysis.lines.filter((line) => line.id !== button.dataset.analysisRemoveLine);
@@ -1869,7 +1869,8 @@
       }
       const summary = job.result_summary;
       const metrics = summary.metrics || {};
-      const zebra = summary.zebra_metrics || {};
+      const zebra = summary.zebra_metrics || null;
+      const hasZebraLayer = Boolean(zebra && (job.setup?.zebra_zones || []).length);
       const artifacts = job.artifacts || {};
       result.classList.remove("hidden");
       empty.classList.add("hidden");
@@ -1878,9 +1879,9 @@
       const cards = [
         ["Crossings", metrics.total_crossings || 0],
         ["Flow / Minute", metrics.flow_rate_per_minute || 0],
-        ["Zebra Events", zebra.events || 0],
         ["Frames", summary.video?.processed_frames || 0],
       ];
+      if (hasZebraLayer) cards.splice(2, 0, ["Zebra Events", zebra.events || 0]);
       document.getElementById("analysis-result-metrics").innerHTML = cards.map(([title, value]) => `
         <article class="bg-white p-4"><p class="text-[9px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">${title}</p><p class="mt-2 text-3xl font-black">${escapeAnalysisMarkup(value)}</p></article>
       `).join("");
@@ -1891,13 +1892,17 @@
         <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Counting Lines</h4>${mapRows(metrics.counts_by_line)}
         <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Speed By Class</h4>
         ${Object.entries(metrics.speed_metrics_by_class || {}).map(([name, values]) => `<p class="border-b border-black/5 py-2">${escapeAnalysisMarkup(formatObjectClassLabel(name))}: avg ${escapeAnalysisMarkup(values.avg_speed_kmh ?? "-")} km/h, p85 ${escapeAnalysisMarkup(values.p85_speed_kmh ?? "-")} km/h</p>`).join("") || `<p class="text-sm text-on-surface-variant">No speed samples.</p>`}`;
-      const zoneRows = Object.entries(zebra.by_zone || {}).map(([zoneId, values]) => `
+      const countsPanel = document.getElementById("analysis-result-counts");
+      const zebraPanel = document.getElementById("analysis-result-zebra");
+      countsPanel.classList.toggle("lg:col-span-2", !hasZebraLayer);
+      zebraPanel.classList.toggle("hidden", !hasZebraLayer);
+      const zoneRows = Object.entries(zebra?.by_zone || {}).map(([zoneId, values]) => `
         <div class="border-b border-white/15 py-3">
           <p class="font-bold">${escapeAnalysisMarkup(values.label || zoneId)}</p>
           <p class="mt-1 text-xs text-white/60">${escapeAnalysisMarkup(values.events || 0)} events | risk ${escapeAnalysisMarkup(values.zebra_yielding_risk || 0)} | conflict ${escapeAnalysisMarkup(values.zebra_crossing_violation || 0)}</p>
           <p class="mt-2 text-xs">Approach trend: ${Object.entries(values.vehicle_approach_trends || {}).map(([trend, count]) => `${escapeAnalysisMarkup(trend)} ${escapeAnalysisMarkup(count)}`).join(" | ") || "no tagged interactions"}</p>
         </div>`).join("");
-      document.getElementById("analysis-result-zebra").innerHTML = `<h4 class="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">Zebra Zone Summary</h4>${zoneRows || `<p class="text-sm text-white/60">No zebra events recorded.</p>`}`;
+      zebraPanel.innerHTML = hasZebraLayer ? `<h4 class="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">Zebra Zone Summary</h4>${zoneRows || `<p class="text-sm text-white/60">No zebra events recorded.</p>`}` : "";
       const downloadLabels = {
         summary_json: "Summary JSON",
         metrics_json: "Metrics JSON",
@@ -1986,7 +1991,7 @@
         state.videoAnalysis.lines = [];
         state.videoAnalysis.zebraZones = [];
         resetAnalysisDraft();
-        setAnalysisStatus("Preview ready. Draw at least one counting line and one zebra zone.");
+        setAnalysisStatus("Preview ready. Draw at least one counting line. Zebra safety zones are optional.");
         await loadVideoAnalysisJobs();
         renderVideoAnalysis();
       } catch (error) {
@@ -2026,8 +2031,8 @@
         setAnalysisStatus("Upload a video before starting analysis.");
         return;
       }
-      if (!state.videoAnalysis.lines.length || !state.videoAnalysis.zebraZones.length) {
-        setAnalysisStatus("Draw at least one counting line and one zebra zone before starting analysis.");
+      if (!state.videoAnalysis.lines.length) {
+        setAnalysisStatus("Draw at least one counting line before starting analysis.");
         return;
       }
       try {

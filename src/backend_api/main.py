@@ -391,8 +391,6 @@ def run_video_analysis_job(job_id: str, request: VideoAnalysisRunRequest, db: Se
     zebra_zones = _normalize_setup_zebra_zones(request.zebra_zones)
     if not counting_lines:
         raise HTTPException(status_code=400, detail="Draw at least one valid counting line before analysis.")
-    if not zebra_zones:
-        raise HTTPException(status_code=400, detail="Draw at least one valid zebra zone before analysis.")
     if not _video_analysis_source_path(job).exists():
         raise HTTPException(status_code=410, detail="The temporary uploaded source is no longer available.")
 
@@ -426,7 +424,7 @@ def get_video_analysis_artifact(job_id: str, artifact_name: str, db: Session = D
     _ensure_video_analysis_available(job)
     if job.status != "completed":
         raise HTTPException(status_code=409, detail="Analysis artifacts are available only after completion.")
-    artifact = _VIDEO_ANALYSIS_ARTIFACTS.get(artifact_name)
+    artifact = _video_analysis_public_artifacts(job).get(artifact_name)
     if artifact is None:
         raise HTTPException(status_code=404, detail="Analysis artifact not found.")
     filename, media_type = artifact
@@ -749,11 +747,25 @@ def _ensure_video_analysis_available(job: models.DBVideoAnalysisJob):
         raise HTTPException(status_code=410, detail="Analysis session is no longer available.")
 
 
+def _video_analysis_has_zebra_layer(job: models.DBVideoAnalysisJob) -> bool:
+    return bool((job.setup or {}).get("zebra_zones"))
+
+
+def _video_analysis_public_artifacts(job: models.DBVideoAnalysisJob) -> dict:
+    if _video_analysis_has_zebra_layer(job):
+        return _VIDEO_ANALYSIS_ARTIFACTS
+    return {
+        name: artifact
+        for name, artifact in _VIDEO_ANALYSIS_ARTIFACTS.items()
+        if name not in {"zebra_events_csv", "zebra_occupancy_csv"}
+    }
+
+
 def _video_analysis_artifact_urls(job: models.DBVideoAnalysisJob) -> dict:
     if job.status != "completed":
         return {}
     urls = {}
-    for name, (filename, _media_type) in _VIDEO_ANALYSIS_ARTIFACTS.items():
+    for name, (filename, _media_type) in _video_analysis_public_artifacts(job).items():
         if (Path(job.artifact_dir) / filename).exists():
             urls[name] = f"/video-analysis/jobs/{job.job_id}/artifacts/{name}"
     return urls
@@ -824,9 +836,12 @@ def _public_video_analysis_summary(job: models.DBVideoAnalysisJob, summary: dict
     public_video = dict(public_summary.get("video") or {})
     public_video["path"] = job.original_filename
     public_summary["video"] = public_video
+    if not _video_analysis_has_zebra_layer(job):
+        public_summary.pop("zebra_metrics", None)
+        public_summary.pop("zebra_zones", None)
     public_summary["outputs"] = {
         name: f"/video-analysis/jobs/{job.job_id}/artifacts/{name}"
-        for name in _VIDEO_ANALYSIS_ARTIFACTS
+        for name in _video_analysis_public_artifacts(job)
     }
     return public_summary
 
