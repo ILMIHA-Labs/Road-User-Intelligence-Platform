@@ -412,6 +412,37 @@ class TestTrafficMetricsAnalysis(unittest.TestCase):
         self.assertIn("max_speed_kmh", running_metrics["car"])
         self.assertIn("p85_speed_kmh", running_metrics["car"])
 
+    def test_metrics_include_configured_lines_without_crossings(self):
+        detector = FakeDetector(
+            [
+                [{"object_id": 1, "class_name": "car", "bbox": [60.0, 40.0, 80.0, 80.0], "confidence": 0.95}],
+                [{"object_id": 1, "class_name": "car", "bbox": [70.0, 40.0, 90.0, 80.0], "confidence": 0.95}],
+                [{"object_id": 1, "class_name": "car", "bbox": [120.0, 40.0, 140.0, 80.0], "confidence": 0.95}],
+            ]
+        )
+        secondary_line = {
+            **self._camera_profile()["counting_lines"][0],
+            "id": "secondary_gate",
+            "label": "Secondary Gate",
+            "points": [[220.0, 0.0], [220.0, 240.0]],
+        }
+        analyzer = TrafficMetricsAnalyzer(
+            camera_id="cam_count",
+            camera_profile=self._camera_profile(),
+            detector=detector,
+            counting_lines=self._camera_profile()["counting_lines"] + [secondary_line],
+        )
+        frame = np.zeros((240, 320, 3), dtype=np.uint8)
+
+        analyzer.analyze_frame(frame, 1, 0.0)
+        analyzer.analyze_frame(frame, 2, 1.0)
+        analyzer.analyze_frame(frame, 3, 2.0)
+
+        self.assertEqual(
+            analyzer._metric_summary(duration_seconds=3.0)["counts_by_line"],
+            {"main_gate": 1, "secondary_gate": 0},
+        )
+
     def test_analyze_video_writes_outputs_with_fake_detector(self):
         detector = FakeDetector(
             [

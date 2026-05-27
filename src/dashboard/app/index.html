@@ -1886,10 +1886,21 @@
         <article class="bg-white p-4"><p class="text-[9px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">${title}</p><p class="mt-2 text-3xl font-black">${escapeAnalysisMarkup(value)}</p></article>
       `).join("");
       const mapRows = (map) => Object.entries(map || {}).map(([name, value]) => `<div class="flex justify-between border-b border-black/5 py-2"><span>${escapeAnalysisMarkup(formatObjectClassLabel(name))}</span><strong>${escapeAnalysisMarkup(value)}</strong></div>`).join("") || `<p class="text-sm text-on-surface-variant">No recorded values.</p>`;
+      const configuredLines = summary.counting_lines || job.setup?.counting_lines || [];
+      const lineRows = configuredLines.length
+        ? configuredLines.map((line) => {
+            const points = (line.points || []).map((point) => `[${point[0]}, ${point[1]}]`).join(" to ");
+            const count = metrics.counts_by_line?.[line.id] || 0;
+            return `<div class="flex justify-between gap-4 border-b border-black/5 py-2">
+              <span><strong>${escapeAnalysisMarkup(line.label || line.id)}</strong><small class="mt-1 block text-on-surface-variant">${escapeAnalysisMarkup(points)}</small></span>
+              <strong>${escapeAnalysisMarkup(count)}</strong>
+            </div>`;
+          }).join("")
+        : mapRows(metrics.counts_by_line);
       document.getElementById("analysis-result-counts").innerHTML = `
         <h4 class="mb-3 text-[10px] font-bold uppercase tracking-[0.2em]">Counts By Class</h4>${mapRows(metrics.counts_by_class)}
         <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Directions</h4>${mapRows(metrics.counts_by_direction)}
-        <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Counting Lines</h4>${mapRows(metrics.counts_by_line)}
+        <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Counting Lines</h4>${lineRows}
         <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Speed By Class</h4>
         ${Object.entries(metrics.speed_metrics_by_class || {}).map(([name, values]) => `<p class="border-b border-black/5 py-2">${escapeAnalysisMarkup(formatObjectClassLabel(name))}: avg ${escapeAnalysisMarkup(values.avg_speed_kmh ?? "-")} km/h, p85 ${escapeAnalysisMarkup(values.p85_speed_kmh ?? "-")} km/h</p>`).join("") || `<p class="text-sm text-on-surface-variant">No speed samples.</p>`}`;
       const countsPanel = document.getElementById("analysis-result-counts");

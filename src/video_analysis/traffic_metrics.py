@@ -1157,6 +1157,10 @@ class TrafficMetricsAnalyzer:
         counts_by_class = defaultdict(int)
         counts_by_line = defaultdict(int)
         counts_by_direction = defaultdict(int)
+        for line in self.counting_lines:
+            line_id = line.get("id")
+            if line_id:
+                counts_by_line[line_id] += 0
         for row in self.crossing_rows:
             counts_by_class[row["class"]] += 1
             counts_by_line[row["line_id"]] += 1
