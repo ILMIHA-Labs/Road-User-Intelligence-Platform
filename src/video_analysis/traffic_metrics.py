@@ -786,7 +786,7 @@ class TrafficMetricsAnalyzer:
         elif delta >= self.zebra_speed_trend_deadband_kmh:
             trend = "increased"
         else:
-            trend = "maintained"
+            trend = "constant"
         return {
             "vehicle_speed_trend": trend,
             "approach_start_speed_kmh": round(start_speed, 2),
@@ -1466,7 +1466,7 @@ def parse_args(argv: Optional[Iterable[str]] = None):
     analyze_parser.add_argument("--zebra-speed-threshold", type=float, default=15.0, help="Vehicle speed threshold for zebra risk/violation")
     analyze_parser.add_argument("--zebra-zone-margin-m", type=float, default=2.0, help="Near-zone tolerance around zebra polygon in meters")
     analyze_parser.add_argument("--zebra-interaction-window-seconds", type=float, default=3.0, help="How long a pedestrian remains active near zebra")
-    analyze_parser.add_argument("--zebra-speed-trend-deadband-kmh", type=float, default=2.0, help="Speed delta treated as maintained when classifying zebra approach trend")
+    analyze_parser.add_argument("--zebra-speed-trend-deadband-kmh", type=float, default=2.0, help="Speed delta treated as constant when classifying zebra approach trend")
     analyze_parser.add_argument("--filter-riders-from-pedestrians", dest="filter_riders_from_pedestrians", action="store_true", default=True, help="Filter motorcycle/bicycle riders out of pedestrian zebra analysis")
     analyze_parser.add_argument("--disable-rider-filter", dest="filter_riders_from_pedestrians", action="store_false", help="Disable rider filtering for comparison/debugging")
     analyze_parser.add_argument("--max-riders-per-bike", type=int, default=2, help="Maximum pedestrian detections to associate with each motorcycle/bicycle")

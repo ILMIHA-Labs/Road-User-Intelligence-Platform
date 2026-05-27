@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 import sys
@@ -19,6 +20,7 @@ from video_analysis.traffic_metrics import (
     build_zebra_setup_config,
     load_line_config,
     load_zebra_config,
+    zebra_event_fieldnames,
 )
 
 
@@ -275,8 +277,65 @@ class TestTrafficMetricsAnalysis(unittest.TestCase):
 
         self.assertEqual(analyzer._approach_trend_for_vehicle_zone(1, "zebra_1")["vehicle_speed_trend"], "decreased")
         self.assertEqual(analyzer._approach_trend_for_vehicle_zone(2, "zebra_1")["vehicle_speed_trend"], "increased")
-        self.assertEqual(analyzer._approach_trend_for_vehicle_zone(3, "zebra_1")["vehicle_speed_trend"], "maintained")
+        self.assertEqual(analyzer._approach_trend_for_vehicle_zone(3, "zebra_1")["vehicle_speed_trend"], "constant")
         self.assertEqual(analyzer._approach_trend_for_vehicle_zone(4, "zebra_1")["vehicle_speed_trend"], "insufficient_data")
+        self.assertEqual(
+            analyzer._zebra_metric_summary()["by_zone"]["zebra_1"]["vehicle_approach_trends"],
+            {"constant": 1, "decreased": 1, "increased": 1},
+        )
+
+    def test_zebra_event_csv_exports_constant_approach_speed_tag(self):
+        analyzer = TrafficMetricsAnalyzer(
+            camera_id="cam_count",
+            camera_profile=self._camera_profile(),
+            detector=FakeDetector([]),
+            counting_lines=self._camera_profile()["counting_lines"],
+            zebra_zones=[
+                {
+                    "id": "zebra_1",
+                    "label": "Z1",
+                    "category": "zebra_crossing",
+                    "points": [[100.0, 100.0], [200.0, 100.0], [200.0, 200.0], [100.0, 200.0]],
+                }
+            ],
+            zebra_speed_threshold_kmh=15.0,
+            zebra_speed_trend_deadband_kmh=2.0,
+        )
+        analyzer.zebra_approach_samples[(1, "zebra_1")] = [
+            {"speed_kmh": 20.0},
+            {"speed_kmh": 21.0},
+        ]
+        analyzer._update_zebra_events(
+            frame_number=3,
+            elapsed_seconds=2.0,
+            frame_rows=[
+                {
+                    "object_id": 1,
+                    "class": "car",
+                    "speed_kmh": 21.0,
+                    "_zebra_zone_states": [
+                        {"zone_id": "zebra_1", "near": True, "inside": True, "distance_m": 0.0}
+                    ],
+                },
+                {
+                    "object_id": 2,
+                    "class": "pedestrian",
+                    "speed_kmh": 2.0,
+                    "is_rider": False,
+                    "_zebra_zone_states": [
+                        {"zone_id": "zebra_1", "near": True, "inside": True, "distance_m": 0.0}
+                    ],
+                },
+            ],
+        )
+
+        self.assertEqual(analyzer.zebra_event_rows[0]["vehicle_speed_trend"], "constant")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            event_path = Path(tmpdir) / "zebra_events.csv"
+            analyzer._write_csv(event_path, analyzer.zebra_event_rows, zebra_event_fieldnames())
+            with open(event_path, newline="") as f:
+                rows = list(csv.DictReader(f))
+        self.assertEqual(rows[0]["vehicle_speed_trend"], "constant")
 
     def test_rider_filter_excludes_bike_rider_from_zebra_pedestrian_logic(self):
         detector = FakeDetector(
