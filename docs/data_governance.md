@@ -10,6 +10,8 @@ The public open-source release is intentionally conservative:
 - raw video is not archived by the backend by default
 - evidence capture is disabled by default
 - live preview snapshots and setup previews are short-lived runtime artifacts
+- dashboard-uploaded analysis videos and derived outputs are temporary
+  research-session files, retained for 24 hours by default
 - the main retained records are event-oriented analytics such as detections,
   speeds, line crossings, and safety-event metadata
 
@@ -25,6 +27,8 @@ The software can derive and store:
 - directional counting events
 - safety-event records
 - optional evidence image paths when evidence capture is explicitly enabled
+- temporary uploaded-video reports and annotated output when a researcher
+  explicitly uses the `Video Analysis` workspace
 
 ## What the system does not store by default
 
@@ -44,8 +48,23 @@ Important runtime controls include:
 - `VIOLATION_EVIDENCE_RETENTION_SECONDS`
 - `LIVE_PREVIEW_RETENTION_SECONDS`
 - `SETUP_PREVIEW_RETENTION_SECONDS`
+- `VIDEO_ANALYSIS_RETENTION_SECONDS` (default `86400`)
+- `VIDEO_ANALYSIS_MAX_UPLOAD_MB` (default `500`)
+- `VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS` (default `1`)
 
 These controls should be reviewed and set before any field or pilot deployment.
+
+## Uploaded-video analysis isolation
+
+The dashboard `Video Analysis` workspace accepts a researcher-supplied licensed
+video and holds its source, extracted preview, annotated video, and reports
+under temporary runtime artifact storage. Its counting and zebra-event outputs
+are not inserted into the live detections, crossings, speeds, or safety-event
+tables. The uploaded original is not offered as a download through the API.
+
+Temporary files are removed when the user deletes the session or when the
+retention period expires. Annotated video remains privacy-sensitive derived
+media and must be handled with the same care as the source.
 
 ## Operator responsibilities
 

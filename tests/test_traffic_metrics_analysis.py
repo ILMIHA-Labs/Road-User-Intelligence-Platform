@@ -435,7 +435,12 @@ class TestTrafficMetricsAnalysis(unittest.TestCase):
                 detector=detector,
                 counting_lines=self._camera_profile()["counting_lines"],
             )
-            summary = analyzer.analyze_video(str(video_path), str(output_dir))
+            progress_updates = []
+            summary = analyzer.analyze_video(
+                str(video_path),
+                str(output_dir),
+                progress_callback=lambda processed, total: progress_updates.append((processed, total)),
+            )
 
             self.assertTrue((output_dir / "annotated.mp4").exists())
             self.assertTrue((output_dir / "summary.json").exists())
@@ -447,6 +452,7 @@ class TestTrafficMetricsAnalysis(unittest.TestCase):
                 metrics = json.load(f)
             self.assertEqual(metrics["counts_by_class"]["car"], 1)
             self.assertEqual(summary["metrics"]["total_crossings"], 1)
+            self.assertEqual(progress_updates[-1], (3, 3))
 
 
 if __name__ == "__main__":

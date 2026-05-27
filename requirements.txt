@@ -5,6 +5,7 @@ paho-mqtt
 pyyaml
 scipy
 fastapi
+python-multipart
 httpx
 uvicorn
 sqlalchemy

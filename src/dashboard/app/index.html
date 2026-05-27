@@ -80,6 +80,9 @@
       <button data-view-button="setup" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">gesture</span> Setup
       </button>
+      <button data-view-button="analysis" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
+        <span class="material-symbols-outlined text-lg">movie_edit</span> Video Analysis
+      </button>
       <button data-view-button="violations" class="nav-btn flex w-full items-center gap-3 px-4 py-3 text-left text-[11px] uppercase tracking-[0.2em] text-on-surface-variant">
         <span class="material-symbols-outlined text-lg">report_problem</span> Safety Events
       </button>
@@ -109,6 +112,7 @@
       <button data-mobile-nav data-view-button="live" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Live Feed</button>
       <button data-mobile-nav data-view-button="configs" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Configs</button>
       <button data-mobile-nav data-view-button="setup" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Setup</button>
+      <button data-mobile-nav data-view-button="analysis" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Video Analysis</button>
       <button data-mobile-nav data-view-button="violations" class="nav-btn shrink-0 px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">Safety Events</button>
     </nav>
 
@@ -560,6 +564,125 @@
                 </div>
                 <div id="setup-zebra-list" class="space-y-3 text-sm text-on-surface-variant"></div>
               </section>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section id="analysis-view" data-view="analysis" class="hidden space-y-8">
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-4">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Research Workspace</p>
+            <p class="mt-3 text-3xl font-black tracking-tight">Video Analysis</p>
+          </article>
+          <article class="bg-black p-8 text-white xl:col-span-3">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-white/50">Temporary analysis session</p>
+            <p class="mt-3 text-2xl font-black tracking-tight">Upload, calibrate, measure, review.</p>
+            <p class="mt-3 max-w-3xl text-sm leading-6 text-white/70">
+              Upload only video you have permission to analyze. Inputs and derived media are temporary and expire after 24 hours by default. Results stay separate from live monitoring records and remain calibration and model dependent.
+            </p>
+          </article>
+        </div>
+
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-4">
+            <p class="mb-6 text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">1. Source And Calibration</p>
+            <div class="space-y-5">
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Licensed Video File</span>
+                <input id="analysis-file" type="file" accept=".mp4,.mov,.avi,.mkv,.webm,video/mp4,video/quicktime,video/webm" class="w-full bg-white px-4 py-3 text-sm file:mr-3 file:border-0 file:bg-black file:px-3 file:py-2 file:text-[10px] file:font-bold file:uppercase file:tracking-[0.15em] file:text-white" />
+              </label>
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Analysis Label</span>
+                <input id="analysis-label" type="text" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="School crossing morning sample" />
+              </label>
+              <label class="block">
+                <span class="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Camera ID</span>
+                <input id="analysis-camera-id" type="text" class="w-full border-0 bg-white px-4 py-3 text-sm focus:ring-0" placeholder="analysis_cam_01" />
+              </label>
+              <button id="analysis-upload" class="w-full bg-primary px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-on-primary">Upload And Extract Frame</button>
+              <div class="grid grid-cols-3 gap-3">
+                <label class="block">
+                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Pixels / M</span>
+                  <input id="analysis-ppm" type="number" min="0.01" step="0.1" value="25" class="w-full border-0 bg-white px-3 py-3 text-sm focus:ring-0" />
+                </label>
+                <label class="block">
+                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Zebra km/h</span>
+                  <input id="analysis-speed-threshold" type="number" min="0" step="0.1" value="15" class="w-full border-0 bg-white px-3 py-3 text-sm focus:ring-0" />
+                </label>
+                <label class="block">
+                  <span class="mb-2 block text-[9px] font-bold uppercase tracking-[0.15em] text-on-surface-variant">Deadband</span>
+                  <input id="analysis-deadband" type="number" min="0" step="0.1" value="2" class="w-full border-0 bg-white px-3 py-3 text-sm focus:ring-0" />
+                </label>
+              </div>
+              <p id="analysis-status" class="border-t border-black/5 pt-5 text-sm text-on-surface-variant">Upload a licensed video to begin.</p>
+              <div class="h-2 overflow-hidden bg-white">
+                <div id="analysis-progress-fill" class="h-full w-0 bg-primary transition-all"></div>
+              </div>
+              <p id="analysis-progress-label" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">No active job</p>
+              <button id="analysis-run" class="w-full bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">Run Video Analysis</button>
+            </div>
+          </article>
+
+          <article class="bg-surface-container-lowest p-8 xl:col-span-8">
+            <div class="mb-5 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">2. Geometry</p>
+                <h3 class="mt-1 text-2xl font-black tracking-tight">Draw lines and zebra bounds</h3>
+              </div>
+              <span id="analysis-frame-meta" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">No frame loaded</span>
+            </div>
+            <div class="mb-5 flex flex-wrap gap-3">
+              <button id="analysis-new-line" class="bg-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white">New Counting Line</button>
+              <button id="analysis-new-zebra" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">New Zebra Zone</button>
+              <button id="analysis-finish-zone" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Finish Zone</button>
+              <button id="analysis-undo" class="bg-white px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Undo Point</button>
+              <button id="analysis-clear" class="bg-surface-container-highest px-4 py-3 text-[10px] font-bold uppercase tracking-[0.2em]">Clear Draft</button>
+            </div>
+            <div class="relative aspect-[16/9] overflow-hidden bg-black">
+              <div id="analysis-preview-empty" class="flex h-full items-center justify-center text-center text-white/60">
+                <div>
+                  <span class="material-symbols-outlined text-5xl">movie_edit</span>
+                  <p class="mt-3 text-sm uppercase tracking-[0.2em]">Upload a video to extract the setup frame</p>
+                </div>
+              </div>
+              <img id="analysis-preview-image" alt="Uploaded video preview frame" class="hidden h-full w-full object-contain" />
+              <div id="analysis-overlay" class="pointer-events-auto absolute inset-0 hidden"></div>
+            </div>
+            <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <section class="bg-white p-5">
+                <div class="mb-4 flex justify-between"><h4 class="text-[10px] font-bold uppercase tracking-[0.2em]">Counting Lines</h4><span id="analysis-line-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">0 configured</span></div>
+                <div id="analysis-lines-list" class="space-y-3 text-sm text-on-surface-variant"></div>
+              </section>
+              <section class="bg-white p-5">
+                <div class="mb-4 flex justify-between"><h4 class="text-[10px] font-bold uppercase tracking-[0.2em]">Zebra Zones</h4><span id="analysis-zebra-count" class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">0 configured</span></div>
+                <div id="analysis-zebra-list" class="space-y-3 text-sm text-on-surface-variant"></div>
+              </section>
+            </div>
+          </article>
+        </section>
+
+        <section class="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          <article class="bg-surface-container-lowest p-8 xl:col-span-8">
+            <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">3. Analysis Report</p>
+            <div id="analysis-result-empty" class="mt-6 bg-white p-8 text-sm text-on-surface-variant">Complete an analysis to review annotated video, traffic-flow metrics, and zebra-zone interaction data.</div>
+            <div id="analysis-result" class="mt-6 hidden space-y-6">
+              <video id="analysis-result-video" class="aspect-video w-full bg-black" controls playsinline></video>
+              <div id="analysis-result-metrics" class="grid grid-cols-2 gap-4 md:grid-cols-4"></div>
+              <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div id="analysis-result-counts" class="bg-white p-5"></div>
+                <div id="analysis-result-zebra" class="bg-black p-5 text-white"></div>
+              </div>
+              <div id="analysis-result-downloads" class="flex flex-wrap gap-3"></div>
+            </div>
+          </article>
+          <article class="bg-surface-container-lowest p-8 xl:col-span-4">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Recent Temporary Analyses</p>
+              <button id="analysis-refresh-jobs" class="text-[10px] font-bold uppercase tracking-[0.2em]">Reload</button>
+            </div>
+            <div id="analysis-jobs-list" class="mt-6 space-y-3 text-sm text-on-surface-variant">
+              <p>No uploaded analyses available.</p>
             </div>
           </article>
         </section>
@@ -1114,6 +1237,16 @@
         draftMode: null,
         draftPoints: [],
       },
+      videoAnalysis: {
+        job: null,
+        jobs: [],
+        frame: null,
+        lines: [],
+        zebraZones: [],
+        draftMode: null,
+        draftPoints: [],
+        pollTimer: null,
+      },
     };
 
     const DASHBOARD_FILE_MODE = window.location.protocol === "file:";
@@ -1571,6 +1704,400 @@
       }
     }
 
+    function escapeAnalysisMarkup(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[character]));
+    }
+
+    function setAnalysisStatus(message) {
+      const status = document.getElementById("analysis-status");
+      if (status) status.textContent = message;
+    }
+
+    function resetAnalysisDraft(mode = null) {
+      state.videoAnalysis.draftMode = mode;
+      state.videoAnalysis.draftPoints = [];
+      renderAnalysisOverlay();
+    }
+
+    function renderAnalysisCollections() {
+      const linesList = document.getElementById("analysis-lines-list");
+      const zebraList = document.getElementById("analysis-zebra-list");
+      if (!linesList || !zebraList) return;
+      document.getElementById("analysis-line-count").textContent = `${state.videoAnalysis.lines.length} configured`;
+      document.getElementById("analysis-zebra-count").textContent = `${state.videoAnalysis.zebraZones.length} configured`;
+      linesList.innerHTML = state.videoAnalysis.lines.length
+        ? state.videoAnalysis.lines.map((line) => `
+            <div class="border border-black/5 p-3">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-[0.2em]">${escapeAnalysisMarkup(line.label)}</p>
+                  <p class="mt-1 text-xs">${line.points.map((point) => `[${point[0]}, ${point[1]}]`).join(" to ")}</p>
+                </div>
+                <button data-analysis-remove-line="${escapeAnalysisMarkup(line.id)}" class="text-[10px] font-bold uppercase tracking-[0.2em] text-error">Remove</button>
+              </div>
+            </div>
+          `).join("")
+        : `<p>No counting lines drawn yet.</p>`;
+      zebraList.innerHTML = state.videoAnalysis.zebraZones.length
+        ? state.videoAnalysis.zebraZones.map((zone) => `
+            <div class="border border-black/5 p-3">
+              <div class="flex items-center justify-between gap-3">
+                <div><p class="text-[10px] font-bold uppercase tracking-[0.2em]">${escapeAnalysisMarkup(zone.label)}</p><p class="mt-1 text-xs">${zone.points.length} points</p></div>
+                <button data-analysis-remove-zebra="${escapeAnalysisMarkup(zone.id)}" class="text-[10px] font-bold uppercase tracking-[0.2em] text-error">Remove</button>
+              </div>
+            </div>
+          `).join("")
+        : `<p>No zebra zones drawn yet.</p>`;
+      linesList.querySelectorAll("[data-analysis-remove-line]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.videoAnalysis.lines = state.videoAnalysis.lines.filter((line) => line.id !== button.dataset.analysisRemoveLine);
+          renderVideoAnalysis();
+        });
+      });
+      zebraList.querySelectorAll("[data-analysis-remove-zebra]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.videoAnalysis.zebraZones = state.videoAnalysis.zebraZones.filter((zone) => zone.id !== button.dataset.analysisRemoveZebra);
+          renderVideoAnalysis();
+        });
+      });
+    }
+
+    function renderAnalysisOverlay() {
+      const overlay = document.getElementById("analysis-overlay");
+      if (!overlay) return;
+      if (!state.videoAnalysis.frame) {
+        overlay.classList.add("hidden");
+        overlay.innerHTML = "";
+        return;
+      }
+      const width = state.videoAnalysis.frame.width;
+      const height = state.videoAnalysis.frame.height;
+      const zebraMarkup = state.videoAnalysis.zebraZones.map((zone) => `
+        <g>
+          <polygon points="${zone.points.map((point) => point.join(",")).join(" ")}" fill="rgba(250, 204, 21, 0.22)" stroke="#facc15" stroke-width="4" vector-effect="non-scaling-stroke"></polygon>
+          <text x="${zone.points[0][0]}" y="${Math.max(16, zone.points[0][1] - 8)}" fill="#facc15" font-size="16" font-weight="700">${escapeAnalysisMarkup(zone.label)}</text>
+        </g>
+      `).join("");
+      const lineMarkup = state.videoAnalysis.lines.map((line) => `
+        <g>
+          <line x1="${line.points[0][0]}" y1="${line.points[0][1]}" x2="${line.points[1][0]}" y2="${line.points[1][1]}" stroke="#38bdf8" stroke-width="6" stroke-dasharray="18 10" vector-effect="non-scaling-stroke"></line>
+          <circle cx="${line.points[0][0]}" cy="${line.points[0][1]}" r="6" fill="#38bdf8"></circle>
+          <circle cx="${line.points[1][0]}" cy="${line.points[1][1]}" r="6" fill="#38bdf8"></circle>
+          <text x="${line.points[0][0] + 10}" y="${Math.max(18, line.points[0][1] - 8)}" fill="#38bdf8" font-size="16" font-weight="700">${escapeAnalysisMarkup(line.label)}</text>
+        </g>
+      `).join("");
+      const draftColor = state.videoAnalysis.draftMode === "zebra" ? "#fb7185" : "#f472b6";
+      const draftMarkup = state.videoAnalysis.draftPoints.length
+        ? `<polyline points="${state.videoAnalysis.draftPoints.map((point) => point.join(",")).join(" ")}" fill="none" stroke="${draftColor}" stroke-width="4" vector-effect="non-scaling-stroke"></polyline>
+           ${state.videoAnalysis.draftPoints.map((point) => `<circle cx="${point[0]}" cy="${point[1]}" r="5" fill="${draftColor}"></circle>`).join("")}`
+        : "";
+      overlay.classList.remove("hidden");
+      overlay.innerHTML = `
+        <svg id="analysis-overlay-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMidYMid meet" class="h-full w-full cursor-crosshair">
+          ${zebraMarkup}${lineMarkup}${draftMarkup}
+        </svg>`;
+      document.getElementById("analysis-overlay-svg").addEventListener("click", handleAnalysisOverlayClick);
+    }
+
+    function handleAnalysisOverlayClick(event) {
+      if (!state.videoAnalysis.frame || !state.videoAnalysis.draftMode) return;
+      const svg = event.currentTarget;
+      const cursor = svg.createSVGPoint();
+      cursor.x = event.clientX;
+      cursor.y = event.clientY;
+      const transform = svg.getScreenCTM();
+      if (!transform) return;
+      const point = cursor.matrixTransform(transform.inverse());
+      const x = Math.max(0, Math.min(state.videoAnalysis.frame.width, Math.round(point.x)));
+      const y = Math.max(0, Math.min(state.videoAnalysis.frame.height, Math.round(point.y)));
+      state.videoAnalysis.draftPoints.push([x, y]);
+      if (state.videoAnalysis.draftMode === "line" && state.videoAnalysis.draftPoints.length === 2) {
+        const number = state.videoAnalysis.lines.length + 1;
+        state.videoAnalysis.lines.push({ id: `count_line_${number}`, label: `Count Line ${number}`, points: [...state.videoAnalysis.draftPoints] });
+        setAnalysisStatus(`Saved Count Line ${number}. Draw a zebra zone or run when geometry is ready.`);
+        resetAnalysisDraft();
+        renderVideoAnalysis();
+        return;
+      }
+      renderAnalysisOverlay();
+    }
+
+    function finishAnalysisZone() {
+      if (state.videoAnalysis.draftMode !== "zebra" || state.videoAnalysis.draftPoints.length < 3) {
+        setAnalysisStatus("Start a zebra zone and place at least three points before finishing it.");
+        return;
+      }
+      const number = state.videoAnalysis.zebraZones.length + 1;
+      state.videoAnalysis.zebraZones.push({ id: `zebra_crossing_${number}`, label: `Zebra Crossing ${number}`, points: [...state.videoAnalysis.draftPoints] });
+      setAnalysisStatus(`Saved Zebra Crossing ${number}.`);
+      resetAnalysisDraft();
+      renderVideoAnalysis();
+    }
+
+    function renderAnalysisProgress() {
+      const job = state.videoAnalysis.job;
+      const fill = document.getElementById("analysis-progress-fill");
+      const label = document.getElementById("analysis-progress-label");
+      if (!fill || !label) return;
+      const percent = job ? Number(job.progress_percent || 0) : 0;
+      fill.style.width = `${percent}%`;
+      if (!job) {
+        label.textContent = "No active job";
+      } else if (job.status === "running" || job.status === "queued") {
+        const frames = job.total_frames ? ` | ${job.processed_frames} / ${job.total_frames} frames` : "";
+        label.textContent = `${job.status} | ${percent.toFixed(1)}%${frames}`;
+      } else {
+        label.textContent = `${job.status} | expires ${formatTimestamp(job.expires_at)}`;
+      }
+    }
+
+    function renderAnalysisReport() {
+      const job = state.videoAnalysis.job;
+      const result = document.getElementById("analysis-result");
+      const empty = document.getElementById("analysis-result-empty");
+      if (!result || !empty) return;
+      if (!job || job.status !== "completed" || !job.result_summary) {
+        result.classList.add("hidden");
+        empty.classList.remove("hidden");
+        return;
+      }
+      const summary = job.result_summary;
+      const metrics = summary.metrics || {};
+      const zebra = summary.zebra_metrics || {};
+      const artifacts = job.artifacts || {};
+      result.classList.remove("hidden");
+      empty.classList.add("hidden");
+      const video = document.getElementById("analysis-result-video");
+      video.src = artifacts.annotated_video || "";
+      const cards = [
+        ["Crossings", metrics.total_crossings || 0],
+        ["Flow / Minute", metrics.flow_rate_per_minute || 0],
+        ["Zebra Events", zebra.events || 0],
+        ["Frames", summary.video?.processed_frames || 0],
+      ];
+      document.getElementById("analysis-result-metrics").innerHTML = cards.map(([title, value]) => `
+        <article class="bg-white p-4"><p class="text-[9px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">${title}</p><p class="mt-2 text-3xl font-black">${escapeAnalysisMarkup(value)}</p></article>
+      `).join("");
+      const mapRows = (map) => Object.entries(map || {}).map(([name, value]) => `<div class="flex justify-between border-b border-black/5 py-2"><span>${escapeAnalysisMarkup(formatObjectClassLabel(name))}</span><strong>${escapeAnalysisMarkup(value)}</strong></div>`).join("") || `<p class="text-sm text-on-surface-variant">No recorded values.</p>`;
+      document.getElementById("analysis-result-counts").innerHTML = `
+        <h4 class="mb-3 text-[10px] font-bold uppercase tracking-[0.2em]">Counts By Class</h4>${mapRows(metrics.counts_by_class)}
+        <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Directions</h4>${mapRows(metrics.counts_by_direction)}
+        <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Counting Lines</h4>${mapRows(metrics.counts_by_line)}
+        <h4 class="mb-3 mt-6 text-[10px] font-bold uppercase tracking-[0.2em]">Speed By Class</h4>
+        ${Object.entries(metrics.speed_metrics_by_class || {}).map(([name, values]) => `<p class="border-b border-black/5 py-2">${escapeAnalysisMarkup(formatObjectClassLabel(name))}: avg ${escapeAnalysisMarkup(values.avg_speed_kmh ?? "-")} km/h, p85 ${escapeAnalysisMarkup(values.p85_speed_kmh ?? "-")} km/h</p>`).join("") || `<p class="text-sm text-on-surface-variant">No speed samples.</p>`}`;
+      const zoneRows = Object.entries(zebra.by_zone || {}).map(([zoneId, values]) => `
+        <div class="border-b border-white/15 py-3">
+          <p class="font-bold">${escapeAnalysisMarkup(values.label || zoneId)}</p>
+          <p class="mt-1 text-xs text-white/60">${escapeAnalysisMarkup(values.events || 0)} events | risk ${escapeAnalysisMarkup(values.zebra_yielding_risk || 0)} | conflict ${escapeAnalysisMarkup(values.zebra_crossing_violation || 0)}</p>
+          <p class="mt-2 text-xs">Approach trend: ${Object.entries(values.vehicle_approach_trends || {}).map(([trend, count]) => `${escapeAnalysisMarkup(trend)} ${escapeAnalysisMarkup(count)}`).join(" | ") || "no tagged interactions"}</p>
+        </div>`).join("");
+      document.getElementById("analysis-result-zebra").innerHTML = `<h4 class="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-white/60">Zebra Zone Summary</h4>${zoneRows || `<p class="text-sm text-white/60">No zebra events recorded.</p>`}`;
+      const downloadLabels = {
+        summary_json: "Summary JSON",
+        metrics_json: "Metrics JSON",
+        crossings_csv: "Crossings CSV",
+        zebra_events_csv: "Zebra Events CSV",
+        zebra_occupancy_csv: "Zebra Occupancy CSV",
+        tracks_csv: "Tracks CSV",
+      };
+      document.getElementById("analysis-result-downloads").innerHTML = Object.entries(downloadLabels)
+        .filter(([name]) => artifacts[name])
+        .map(([name, label]) => `<a href="${artifacts[name]}" download class="border border-black px-4 py-3 text-[10px] font-bold uppercase tracking-[0.18em]">${label}</a>`)
+        .join("");
+    }
+
+    function renderAnalysisJobs() {
+      const container = document.getElementById("analysis-jobs-list");
+      if (!container) return;
+      if (!state.videoAnalysis.jobs.length) {
+        container.innerHTML = "<p>No uploaded analyses available.</p>";
+        return;
+      }
+      container.innerHTML = state.videoAnalysis.jobs.map((job) => `
+        <div class="border border-black/5 bg-white p-4">
+          <button data-analysis-open="${escapeAnalysisMarkup(job.job_id)}" class="block w-full text-left">
+            <p class="font-bold text-black">${escapeAnalysisMarkup(job.label)}</p>
+            <p class="mt-1 text-xs">${escapeAnalysisMarkup(job.camera_id)} | ${escapeAnalysisMarkup(job.status)} | ${escapeAnalysisMarkup(formatTimestamp(job.created_at))}</p>
+          </button>
+          ${!["queued", "running"].includes(job.status) ? `<button data-analysis-delete="${escapeAnalysisMarkup(job.job_id)}" class="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-error">Delete</button>` : ""}
+        </div>`).join("");
+      container.querySelectorAll("[data-analysis-open]").forEach((button) => button.addEventListener("click", () => openVideoAnalysisJob(button.dataset.analysisOpen)));
+      container.querySelectorAll("[data-analysis-delete]").forEach((button) => button.addEventListener("click", () => deleteVideoAnalysisJob(button.dataset.analysisDelete)));
+    }
+
+    function renderVideoAnalysis() {
+      const frame = state.videoAnalysis.frame;
+      const previewImage = document.getElementById("analysis-preview-image");
+      const previewEmpty = document.getElementById("analysis-preview-empty");
+      const frameMeta = document.getElementById("analysis-frame-meta");
+      if (frame && previewImage) {
+        previewImage.src = frame.previewUrl;
+        previewImage.classList.remove("hidden");
+        previewEmpty.classList.add("hidden");
+        frameMeta.textContent = `${frame.width} x ${frame.height}`;
+      } else if (previewImage) {
+        previewImage.classList.add("hidden");
+        previewEmpty.classList.remove("hidden");
+        frameMeta.textContent = "No frame loaded";
+      }
+      renderAnalysisOverlay();
+      renderAnalysisCollections();
+      renderAnalysisProgress();
+      renderAnalysisReport();
+      renderAnalysisJobs();
+    }
+
+    async function analysisFetchJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        let message = `Request failed: ${response.status}`;
+        try {
+          const payload = await response.json();
+          message = payload.detail || message;
+        } catch (error) {
+          // Retain the response status message when no JSON detail is present.
+        }
+        throw new Error(message);
+      }
+      return response.json();
+    }
+
+    async function uploadVideoAnalysis() {
+      const fileInput = document.getElementById("analysis-file");
+      if (!fileInput.files.length) {
+        setAnalysisStatus("Choose a licensed video file before uploading.");
+        return;
+      }
+      const form = new FormData();
+      form.append("file", fileInput.files[0]);
+      form.append("label", document.getElementById("analysis-label").value.trim());
+      form.append("camera_id", document.getElementById("analysis-camera-id").value.trim());
+      setAnalysisStatus("Uploading video and extracting a preview frame...");
+      try {
+        const job = await analysisFetchJson("/video-analysis/uploads", { method: "POST", body: form });
+        state.videoAnalysis.job = job;
+        state.videoAnalysis.frame = { previewUrl: job.preview_url, width: job.preview_width, height: job.preview_height };
+        state.videoAnalysis.lines = [];
+        state.videoAnalysis.zebraZones = [];
+        resetAnalysisDraft();
+        setAnalysisStatus("Preview ready. Draw at least one counting line and one zebra zone.");
+        await loadVideoAnalysisJobs();
+        renderVideoAnalysis();
+      } catch (error) {
+        setAnalysisStatus(error.message);
+      }
+    }
+
+    function stopVideoAnalysisPolling() {
+      if (state.videoAnalysis.pollTimer) {
+        clearInterval(state.videoAnalysis.pollTimer);
+        state.videoAnalysis.pollTimer = null;
+      }
+    }
+
+    function watchVideoAnalysisJob(jobId) {
+      stopVideoAnalysisPolling();
+      state.videoAnalysis.pollTimer = setInterval(async () => {
+        try {
+          const job = await analysisFetchJson(`/video-analysis/jobs/${jobId}`);
+          state.videoAnalysis.job = job;
+          renderVideoAnalysis();
+          if (!["queued", "running"].includes(job.status)) {
+            stopVideoAnalysisPolling();
+            setAnalysisStatus(job.status === "completed" ? "Analysis complete. Review the annotated video and reports below." : (job.failure_message || "Analysis failed."));
+            await loadVideoAnalysisJobs();
+          }
+        } catch (error) {
+          stopVideoAnalysisPolling();
+          setAnalysisStatus(error.message);
+        }
+      }, 1000);
+    }
+
+    async function runVideoAnalysis() {
+      const job = state.videoAnalysis.job;
+      if (!job) {
+        setAnalysisStatus("Upload a video before starting analysis.");
+        return;
+      }
+      if (!state.videoAnalysis.lines.length || !state.videoAnalysis.zebraZones.length) {
+        setAnalysisStatus("Draw at least one counting line and one zebra zone before starting analysis.");
+        return;
+      }
+      try {
+        const queued = await postJson(`/video-analysis/jobs/${job.job_id}/run`, {
+          counting_lines: state.videoAnalysis.lines,
+          zebra_zones: state.videoAnalysis.zebraZones,
+          pixels_per_meter: Number(document.getElementById("analysis-ppm").value || 25),
+          zebra_speed_threshold_kmh: Number(document.getElementById("analysis-speed-threshold").value || 15),
+          approach_deadband_kmh: Number(document.getElementById("analysis-deadband").value || 2),
+        });
+        state.videoAnalysis.job = queued;
+        setAnalysisStatus("Analysis queued. Progress will update automatically.");
+        renderVideoAnalysis();
+        watchVideoAnalysisJob(queued.job_id);
+      } catch (error) {
+        setAnalysisStatus(error.message);
+      }
+    }
+
+    async function loadVideoAnalysisJobs() {
+      try {
+        const payload = await analysisFetchJson("/video-analysis/jobs");
+        state.videoAnalysis.jobs = payload.jobs || [];
+        renderAnalysisJobs();
+      } catch (error) {
+        setAnalysisStatus(error.message);
+      }
+    }
+
+    async function openVideoAnalysisJob(jobId) {
+      try {
+        const job = await analysisFetchJson(`/video-analysis/jobs/${jobId}`);
+        state.videoAnalysis.job = job;
+        state.videoAnalysis.frame = job.preview_url ? { previewUrl: job.preview_url, width: job.preview_width, height: job.preview_height } : null;
+        state.videoAnalysis.lines = job.setup?.counting_lines || [];
+        state.videoAnalysis.zebraZones = job.setup?.zebra_zones || [];
+        resetAnalysisDraft();
+        document.getElementById("analysis-label").value = job.label || "";
+        document.getElementById("analysis-camera-id").value = job.camera_id || "";
+        if (job.setup?.pixels_per_meter) document.getElementById("analysis-ppm").value = job.setup.pixels_per_meter;
+        if (job.setup?.zebra_speed_threshold_kmh !== undefined) document.getElementById("analysis-speed-threshold").value = job.setup.zebra_speed_threshold_kmh;
+        if (job.setup?.zebra_speed_trend_deadband_kmh !== undefined) document.getElementById("analysis-deadband").value = job.setup.zebra_speed_trend_deadband_kmh;
+        setAnalysisStatus(job.status === "failed" ? (job.failure_message || "Analysis failed.") : `Opened ${job.label}. Status: ${job.status}.`);
+        renderVideoAnalysis();
+        if (["queued", "running"].includes(job.status)) watchVideoAnalysisJob(job.job_id);
+        else stopVideoAnalysisPolling();
+      } catch (error) {
+        setAnalysisStatus(error.message);
+      }
+    }
+
+    async function deleteVideoAnalysisJob(jobId) {
+      if (!window.confirm("Delete this temporary analysis and all generated artifacts?")) return;
+      try {
+        await analysisFetchJson(`/video-analysis/jobs/${jobId}`, { method: "DELETE" });
+        if (state.videoAnalysis.job?.job_id === jobId) {
+          state.videoAnalysis.job = null;
+          state.videoAnalysis.frame = null;
+          state.videoAnalysis.lines = [];
+          state.videoAnalysis.zebraZones = [];
+          stopVideoAnalysisPolling();
+        }
+        setAnalysisStatus("Temporary analysis deleted.");
+        await loadVideoAnalysisJobs();
+        renderVideoAnalysis();
+      } catch (error) {
+        setAnalysisStatus(error.message);
+      }
+    }
+
     function renderActiveView() {
       if (state.activeView === "overview") {
         renderOverview();
@@ -1587,6 +2114,8 @@
         renderConfigs();
       } else if (state.activeView === "setup") {
         renderSetup();
+      } else if (state.activeView === "analysis") {
+        renderVideoAnalysis();
       } else if (state.activeView === "violations") {
         renderViolations();
         renderViolationLogTable();
@@ -1612,6 +2141,9 @@
       }
       if (viewName === "configs") {
         loadConfigProfiles(!state.configBrowser.initialized);
+      }
+      if (viewName === "analysis") {
+        loadVideoAnalysisJobs();
       }
     }
 
@@ -3769,6 +4301,38 @@
       setSetupStatus("Cleared the active draft shape.");
     });
     document.getElementById("setup-save-config").addEventListener("click", saveSetupConfig);
+    document.getElementById("analysis-upload").addEventListener("click", uploadVideoAnalysis);
+    document.getElementById("analysis-new-line").addEventListener("click", () => {
+      if (!state.videoAnalysis.frame) {
+        setAnalysisStatus("Upload a video before drawing.");
+        return;
+      }
+      resetAnalysisDraft("line");
+      setAnalysisStatus("Click two points on the preview to place a counting line.");
+    });
+    document.getElementById("analysis-new-zebra").addEventListener("click", () => {
+      if (!state.videoAnalysis.frame) {
+        setAnalysisStatus("Upload a video before drawing.");
+        return;
+      }
+      resetAnalysisDraft("zebra");
+      setAnalysisStatus("Click at least three polygon points, then choose Finish Zone.");
+    });
+    document.getElementById("analysis-finish-zone").addEventListener("click", finishAnalysisZone);
+    document.getElementById("analysis-undo").addEventListener("click", () => {
+      if (!state.videoAnalysis.draftPoints.length) {
+        setAnalysisStatus("There is no draft point to undo.");
+        return;
+      }
+      state.videoAnalysis.draftPoints.pop();
+      renderAnalysisOverlay();
+    });
+    document.getElementById("analysis-clear").addEventListener("click", () => {
+      resetAnalysisDraft();
+      setAnalysisStatus("Cleared the active draft shape.");
+    });
+    document.getElementById("analysis-run").addEventListener("click", runVideoAnalysis);
+    document.getElementById("analysis-refresh-jobs").addEventListener("click", loadVideoAnalysisJobs);
     document.getElementById("violation-detail-close").addEventListener("click", closeViolationDetail);
     document.getElementById("violation-detail-modal").addEventListener("click", (event) => {
       if (event.target.id === "violation-detail-modal") {

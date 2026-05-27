@@ -57,6 +57,12 @@ If you are onboarding a new camera or a new video before the demo, use the
 `Setup` page in the dashboard first to draw counting lines and zebra-crossing
 bounds directly on a preview frame.
 
+If you want a standalone report from a licensed prerecorded clip without
+feeding it into live monitoring, use the `Video Analysis` page instead. Upload
+the clip, draw session-local lines and zebra polygons, run analysis, and
+download the annotated-video and report artifacts. These temporary results do
+not enter the operational event database and expire after 24 hours by default.
+
 For a release-ready run, also verify the checklist in `docs/release_checklist.md`.
 
 ## What to point out

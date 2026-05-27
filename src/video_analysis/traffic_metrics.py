@@ -6,7 +6,7 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 import cv2
 import numpy as np
@@ -1242,7 +1242,13 @@ class TrafficMetricsAnalyzer:
             )
         return sorted(rows, key=lambda row: row["object_id"])
 
-    def analyze_video(self, video_path: str, output_dir: str, show_progress: bool = True) -> dict:
+    def analyze_video(
+        self,
+        video_path: str,
+        output_dir: str,
+        show_progress: bool = True,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ) -> dict:
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -1269,6 +1275,8 @@ class TrafficMetricsAnalyzer:
                 writer.write(self.annotate_frame(frame, frame_rows, frame_crossings, frame_zebra_events))
                 if show_progress:
                     _print_progress(frame_number, frame_count)
+                if progress_callback is not None:
+                    progress_callback(frame_number, frame_count)
         finally:
             capture.release()
             writer.release()

@@ -5,7 +5,8 @@ import os
 import tempfile
 import json
 import shutil
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import cv2
@@ -21,7 +22,7 @@ os.environ["DATABASE_URL"] = f"sqlite:///{Path(_TEST_DATABASE_DIR.name) / 'backe
 import backend_api.main as backend_main
 from backend_api.database import init_db, SessionLocal
 from backend_api.main import app, engine
-from backend_api.models import Base, DBViolation
+from backend_api.models import Base, DBViolation, DBVideoAnalysisJob
 
 class TestBackendAPI(unittest.TestCase):
     
@@ -41,6 +42,7 @@ class TestBackendAPI(unittest.TestCase):
         self.live_clip_tmp = tempfile.TemporaryDirectory()
         self.evidence_tmp = tempfile.TemporaryDirectory()
         self.config_tmp = tempfile.TemporaryDirectory()
+        self.video_analysis_tmp = tempfile.TemporaryDirectory()
         self.original_live_frames_dir = backend_main._LIVE_FRAMES_DIR
         self.original_live_clips_dir = backend_main._LIVE_CLIPS_DIR
         self.original_violation_evidence_dir = backend_main._VIOLATION_EVIDENCE_DIR
@@ -50,6 +52,9 @@ class TestBackendAPI(unittest.TestCase):
         self.original_live_preview_retention = backend_main._LIVE_PREVIEW_RETENTION_SECONDS
         self.original_live_clip_retention = backend_main._LIVE_CLIP_RETENTION_SECONDS
         self.original_setup_preview_retention = backend_main._SETUP_PREVIEW_RETENTION_SECONDS
+        self.original_video_analysis_dir = backend_main._VIDEO_ANALYSIS_DIR
+        self.original_video_analysis_retention = backend_main._VIDEO_ANALYSIS_RETENTION_SECONDS
+        self.original_video_analysis_max_upload_mb = backend_main._VIDEO_ANALYSIS_MAX_UPLOAD_MB
         backend_main._LIVE_FRAMES_DIR = Path(self.live_preview_tmp.name)
         backend_main._LIVE_CLIPS_DIR = Path(self.live_clip_tmp.name)
         backend_main._VIOLATION_EVIDENCE_DIR = Path(self.evidence_tmp.name)
@@ -58,6 +63,9 @@ class TestBackendAPI(unittest.TestCase):
         backend_main._LIVE_PREVIEW_RETENTION_SECONDS = 24 * 60 * 60
         backend_main._LIVE_CLIP_RETENTION_SECONDS = 24 * 60 * 60
         backend_main._SETUP_PREVIEW_RETENTION_SECONDS = 24 * 60 * 60
+        backend_main._VIDEO_ANALYSIS_DIR = Path(self.video_analysis_tmp.name)
+        backend_main._VIDEO_ANALYSIS_RETENTION_SECONDS = 24 * 60 * 60
+        backend_main._VIDEO_ANALYSIS_MAX_UPLOAD_MB = 10
         temp_config_path = Path(self.config_tmp.name) / "cameras.yaml"
         shutil.copy2(self.original_cameras_config_path, temp_config_path)
         backend_main._CAMERAS_CONFIG_PATH = temp_config_path
@@ -75,10 +83,14 @@ class TestBackendAPI(unittest.TestCase):
         backend_main._LIVE_PREVIEW_RETENTION_SECONDS = self.original_live_preview_retention
         backend_main._LIVE_CLIP_RETENTION_SECONDS = self.original_live_clip_retention
         backend_main._SETUP_PREVIEW_RETENTION_SECONDS = self.original_setup_preview_retention
+        backend_main._VIDEO_ANALYSIS_DIR = self.original_video_analysis_dir
+        backend_main._VIDEO_ANALYSIS_RETENTION_SECONDS = self.original_video_analysis_retention
+        backend_main._VIDEO_ANALYSIS_MAX_UPLOAD_MB = self.original_video_analysis_max_upload_mb
         self.live_preview_tmp.cleanup()
         self.live_clip_tmp.cleanup()
         self.evidence_tmp.cleanup()
         self.config_tmp.cleanup()
+        self.video_analysis_tmp.cleanup()
         Base.metadata.drop_all(bind=engine)
 
     def test_read_root(self):
@@ -95,6 +107,164 @@ class TestBackendAPI(unittest.TestCase):
         self.assertIn("config-search", response.text)
         self.assertIn("config-next-page", response.text)
         self.assertIn("data-mobile-nav", response.text)
+        self.assertIn('data-view-button="analysis"', response.text)
+        self.assertIn('id="analysis-file"', response.text)
+
+    def _analysis_video_bytes(self):
+        path = Path(self.config_tmp.name) / "upload_fixture.mp4"
+        writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*"mp4v"), 2.0, (80, 60))
+        for _ in range(3):
+            writer.write(np.zeros((60, 80, 3), dtype=np.uint8))
+        writer.release()
+        return path.read_bytes()
+
+    def _upload_analysis_video(self):
+        return self.client.post(
+            "/video-analysis/uploads",
+            data={"label": "Permitted study clip", "camera_id": "upload_cam"},
+            files={"file": ("study.mp4", self._analysis_video_bytes(), "video/mp4")},
+        )
+
+    def test_video_analysis_upload_creates_preview_and_rejects_invalid_media(self):
+        response = self._upload_analysis_video()
+        self.assertEqual(response.status_code, 201)
+        job = response.json()
+        self.assertEqual(job["status"], "draft")
+        self.assertEqual(job["camera_id"], "upload_cam")
+        self.assertNotIn("artifact_dir", job)
+        self.assertEqual(self.client.get(job["preview_url"]).headers["content-type"], "image/jpeg")
+
+        unsupported = self.client.post(
+            "/video-analysis/uploads",
+            files={"file": ("notes.txt", b"not a video", "text/plain")},
+        )
+        unreadable = self.client.post(
+            "/video-analysis/uploads",
+            files={"file": ("broken.mp4", b"not a readable video", "video/mp4")},
+        )
+        self.assertEqual(unsupported.status_code, 400)
+        self.assertEqual(unreadable.status_code, 400)
+        backend_main._VIDEO_ANALYSIS_MAX_UPLOAD_MB = 0
+        try:
+            oversized = self._upload_analysis_video()
+        finally:
+            backend_main._VIDEO_ANALYSIS_MAX_UPLOAD_MB = 10
+        self.assertEqual(oversized.status_code, 413)
+
+    def test_video_analysis_run_requires_geometry(self):
+        job_id = self._upload_analysis_video().json()["job_id"]
+        response = self.client.post(
+            f"/video-analysis/jobs/{job_id}/run",
+            json={"counting_lines": [], "zebra_zones": [], "pixels_per_meter": 25},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_video_analysis_completes_in_isolation_and_serves_allowlisted_artifacts(self):
+        job_id = self._upload_analysis_video().json()["job_id"]
+        original_analyzer = backend_main._analyze_uploaded_video
+
+        def fake_analyzer(job, progress_callback):
+            progress_callback(1, 2)
+            progress_callback(2, 2)
+            artifact_dir = Path(job.artifact_dir)
+            (artifact_dir / "annotated.mp4").write_bytes(b"temporary-annotated-video")
+            for filename in ("summary.json", "metrics.json"):
+                (artifact_dir / filename).write_text("{}", encoding="utf-8")
+            for filename in ("crossings.csv", "zebra_events.csv", "zebra_occupancy.csv", "tracks.csv"):
+                (artifact_dir / filename).write_text("id\n", encoding="utf-8")
+            return {
+                "video": {"path": str(artifact_dir / "source.mp4"), "processed_frames": 2},
+                "metrics": {
+                    "total_crossings": 1,
+                    "flow_rate_per_minute": 1.0,
+                    "counts_by_class": {"car": 1},
+                    "counts_by_line": {"count_line_1": 1},
+                    "counts_by_direction": {"a_to_b": 1},
+                    "speed_metrics_by_class": {},
+                },
+                "zebra_metrics": {"events": 0, "by_zone": {}},
+                "outputs": {},
+            }
+
+        backend_main._analyze_uploaded_video = fake_analyzer
+        try:
+            response = self.client.post(
+                f"/video-analysis/jobs/{job_id}/run",
+                json={
+                    "counting_lines": [{"id": "count_line_1", "points": [[1, 1], [20, 20]]}],
+                    "zebra_zones": [{"id": "zebra_1", "points": [[2, 2], [30, 2], [30, 20], [2, 20]]}],
+                    "pixels_per_meter": 25,
+                    "zebra_speed_threshold_kmh": 15,
+                    "approach_deadband_kmh": 2,
+                },
+            )
+            self.assertEqual(response.status_code, 202)
+            job = None
+            for _ in range(80):
+                job = self.client.get(f"/video-analysis/jobs/{job_id}").json()
+                if job["status"] == "completed":
+                    break
+                time.sleep(0.01)
+        finally:
+            backend_main._analyze_uploaded_video = original_analyzer
+
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["progress_percent"], 100.0)
+        self.assertEqual(job["result_summary"]["video"]["path"], "study.mp4")
+        self.assertIn("annotated_video", job["artifacts"])
+        self.assertEqual(self.client.get(job["artifacts"]["metrics_json"]).status_code, 200)
+        self.assertEqual(self.client.get(f"/video-analysis/jobs/{job_id}/artifacts/source").status_code, 404)
+        summary = self.client.get("/analytics/summary").json()
+        self.assertEqual(summary["total_detections_logged"], 0)
+        self.assertEqual(summary["total_crossings_logged"], 0)
+        self.assertEqual(summary["total_violations_logged"], 0)
+
+        delete_response = self.client.delete(f"/video-analysis/jobs/{job_id}")
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(self.client.get(f"/video-analysis/jobs/{job_id}/preview").status_code, 410)
+
+    def test_video_analysis_failure_exposes_diagnostic_without_operational_records(self):
+        job_id = self._upload_analysis_video().json()["job_id"]
+        original_analyzer = backend_main._analyze_uploaded_video
+
+        def failed_analyzer(_job, _progress_callback):
+            raise RuntimeError("Synthetic analyzer failure")
+
+        backend_main._analyze_uploaded_video = failed_analyzer
+        try:
+            response = self.client.post(
+                f"/video-analysis/jobs/{job_id}/run",
+                json={
+                    "counting_lines": [{"points": [[1, 1], [20, 20]]}],
+                    "zebra_zones": [{"points": [[2, 2], [30, 2], [30, 20], [2, 20]]}],
+                },
+            )
+            self.assertEqual(response.status_code, 202)
+            job = None
+            for _ in range(80):
+                job = self.client.get(f"/video-analysis/jobs/{job_id}").json()
+                if job["status"] == "failed":
+                    break
+                time.sleep(0.01)
+        finally:
+            backend_main._analyze_uploaded_video = original_analyzer
+
+        self.assertEqual(job["status"], "failed")
+        self.assertIn("Synthetic analyzer failure", job["failure_message"])
+        self.assertEqual(self.client.get("/analytics/summary").json()["total_detections_logged"], 0)
+
+    def test_video_analysis_cleanup_expires_temporary_source(self):
+        job = self._upload_analysis_video().json()
+        with SessionLocal() as db:
+            row = db.query(DBVideoAnalysisJob).filter(DBVideoAnalysisJob.job_id == job["job_id"]).first()
+            row.expires_at = datetime.utcnow() - timedelta(seconds=1)
+            artifact_dir = Path(row.artifact_dir)
+            db.commit()
+        response = self.client.get("/video-analysis/jobs")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["jobs"], [])
+        self.assertFalse(artifact_dir.exists())
+        self.assertEqual(self.client.get(f"/video-analysis/jobs/{job['job_id']}").status_code, 410)
 
     def test_camera_config_endpoint_returns_defaults_and_merged_profiles(self):
         response = self.client.get("/cameras/config")

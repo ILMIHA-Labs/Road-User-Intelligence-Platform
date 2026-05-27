@@ -81,3 +81,30 @@ class DBCrossing(Base):
     timestamp = Column(DateTime, index=True)
     frame_number = Column(Integer, nullable=True)
     source = Column(String)
+
+
+class DBVideoAnalysisJob(Base):
+    """Temporary, isolated uploaded-video research analysis session."""
+
+    __tablename__ = "video_analysis_jobs"
+    job_id = Column(String, primary_key=True, index=True)
+    label = Column(String, nullable=False)
+    camera_id = Column(String, nullable=False, index=True)
+    original_filename = Column(String, nullable=False)
+    upload_content_type = Column(String, nullable=True)
+    upload_size_bytes = Column(Integer, nullable=False, default=0)
+    source_extension = Column(String, nullable=False)
+    artifact_dir = Column(String, nullable=False)
+    preview_width = Column(Integer, nullable=True)
+    preview_height = Column(Integer, nullable=True)
+    status = Column(String, nullable=False, default="draft", index=True)
+    processed_frames = Column(Integer, nullable=False, default=0)
+    total_frames = Column(Integer, nullable=True)
+    progress_percent = Column(Float, nullable=False, default=0.0)
+    failure_message = Column(String, nullable=True)
+    setup = Column(JSON, nullable=True)
+    result_summary = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=False, index=True)

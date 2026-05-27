@@ -54,6 +54,30 @@ The script prints the exact backend and dashboard URL it is serving.
 Always use the backend-served dashboard. Do not use the raw `file://` copy of
 `src/dashboard/app/index.html` as your primary application surface.
 
+## Dashboard video analysis
+
+The dashboard includes a `Video Analysis` workspace for a researcher who wants
+to analyze a permitted prerecorded clip without adding it to live operations:
+
+1. open the backend-served `/dashboard/` URL and choose `Video Analysis`
+2. upload an `.mp4`, `.mov`, `.avi`, `.mkv`, or `.webm` source you are
+   permitted to analyze
+3. draw one or more counting lines and at least one zebra-crossing polygon
+4. set pixels-per-metre, zebra speed threshold, and approach deadband
+5. run the temporary analysis and review the annotated video and downloadable
+   JSON/CSV reports
+
+Uploaded-video detections and zebra interactions are not inserted into the
+live operational event database. The upload, annotated media, and reports are
+privacy-sensitive temporary session files that expire automatically, or can
+be deleted sooner from the page.
+
+Runtime controls for this workspace are:
+
+- `VIDEO_ANALYSIS_RETENTION_SECONDS=86400`
+- `VIDEO_ANALYSIS_MAX_UPLOAD_MB=500`
+- `VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS=1`
+
 ## Live-device path
 
 ```bash
@@ -120,6 +144,8 @@ The public release is conservative by default:
 - `EVIDENCE_CAPTURE_ENABLED=false`
 - preview and setup-preview artifacts are treated as short-lived runtime files
 - raw video is not archived by the backend by default
+- explicitly uploaded research-analysis clips and their derived media expire
+  after the configured temporary-analysis retention period
 
 ## Configuration
 
