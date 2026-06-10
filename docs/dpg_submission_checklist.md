@@ -42,7 +42,7 @@ Before submission, verify that the current DPG indicator set is covered by:
 | DPG indicator | Required repository evidence |
 | --- | --- |
 | 1. SDG Relevance | `README.md`, `docs/safety_and_risk.md`, `docs/use_case_catalog.md` |
-| 2. Open Licensing | `LICENSE`, `NOTICE`, `pyproject.toml` |
+| 2. Open Licencing | `LICENSE`, `NOTICE`, `pyproject.toml` |
 | 3. Clear Ownership | `NOTICE`, `GOVERNANCE.md`, `CONTRIBUTING.md`, `CITATION.cff` |
 | 4. Platform Independence | `README.md`, `docs/deployment_guide.md`, `docs/installation_and_deployment.md`, `docs/live_validation_guide.md` |
 | 5. Documentation | `README.md`, `docs/demo_guide.md`, `docs/functional_requirements.md`, `docs/use_case_catalog.md`, `docs/system_architecture.md` |

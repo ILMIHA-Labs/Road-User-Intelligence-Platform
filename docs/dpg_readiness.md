@@ -26,7 +26,7 @@ items.
   - [docs/safety_and_risk.md](safety_and_risk.md)
   - [docs/use_case_catalog.md](use_case_catalog.md)
 
-## Indicator 2: Open Licensing
+## Indicator 2: Open Licencing
 
 - License: MIT
 - Repository evidence:
