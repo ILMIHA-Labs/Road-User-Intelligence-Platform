@@ -27,7 +27,7 @@ The `file://` copy does not represent the real live application surface.
 From the repo root:
 
 ```bash
-cd /Users/a2.0/Desktop/Road-User-Intelligence-Platform
+cd Road-User-Intelligence-Platform
 export DEMO_VIDEO_SOURCE=/absolute/path/to/your/video.mp4
 bash run_pipeline.sh
 ```

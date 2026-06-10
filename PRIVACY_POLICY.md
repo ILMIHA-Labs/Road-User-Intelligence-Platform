@@ -66,6 +66,10 @@ The public repository exposes runtime controls for privacy-sensitive data:
 - `VIOLATION_EVIDENCE_RETENTION_SECONDS` for evidence cleanup
 - `LIVE_PREVIEW_RETENTION_SECONDS` for preview cleanup
 - `SETUP_PREVIEW_RETENTION_SECONDS` for setup-preview cleanup
+- `VIDEO_ANALYSIS_RETENTION_SECONDS` for temporary uploaded-video analysis
+  sessions and derived artifacts
+- `VIDEO_ANALYSIS_MAX_UPLOAD_MB` and `VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS` for
+  limiting temporary research-session uploads and workload
 
 Deployers should set explicit retention values appropriate to the laws and
 policies that apply to them.

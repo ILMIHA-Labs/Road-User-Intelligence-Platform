@@ -17,7 +17,7 @@ Confirm that one physical camera can:
 Use the helper script:
 
 ```bash
-cd /Users/a2.0/Desktop/Road-User-Intelligence-Platform
+cd Road-User-Intelligence-Platform
 bash scripts/start_central_stack.sh
 ```
 

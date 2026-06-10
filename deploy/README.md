@@ -12,3 +12,5 @@ Recommended model:
 Privacy-sensitive defaults for the public release:
 - `EVIDENCE_CAPTURE_ENABLED=false`
 - preview and evidence retention are configurable via environment variables
+- uploaded-video analysis sessions are temporary and controlled by
+  `VIDEO_ANALYSIS_RETENTION_SECONDS`

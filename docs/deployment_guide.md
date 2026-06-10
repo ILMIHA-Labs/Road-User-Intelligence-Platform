@@ -66,6 +66,10 @@ Important variables include:
 - `VIOLATION_EVIDENCE_RETENTION_SECONDS`
 - `LIVE_PREVIEW_RETENTION_SECONDS`
 - `SETUP_PREVIEW_RETENTION_SECONDS`
+- `LIVE_CLIP_RETENTION_SECONDS`
+- `VIDEO_ANALYSIS_RETENTION_SECONDS`
+- `VIDEO_ANALYSIS_MAX_UPLOAD_MB`
+- `VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS`
 
 ## Privacy-sensitive runtime defaults
 
@@ -73,6 +77,8 @@ The public release is conservative by default:
 
 - `EVIDENCE_CAPTURE_ENABLED=false`
 - previews are treated as short-lived runtime artifacts
+- dashboard-uploaded video analysis sessions expire after the configured
+  temporary-analysis retention period
 - raw video retention is not part of the default backend behavior
 
 If a deployment enables evidence capture or retains images for longer, that

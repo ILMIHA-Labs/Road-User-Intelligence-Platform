@@ -52,6 +52,8 @@ The public release defaults are conservative:
 
 - `EVIDENCE_CAPTURE_ENABLED=false`
 - preview and setup-preview artifacts are short-lived runtime files
+- uploaded-video analysis sessions and annotated outputs are temporary
+  research-session artifacts controlled by `VIDEO_ANALYSIS_RETENTION_SECONDS`
 - raw video is not archived by the backend by default
 
 If you change these defaults for a deployment, update your local policy and
