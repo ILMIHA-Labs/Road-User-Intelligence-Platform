@@ -4,10 +4,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi import Security
 
 from .database import SessionLocal, engine, init_db
 from .routes import (
@@ -20,13 +18,20 @@ from .routes import (
     violations_router,
 )
 from .routes.cameras import _seed_camera_registry
-from .routes.video_analysis import _cleanup_video_analysis_jobs, _recover_video_analysis_jobs
-from .routes._config import _LIVE_FRAMES_DIR, _LIVE_CLIPS_DIR, _SETUP_PREVIEW_DIR, _VIOLATION_EVIDENCE_DIR
+from .routes.video_analysis import _analyze_uploaded_video, _cleanup_video_analysis_jobs, _recover_video_analysis_jobs
 from .routes._config import (
+    _CAMERAS_CONFIG_PATH,
     _EVIDENCE_CAPTURE_ENABLED,
     _LIVE_CLIP_RETENTION_SECONDS,
+    _LIVE_CLIPS_DIR,
+    _LIVE_FRAMES_DIR,
     _LIVE_PREVIEW_RETENTION_SECONDS,
+    _SETUP_PREVIEW_DIR,
     _SETUP_PREVIEW_RETENTION_SECONDS,
+    _VIDEO_ANALYSIS_DIR,
+    _VIDEO_ANALYSIS_MAX_UPLOAD_MB,
+    _VIDEO_ANALYSIS_RETENTION_SECONDS,
+    _VIOLATION_EVIDENCE_DIR,
     _VIOLATION_EVIDENCE_RETENTION_SECONDS,
 )
 
@@ -107,30 +112,16 @@ def health_check():
 
 _V1 = "/api/v1"
 
-# ---------------------------------------------------------------------------
-# Transition redirects — forward old unversioned paths to /api/v1/
-# Remove these after all consumers have migrated.
-# ---------------------------------------------------------------------------
-_REDIRECT_PREFIXES = (
-    "/detections", "/speeds", "/violations", "/trajectories", "/crossings",
-    "/cameras", "/setup", "/video-analysis", "/analytics", "/events",
-    "/exports", "/live",
-)
+_ROUTERS = [
+    ingest_router,
+    cameras_router,
+    video_analysis_router,
+    violations_router,
+    analytics_router,
+    exports_router,
+    live_router,
+]
 
-
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"], dependencies=[], include_in_schema=False)
-async def _legacy_redirect(path: str, request: Request):
-    for prefix in _REDIRECT_PREFIXES:
-        if f"/{path}".startswith(prefix):
-            qs = f"?{request.url.query}" if request.url.query else ""
-            return RedirectResponse(url=f"{_V1}/{path}{qs}", status_code=307)
-    raise HTTPException(status_code=404, detail="Not found")
-
-
-app.include_router(ingest_router, prefix=_V1)
-app.include_router(cameras_router, prefix=_V1)
-app.include_router(video_analysis_router, prefix=_V1)
-app.include_router(violations_router, prefix=_V1)
-app.include_router(analytics_router, prefix=_V1)
-app.include_router(exports_router, prefix=_V1)
-app.include_router(live_router, prefix=_V1)
+for _router in _ROUTERS:
+    app.include_router(_router, prefix=_V1)
+    app.include_router(_router, include_in_schema=False)

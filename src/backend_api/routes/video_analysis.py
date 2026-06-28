@@ -15,14 +15,18 @@ from uuid import uuid4
 
 from .. import models
 from ..database import SessionLocal, get_db
+import sys as _sys
+
 from ._config import (
     _VIDEO_ANALYSIS_ALLOWED_EXTENSIONS,
     _VIDEO_ANALYSIS_ARTIFACTS,
-    _VIDEO_ANALYSIS_DIR,
     _VIDEO_ANALYSIS_EXECUTOR,
-    _VIDEO_ANALYSIS_MAX_UPLOAD_MB,
-    _VIDEO_ANALYSIS_RETENTION_SECONDS,
 )
+
+
+def _m():
+    """Return the main app module so tests can patch its runtime config."""
+    return _sys.modules["backend_api.main"]
 from ._shared import _serialize_dt
 from .cameras import SetupCountingLineInput, SetupZebraZoneInput, _normalize_setup_counting_lines, _normalize_setup_zebra_zones, _sanitize_camera_id
 
@@ -43,7 +47,7 @@ class VideoAnalysisRunRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _video_analysis_job_dir(job_id: str) -> Path:
-    return _VIDEO_ANALYSIS_DIR / job_id
+    return _m()._VIDEO_ANALYSIS_DIR / job_id
 
 
 def _video_analysis_source_path(job: models.DBVideoAnalysisJob) -> Path:
@@ -227,7 +231,7 @@ def _execute_video_analysis_job(job_id: str):
             finally:
                 progress_db.close()
 
-        summary = _analyze_uploaded_video(job, update_progress)
+        summary = _m()._analyze_uploaded_video(job, update_progress)
         completed = db.query(models.DBVideoAnalysisJob).filter(
             models.DBVideoAnalysisJob.job_id == job_id,
             models.DBVideoAnalysisJob.status == "running",
@@ -285,7 +289,7 @@ async def create_video_analysis_upload(
     job_id = uuid4().hex
     job_dir = _video_analysis_job_dir(job_id)
     source_path = job_dir / f"source{extension}"
-    max_size_bytes = max(0, _VIDEO_ANALYSIS_MAX_UPLOAD_MB) * 1024 * 1024
+    max_size_bytes = max(0, _m()._VIDEO_ANALYSIS_MAX_UPLOAD_MB) * 1024 * 1024
     size_bytes = 0
     job_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -298,7 +302,7 @@ async def create_video_analysis_upload(
                 if size_bytes > max_size_bytes:
                     raise HTTPException(
                         status_code=413,
-                        detail=f"Upload exceeds the {_VIDEO_ANALYSIS_MAX_UPLOAD_MB} MB temporary analysis limit.",
+                        detail=f"Upload exceeds the {_m()._VIDEO_ANALYSIS_MAX_UPLOAD_MB} MB temporary analysis limit.",
                     )
                 output.write(chunk)
     except Exception:
@@ -339,7 +343,7 @@ async def create_video_analysis_upload(
         preview_width=int(width),
         preview_height=int(height),
         status="draft",
-        expires_at=datetime.now(timezone.utc) + timedelta(seconds=max(1, _VIDEO_ANALYSIS_RETENTION_SECONDS)),
+        expires_at=datetime.now(timezone.utc) + timedelta(seconds=max(1, _m()._VIDEO_ANALYSIS_RETENTION_SECONDS)),
     )
     db.add(job)
     db.commit()

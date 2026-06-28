@@ -15,13 +15,14 @@ from starlette.responses import FileResponse
 
 from .. import models
 from ..database import SessionLocal, get_db
-from ._config import (
-    _EVIDENCE_CAPTURE_ENABLED,
-    _LIVE_CLIPS_DIR,
-    _LIVE_FRAMES_DIR,
-    _VIOLATION_EVIDENCE_DIR,
-)
+import sys as _sys
+
 from ._shared import _apply_supported_violation_filter, _serialize_dt
+
+
+def _m():
+    """Return the main app module so tests can patch its runtime config."""
+    return _sys.modules["backend_api.main"]
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -37,19 +38,19 @@ class ViolationReviewUpdateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _live_snapshot_path(camera_id: str) -> Path:
-    return _LIVE_FRAMES_DIR / camera_id / "latest.jpg"
+    return _m()._LIVE_FRAMES_DIR / camera_id / "latest.jpg"
 
 
 def _live_clip_path(camera_id: str) -> Path:
-    return _LIVE_CLIPS_DIR / camera_id / "latest.mp4"
+    return _m()._LIVE_CLIPS_DIR / camera_id / "latest.mp4"
 
 
 def _live_clip_manifest_path(camera_id: str) -> Path:
-    return _LIVE_CLIPS_DIR / camera_id / "latest.json"
+    return _m()._LIVE_CLIPS_DIR / camera_id / "latest.json"
 
 
 def _select_live_clip_source(camera_id: str, violation_timestamp: datetime):
-    camera_dir = _LIVE_CLIPS_DIR / camera_id
+    camera_dir = _m()._LIVE_CLIPS_DIR / camera_id
     if not camera_dir.exists():
         return _live_clip_path(camera_id), _live_clip_manifest_path(camera_id)
 
@@ -82,7 +83,7 @@ def _violation_evidence_path(camera_id: str, violation_id: int, violation_type: 
     safe_type = violation_type.replace("/", "_").replace(" ", "_")
     ts_label = timestamp.strftime("%Y%m%dT%H%M%S")
     normalized_extension = extension if extension.startswith(".") else f".{extension}"
-    return _VIOLATION_EVIDENCE_DIR / camera_id / f"{ts_label}_{safe_type}_{violation_id}{normalized_extension}"
+    return _m()._VIOLATION_EVIDENCE_DIR / camera_id / f"{ts_label}_{safe_type}_{violation_id}{normalized_extension}"
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +252,7 @@ def _violation_evidence_media_type(row: models.DBViolation) -> Optional[str]:
 
 
 def _capture_violation_evidence(db_violation: models.DBViolation):
-    if not _EVIDENCE_CAPTURE_ENABLED:
+    if not _m()._EVIDENCE_CAPTURE_ENABLED:
         return None, None
     source_path, source_manifest_path = _select_live_clip_source(db_violation.camera_id, db_violation.timestamp)
     media_type = "video/mp4"

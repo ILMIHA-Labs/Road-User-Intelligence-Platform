@@ -15,12 +15,18 @@ from starlette.responses import FileResponse
 from .. import models
 from ..database import get_db
 from common.camera_config import normalize_counting_line_definitions, normalize_zone_definitions
+import sys as _sys
+
 from ._config import (
     _CAMERA_DEFAULTS_CACHE,
-    _CAMERAS_CONFIG_PATH,
     _RETIRED_CAMERA_CONFIG_FIELDS,
     _SETUP_PREVIEW_DIR,
 )
+
+
+def _m():
+    """Return the main app module so tests can patch its runtime config."""
+    return _sys.modules["backend_api.main"]
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -80,7 +86,7 @@ def _resolve_source_path(source: str) -> Path:
     source_path = Path(source)
     if source_path.is_absolute():
         return source_path
-    return (_CAMERAS_CONFIG_PATH.parent.parent / source).resolve()
+    return (_m()._CAMERAS_CONFIG_PATH.parent.parent / source).resolve()
 
 
 def _extract_preview_frame(source: str):
@@ -106,24 +112,24 @@ def _extract_preview_frame(source: str):
 
 def _read_raw_camera_config():
     try:
-        with open(_CAMERAS_CONFIG_PATH, "r") as f:
+        with open(_m()._CAMERAS_CONFIG_PATH, "r") as f:
             return yaml.safe_load(f) or {}
     except FileNotFoundError:
         return {}
 
 
 def _write_raw_camera_config(raw_config: dict):
-    _CAMERAS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(_CAMERAS_CONFIG_PATH, "w") as f:
+    _m()._CAMERAS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(_m()._CAMERAS_CONFIG_PATH, "w") as f:
         yaml.safe_dump(raw_config, f, sort_keys=False)
 
 
 def _get_camera_defaults() -> dict:
     try:
-        mtime_ns = _CAMERAS_CONFIG_PATH.stat().st_mtime_ns
+        mtime_ns = _m()._CAMERAS_CONFIG_PATH.stat().st_mtime_ns
     except FileNotFoundError:
         mtime_ns = None
-    path_key = str(_CAMERAS_CONFIG_PATH)
+    path_key = str(_m()._CAMERAS_CONFIG_PATH)
     if (
         _CAMERA_DEFAULTS_CACHE["path"] == path_key
         and _CAMERA_DEFAULTS_CACHE["mtime_ns"] == mtime_ns
