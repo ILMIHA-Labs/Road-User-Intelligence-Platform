@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi import Security
 
-from .database import SessionLocal, init_db
+from .database import SessionLocal, engine, init_db
 from .routes import (
     analytics_router,
     cameras_router,
