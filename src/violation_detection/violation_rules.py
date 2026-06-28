@@ -1,12 +1,19 @@
 import logging
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
+from common.constants import (
+    CROSSING_MIN_PRESENCE_SECONDS,
+    CROSSING_VEHICLE_MIN_DISPLACEMENT_PX,
+    PEDESTRIAN_CROSSING_WINDOW_SECONDS,
+    STOPPED_SPEED_THRESHOLD_KMH,
+)
 from common.event_schemas import ViolationEvent
 
 logger = logging.getLogger(__name__)
 
 
-def _distance(point_a, point_b):
+def _distance(point_a: Optional[List[float]], point_b: Optional[List[float]]) -> float:
     if (
         point_a is None
         or point_b is None
@@ -19,7 +26,7 @@ def _distance(point_a, point_b):
     return (dx * dx + dy * dy) ** 0.5
 
 
-def _parse_timestamp(value):
+def _parse_timestamp(value: Any) -> Optional[datetime]:
     if not value:
         return None
     if isinstance(value, datetime):
@@ -62,7 +69,7 @@ class ViolationRulesEngine:
         speed_tolerance_kmh=0.0,
         severe_speed_delta_kmh=20.0,
         speed_reset_delta_kmh=5.0,
-        stopped_speed_threshold_kmh=3.0,
+        stopped_speed_threshold_kmh=STOPPED_SPEED_THRESHOLD_KMH,
         stopped_duration_seconds=20,
         stopped_resume_speed_kmh=8.0,
         state_ttl_seconds=120,
@@ -73,10 +80,10 @@ class ViolationRulesEngine:
         stop_line_min_speed_kmh=5.0,
         stop_line_vehicle_classes=None,
         pedestrian_crossing_min_speed_kmh=5.0,
-        pedestrian_crossing_window_seconds=2.0,
-        crossing_min_presence_seconds=0.75,
+        pedestrian_crossing_window_seconds=PEDESTRIAN_CROSSING_WINDOW_SECONDS,
+        crossing_min_presence_seconds=CROSSING_MIN_PRESENCE_SECONDS,
         crossing_min_observations=2,
-        crossing_vehicle_min_displacement_px=12.0,
+        crossing_vehicle_min_displacement_px=CROSSING_VEHICLE_MIN_DISPLACEMENT_PX,
         pedestrian_crossing_vehicle_classes=None,
         pedestrian_classes=None,
     ):
@@ -112,13 +119,13 @@ class ViolationRulesEngine:
         # A simple state cache: object_id -> dict of properties
         self.object_states = {}
 
-    def _bbox_bottom_center(self, bbox):
+    def _bbox_bottom_center(self, bbox: List[float]) -> Optional[List[float]]:
         if len(bbox) != 4:
             return None
         x1, _, x2, y2 = bbox
         return [float((x1 + x2) / 2.0), float(y2)]
 
-    def _matching_zones(self, category, point):
+    def _matching_zones(self, category: str, point: Optional[List[float]]) -> List[Dict]:
         if point is None:
             return []
         matches = []
@@ -129,10 +136,10 @@ class ViolationRulesEngine:
                 matches.append(zone)
         return matches
 
-    def _zone_state_key(self, category, zone_id):
+    def _zone_state_key(self, category: str, zone_id: str) -> str:
         return f"{category}:{zone_id}"
 
-    def _update_zone_presence(self, state, point, timestamp):
+    def _update_zone_presence(self, state: Dict, point: Optional[List[float]], timestamp: Optional[datetime]) -> None:
         active_zone_ids = state.setdefault("active_zone_ids_by_category", {})
         zone_entered_at = state.setdefault("zone_entered_at", {})
         zone_observations = state.setdefault("zone_observations", {})
@@ -241,7 +248,7 @@ class ViolationRulesEngine:
     def _zebra_crossing_matches(self, vehicle_object_id):
         return self._crossing_matches(vehicle_object_id, "zebra_crossing")
 
-    def get_related_object_ids(self, object_id):
+    def get_related_object_ids(self, object_id: int) -> List[int]:
         state = self.object_states.get(object_id)
         if not state:
             return [object_id]
@@ -257,7 +264,7 @@ class ViolationRulesEngine:
                     related_ids.add(candidate_id)
         return list(related_ids)
 
-    def cleanup_stale_states(self, now=None):
+    def cleanup_stale_states(self, now: Optional[datetime] = None) -> None:
         if not self.state_ttl_seconds:
             return
 
@@ -274,7 +281,7 @@ class ViolationRulesEngine:
         for object_id in stale_ids:
             del self.object_states[object_id]
 
-    def update_state(self, object_id, detection_event=None, speed_event=None):
+    def update_state(self, object_id: int, detection_event: Optional[Dict] = None, speed_event: Optional[Dict] = None) -> None:
         """
         Updates the cached state of an object using incoming MQTT events.
         """
@@ -345,7 +352,7 @@ class ViolationRulesEngine:
             state["speed_kmh"] = speed_event.get("speed_kmh", state["speed_kmh"])
             state["last_seen"] = speed_event.get("timestamp", state["last_seen"])
 
-    def evaluate_violations(self, object_id):
+    def evaluate_violations(self, object_id: int) -> List[str]:
         """
         Checks all rules against the updated state of an object and returns a list of violation types.
         """
@@ -466,7 +473,7 @@ class ViolationRulesEngine:
         
         return violations
         
-    def generate_violation_events(self, object_id):
+    def generate_violation_events(self, object_id: int) -> List[ViolationEvent]:
         """
         Evaluates rules and packages them into the required JSON schema.
         """

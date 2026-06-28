@@ -1,8 +1,9 @@
 import argparse
-import logging
 import json
+import logging
 import os
 import time
+
 import paho.mqtt.client as mqtt
 
 from speed_estimation.calibration import CameraCalibration
@@ -100,15 +101,30 @@ class SpeedEstimationService:
             logger.error(f"Error processing message: {e}")
 
     def run(self):
+        retries = 3
+        backoff = [2, 4, 8]
+        for attempt in range(retries):
+            try:
+                self.client.connect(self.broker_host, self.broker_port, 60)
+                break
+            except Exception as e:
+                logger.error("MQTT connection failed (attempt %d/%d): %s", attempt + 1, retries, e)
+                if attempt < retries - 1:
+                    time.sleep(backoff[attempt])
+                else:
+                    logger.critical(
+                        "Could not connect to MQTT broker at %s:%s after %d attempts. Aborting.",
+                        self.broker_host, self.broker_port, retries,
+                    )
+                    return
         try:
-            self.client.connect(self.broker_host, self.broker_port, 60)
             logger.info("Starting MQTT loop...")
             self.client.loop_forever()
         except KeyboardInterrupt:
             logger.info("Stopping Speed Estimation Agent.")
             self.client.disconnect()
         except Exception as e:
-            logger.error(f"Agent failed: {e}")
+            logger.error("Agent failed: %s", e)
 
 def main():
     parser = argparse.ArgumentParser(description="Speed Estimation Agent")

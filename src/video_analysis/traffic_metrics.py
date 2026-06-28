@@ -1,6 +1,7 @@
 import argparse
 import csv
 import json
+import logging
 import math
 import sys
 from collections import defaultdict
@@ -13,10 +14,28 @@ import numpy as np
 import yaml
 
 from common.camera_config import DEFAULT_COUNTING_LINE_CLASSES, build_camera_profile_map
+
+logger = logging.getLogger(__name__)
 from common.event_schemas import dump_event
 from edge_vision.line_counter import LineCrossingCounter
 from speed_estimation.calibration import CameraCalibration
 from speed_estimation.speed_calc import SpeedCalculator
+from video_analysis.detector import YoloTrackDetector
+from video_analysis.geometry import (
+    bbox_anchors as _bbox_anchors,
+    bbox_area as _bbox_area,
+    bbox_intersection_area as _bbox_intersection_area,
+    bbox_label_anchor as _bbox_label_anchor,
+    point_in_polygon as _point_in_polygon,
+    point_polygon_distance as _point_polygon_distance,
+    point_segment_distance as _point_segment_distance,
+)
+from video_analysis.serializer import (
+    crossing_fieldnames,
+    track_fieldnames,
+    zebra_event_fieldnames,
+    zebra_occupancy_fieldnames,
+)
 
 
 TRACK_CLASSES = {"car", "bus", "truck", "motorcycle", "pedestrian", "bicycle", "rider"}
@@ -25,122 +44,8 @@ PEDESTRIAN_CLASSES = {"pedestrian"}
 BIKE_CLASSES = {"motorcycle", "bicycle"}
 
 
-class YoloTrackDetector:
-    def __init__(self, model_path: str = "yolov8l.pt", confidence: float = 0.25):
-        from ultralytics import YOLO
-
-        self.model = YOLO(model_path)
-        self.confidence = confidence
-
-    def detect(self, frame) -> List[dict]:
-        tracked = self.model.track(
-            source=frame,
-            conf=self.confidence,
-            persist=True,
-            tracker="bytetrack.yaml",
-            classes=[0, 1, 2, 3, 5, 7],
-            verbose=False,
-        )
-        results = tracked[0]
-        if results.boxes is None or results.boxes.id is None:
-            return []
-
-        observations = []
-        for box, track_id, conf, cls_id in zip(
-            results.boxes.xyxy.cpu().numpy(),
-            results.boxes.id.int().cpu().numpy(),
-            results.boxes.conf.cpu().numpy(),
-            results.boxes.cls.int().cpu().numpy(),
-        ):
-            class_name = results.names[int(cls_id)]
-            if class_name == "person":
-                class_name = "pedestrian"
-            observations.append(
-                {
-                    "object_id": int(track_id),
-                    "class_name": class_name,
-                    "bbox": [float(value) for value in box],
-                    "confidence": float(conf),
-                }
-            )
-        return observations
-
-
 def _timestamp_for_elapsed(elapsed_seconds: float) -> str:
     return (datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(seconds=elapsed_seconds)).isoformat()
-
-
-def _bbox_label_anchor(bbox: List[float]):
-    x1, y1, _, _ = bbox
-    return int(x1), max(18, int(y1) - 8)
-
-
-def _bbox_anchors(bbox: List[float]) -> Dict[str, tuple]:
-    x1, y1, x2, y2 = bbox
-    return {
-        "center": ((x1 + x2) / 2.0, (y1 + y2) / 2.0),
-        "bottom_center": ((x1 + x2) / 2.0, y2),
-    }
-
-
-def _bbox_intersection_area(first: List[float], second: List[float]) -> float:
-    ax1, ay1, ax2, ay2 = first
-    bx1, by1, bx2, by2 = second
-    width = max(0.0, min(ax2, bx2) - max(ax1, bx1))
-    height = max(0.0, min(ay2, by2) - max(ay1, by1))
-    return width * height
-
-
-def _bbox_area(bbox: List[float]) -> float:
-    x1, y1, x2, y2 = bbox
-    return max(0.0, x2 - x1) * max(0.0, y2 - y1)
-
-
-def _point_in_polygon(point, polygon: List[List[float]]) -> bool:
-    if len(polygon) < 3:
-        return False
-    x, y = point
-    inside = False
-    j = len(polygon) - 1
-    for i in range(len(polygon)):
-        xi, yi = polygon[i]
-        xj, yj = polygon[j]
-        intersects = ((yi > y) != (yj > y)) and (
-            x < (xj - xi) * (y - yi) / ((yj - yi) or 1e-9) + xi
-        )
-        if intersects:
-            inside = not inside
-        j = i
-    return inside
-
-
-def _point_segment_distance(point, start, end) -> float:
-    px, py = point
-    sx, sy = start
-    ex, ey = end
-    dx = ex - sx
-    dy = ey - sy
-    denom = (dx * dx) + (dy * dy)
-    if denom <= 1e-9:
-        return math.hypot(px - sx, py - sy)
-    t = max(0.0, min(1.0, ((px - sx) * dx + (py - sy) * dy) / denom))
-    closest = (sx + (t * dx), sy + (t * dy))
-    return math.hypot(px - closest[0], py - closest[1])
-
-
-def _point_polygon_distance(point, polygon: List[List[float]]) -> float:
-    if _point_in_polygon(point, polygon):
-        return 0.0
-    if not polygon:
-        return float("inf")
-    return min(
-        _point_segment_distance(
-            point,
-            (float(start[0]), float(start[1])),
-            (float(polygon[(index + 1) % len(polygon)][0]), float(polygon[(index + 1) % len(polygon)][1])),
-        )
-        for index, start in enumerate(polygon)
-    )
 
 
 def _print_progress(current: int, total: int, width: int = 32):
@@ -554,7 +459,7 @@ def setup_line_from_video(args):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         yaml.safe_dump(setup_config, f, sort_keys=False)
-    print(f"Saved counting line setup to {output_path}")
+    logger.info("Saved counting line setup to %s", output_path)
 
 
 def setup_zebra_from_video(args):
@@ -579,7 +484,7 @@ def setup_zebra_from_video(args):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         yaml.safe_dump(setup_config, f, sort_keys=False)
-    print(f"Saved zebra crossing setup to {output_path}")
+    logger.info("Saved zebra crossing setup to %s", output_path)
 
 
 class TrafficMetricsAnalyzer:
@@ -1345,78 +1250,6 @@ class TrafficMetricsAnalyzer:
             writer.writeheader()
             for row in rows:
                 writer.writerow({field: row.get(field) for field in fieldnames})
-
-
-def crossing_fieldnames() -> List[str]:
-    return [
-        "camera_id",
-        "line_id",
-        "line_label",
-        "object_id",
-        "class",
-        "direction",
-        "timestamp",
-        "frame_number",
-        "elapsed_seconds",
-        "source",
-    ]
-
-
-def zebra_event_fieldnames() -> List[str]:
-    return [
-        "event_type",
-        "camera_id",
-        "frame_number",
-        "elapsed_seconds",
-        "zone_id",
-        "vehicle_object_id",
-        "vehicle_class",
-        "vehicle_speed_kmh",
-        "vehicle_distance_to_zebra_m",
-        "pedestrian_object_id",
-        "pedestrian_speed_kmh",
-        "pedestrian_distance_to_zebra_m",
-        "vehicle_speed_trend",
-        "approach_start_speed_kmh",
-        "approach_end_speed_kmh",
-        "approach_delta_kmh",
-        "approach_samples",
-        "rider_filtered_pedestrians_count",
-    ]
-
-
-def zebra_occupancy_fieldnames() -> List[str]:
-    return [
-        "frame_number",
-        "elapsed_seconds",
-        "zone_id",
-        "objects_in_zone",
-        "vehicles_in_zone",
-        "pedestrians_in_zone",
-        "bikes_in_zone",
-        "class_counts_json",
-    ]
-
-
-def track_fieldnames() -> List[str]:
-    return [
-        "frame_number",
-        "elapsed_seconds",
-        "camera_id",
-        "object_id",
-        "class",
-        "confidence",
-        "bbox",
-        "speed_kmh",
-        "is_rider",
-        "associated_vehicle_id",
-        "zebra_zone_id",
-        "inside_zebra",
-        "near_zebra",
-        "distance_to_zebra_m",
-        "inside_zebra_zone_ids",
-        "near_zebra_zone_ids",
-    ]
 
 
 def build_analyzer(

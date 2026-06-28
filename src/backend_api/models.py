@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, Integer, String, Float, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
@@ -22,8 +22,8 @@ class DBCameraConfig(Base):
     profile = Column(JSON, nullable=False)
     source = Column(String, nullable=False, default="api")
     version = Column(Integer, nullable=False, default=1)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
 
 class DBDetection(Base):
     __tablename__ = "detections"
@@ -104,7 +104,7 @@ class DBVideoAnalysisJob(Base):
     failure_message = Column(String, nullable=True)
     setup = Column(JSON, nullable=True)
     result_summary = Column(JSON, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=False, index=True)

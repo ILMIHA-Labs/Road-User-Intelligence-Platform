@@ -55,6 +55,7 @@ Use the example files in `deploy/env`:
 
 Important variables include:
 
+- `RUIP_API_KEY` — bearer token required on all API requests. Leave unset in local dev to skip auth. Set to a strong random value in any networked deployment (e.g. `openssl rand -hex 32`).
 - `MQTT_BROKER_HOST`
 - `MQTT_BROKER_PORT`
 - `BACKEND_API_URL`
