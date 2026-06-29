@@ -17,7 +17,7 @@ from .routes import (
     video_analysis_router,
     violations_router,
 )
-from .routes.cameras import _seed_camera_registry
+from .routes.cameras import _seed_camera_registry, _upsert_camera_profile
 from .routes.video_analysis import _analyze_uploaded_video, _cleanup_video_analysis_jobs, _recover_video_analysis_jobs
 from .routes._config import (
     _CAMERAS_CONFIG_PATH,

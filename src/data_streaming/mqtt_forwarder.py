@@ -76,6 +76,8 @@ class MQTTForwarder:
             logger.warning("Invalid event on topic %s: %s", topic, e)
         except Exception as e:
             logger.error("Error buffering message from %s: %s", topic, e)
+            return
+        self._flush_all()
 
     # ------------------------------------------------------------------
     # Batch flush
