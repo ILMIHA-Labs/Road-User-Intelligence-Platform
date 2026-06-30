@@ -1109,5 +1109,148 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(data["total_crossings_logged"], 0)
         self.assertIn("total_speeds_logged", data)
 
+    # ------------------------------------------------------------------
+    # Trend analysis (week-over-week / month-over-month + anomaly flags)
+    # ------------------------------------------------------------------
+
+    def _post_detection(self, camera_id, timestamp, object_id):
+        response = self.client.post("/detections", json={
+            "camera_id": camera_id,
+            "timestamp": timestamp,
+            "object_id": object_id,
+            "class": "car",
+            "helmet_status": "unknown",
+            "bbox": [0.0, 0.0, 10.0, 10.0],
+            "confidence": 0.9,
+            "source": "edge",
+        })
+        self.assertEqual(response.status_code, 201)
+
+    def test_trends_wow_delta(self):
+        for i in range(5):
+            self._post_detection("cam_trend_wow", "2024-01-10T10:00:00Z", 100 + i)
+        for i in range(3):
+            self._post_detection("cam_trend_wow", "2024-01-05T10:00:00Z", 200 + i)
+
+        response = self.client.get(
+            "/analytics/trends/summary"
+            "?period=week&camera_id=cam_trend_wow&reference_date=2024-01-15T00:00:00Z&baseline_periods=1"
+        )
+        self.assertEqual(response.status_code, 200)
+        metric = response.json()["metrics"]["total_detections_logged"]
+        self.assertEqual(metric["current"], 5)
+        self.assertEqual(metric["previous"], 3)
+        self.assertEqual(metric["delta"], 2)
+        self.assertAlmostEqual(metric["delta_pct"], 66.67, places=2)
+
+    def test_trends_mom_delta(self):
+        for i in range(4):
+            self._post_detection("cam_trend_mom", "2024-02-05T10:00:00Z", 300 + i)
+        for i in range(2):
+            self._post_detection("cam_trend_mom", "2024-01-10T10:00:00Z", 400 + i)
+
+        response = self.client.get(
+            "/analytics/trends/summary"
+            "?period=month&camera_id=cam_trend_mom&reference_date=2024-02-15T00:00:00Z&baseline_periods=1"
+        )
+        self.assertEqual(response.status_code, 200)
+        metric = response.json()["metrics"]["total_detections_logged"]
+        self.assertEqual(metric["current"], 4)
+        self.assertEqual(metric["previous"], 2)
+        self.assertEqual(metric["delta"], 2)
+        self.assertAlmostEqual(metric["delta_pct"], 100.0, places=2)
+
+    def test_trends_anomaly_flagging(self):
+        # Oldest -> newest baseline windows for reference_date=2024-03-15, period=week, baseline_periods=6.
+        baseline_windows = [
+            ("2024-01-22T10:00:00Z", 3),
+            ("2024-01-29T10:00:00Z", 4),
+            ("2024-02-05T10:00:00Z", 5),
+            ("2024-02-12T10:00:00Z", 4),
+            ("2024-02-19T10:00:00Z", 3),
+            ("2024-02-26T10:00:00Z", 5),
+        ]
+
+        for camera_id, current_count in (("cam_anomaly_spike", 40), ("cam_anomaly_normal", 5)):
+            object_id = 0
+            for timestamp, count in baseline_windows:
+                for _ in range(count):
+                    object_id += 1
+                    self._post_detection(camera_id, timestamp, object_id)
+            for _ in range(current_count):
+                object_id += 1
+                self._post_detection(camera_id, "2024-03-10T10:00:00Z", object_id)
+
+        spike_response = self.client.get(
+            "/analytics/trends/summary"
+            "?period=week&camera_id=cam_anomaly_spike&reference_date=2024-03-15T00:00:00Z&baseline_periods=6"
+        )
+        self.assertEqual(spike_response.status_code, 200)
+        spike_metric = spike_response.json()["metrics"]["total_detections_logged"]
+        self.assertEqual(spike_metric["baseline_sample_size"], 6)
+        self.assertAlmostEqual(spike_metric["baseline_mean"], 4.0, places=2)
+        self.assertGreater(abs(spike_metric["z_score"]), 2.0)
+        self.assertTrue(spike_metric["is_anomaly"])
+
+        normal_response = self.client.get(
+            "/analytics/trends/summary"
+            "?period=week&camera_id=cam_anomaly_normal&reference_date=2024-03-15T00:00:00Z&baseline_periods=6"
+        )
+        self.assertEqual(normal_response.status_code, 200)
+        normal_metric = normal_response.json()["metrics"]["total_detections_logged"]
+        self.assertLessEqual(abs(normal_metric["z_score"]), 2.0)
+        self.assertFalse(normal_metric["is_anomaly"])
+
+    def test_trends_insufficient_baseline(self):
+        for i in range(5):
+            self._post_detection("cam_trend_fresh", "2024-04-10T10:00:00Z", 500 + i)
+
+        response = self.client.get(
+            "/analytics/trends/summary"
+            "?period=week&camera_id=cam_trend_fresh&reference_date=2024-04-15T00:00:00Z&baseline_periods=1"
+        )
+        self.assertEqual(response.status_code, 200)
+        metric = response.json()["metrics"]["total_detections_logged"]
+        self.assertEqual(metric["current"], 5)
+        self.assertEqual(metric["previous"], 0)
+        self.assertEqual(metric["baseline_sample_size"], 1)
+        self.assertIsNone(metric["baseline_mean"])
+        self.assertIsNone(metric["baseline_stddev"])
+        self.assertIsNone(metric["z_score"])
+        self.assertFalse(metric["is_anomaly"])
+
+    def test_trends_camera_filter(self):
+        for i in range(5):
+            self._post_detection("cam_trend_filter_x", "2024-05-10T10:00:00Z", 600 + i)
+        for i in range(2):
+            self._post_detection("cam_trend_filter_y", "2024-05-10T10:00:00Z", 700 + i)
+
+        response = self.client.get(
+            "/analytics/trends/summary"
+            "?period=week&camera_id=cam_trend_filter_x&reference_date=2024-05-15T00:00:00Z&baseline_periods=1"
+        )
+        self.assertEqual(response.status_code, 200)
+        metric = response.json()["metrics"]["total_detections_logged"]
+        self.assertEqual(metric["current"], 5)
+
+    def test_trends_invalid_period_param(self):
+        response = self.client.get("/analytics/trends/summary?period=quarter")
+        self.assertEqual(response.status_code, 422)
+
+    def test_trends_metric_endpoint_returns_history(self):
+        for i in range(5):
+            self._post_detection("cam_trend_history", "2024-01-10T10:00:00Z", 800 + i)
+
+        response = self.client.get(
+            "/analytics/trends/detections"
+            "?period=week&camera_id=cam_trend_history&reference_date=2024-01-15T00:00:00Z&baseline_periods=1"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["current"], 5)
+        self.assertIn("history", data)
+        self.assertEqual(data["history"][-1]["value"], 5)
+
+
 if __name__ == '__main__':
     unittest.main()

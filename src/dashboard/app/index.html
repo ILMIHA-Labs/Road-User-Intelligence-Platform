@@ -197,11 +197,17 @@
       </section>
 
       <section id="overview-view" data-view="overview" class="space-y-8">
+        <div class="flex items-center justify-end gap-2">
+          <span class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Trend</span>
+          <button data-trend-period-button="week" class="trend-period-btn rounded-sm bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-black shadow-sm">Week</button>
+          <button data-trend-period-button="month" class="trend-period-btn rounded-sm px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Month</button>
+        </div>
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-5">
           <article class="metric-card flex flex-col justify-between bg-surface-container-lowest p-6">
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Detections Logged</p>
             <div>
               <p id="total-detections" class="text-5xl font-black tracking-tighter">0</p>
+              <p id="trend-detections" class="mt-1 text-xs font-bold"></p>
               <p class="mt-2 text-xs text-on-surface-variant">Total object detections persisted</p>
             </div>
           </article>
@@ -209,6 +215,7 @@
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Speeds Logged</p>
             <div>
               <p id="total-speeds" class="text-5xl font-black tracking-tighter">0</p>
+              <p id="trend-speeds" class="mt-1 text-xs font-bold"></p>
               <p class="mt-2 text-xs text-on-surface-variant">Measured object speed samples</p>
             </div>
           </article>
@@ -216,6 +223,7 @@
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Safety Events Logged</p>
             <div>
               <p id="total-violations" class="text-5xl font-black tracking-tighter text-error">0</p>
+              <p id="trend-violations" class="mt-1 text-xs font-bold"></p>
               <p class="mt-2 text-xs text-on-surface-variant">Detected safety and traffic events</p>
             </div>
           </article>
@@ -223,6 +231,7 @@
             <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant">Crossings Logged</p>
             <div>
               <p id="total-crossings" class="text-5xl font-black tracking-tighter">0</p>
+              <p id="trend-crossings" class="mt-1 text-xs font-bold"></p>
               <p class="mt-2 text-xs text-on-surface-variant">Directional line-crossing events persisted</p>
             </div>
           </article>
@@ -1183,6 +1192,8 @@
 
     const state = {
       summary: null,
+      trendPeriod: "week",
+      trends: null,
       byCamera: [],
       violations: [],
       detectionsAnalytics: { total_detections: 0, classes: [], cameras: [] },
@@ -2494,6 +2505,57 @@
       });
     }
 
+    const TREND_BADGE_TARGETS = {
+      total_detections_logged: "trend-detections",
+      total_speeds_logged: "trend-speeds",
+      total_violations_logged: "trend-violations",
+      total_crossings_logged: "trend-crossings",
+    };
+
+    function renderTrendBadge(elementId, metric) {
+      const el = document.getElementById(elementId);
+      if (!el || !metric) {
+        if (el) el.textContent = "";
+        return;
+      }
+      if (metric.baseline_sample_size < 2 && metric.previous === 0 && metric.current === 0) {
+        el.textContent = "";
+        el.className = "mt-1 text-xs font-bold";
+        return;
+      }
+      const pct = metric.delta_pct;
+      const arrow = metric.delta > 0 ? "▲" : metric.delta < 0 ? "▼" : "—";
+      const pctLabel = pct === null || pct === undefined ? "" : ` ${Math.abs(pct).toFixed(1)}%`;
+      el.textContent = `${arrow}${pctLabel} vs prior ${state.trendPeriod}`;
+      let colorClass = "text-on-surface-variant";
+      if (metric.is_anomaly) {
+        colorClass = "text-error";
+      } else if (metric.baseline_sample_size >= 2) {
+        colorClass = metric.delta > 0 ? "text-emerald-600" : metric.delta < 0 ? "text-error" : "text-on-surface-variant";
+      }
+      el.className = `mt-1 text-xs font-bold ${colorClass}`;
+    }
+
+    function renderTrends() {
+      const metrics = state.trends?.metrics || {};
+      Object.entries(TREND_BADGE_TARGETS).forEach(([metricKey, elementId]) => {
+        renderTrendBadge(elementId, metrics[metricKey]);
+      });
+    }
+
+    async function loadTrends() {
+      try {
+        const filterParams = currentFilterParams();
+        const trends = await loadJson(
+          `/analytics/trends/summary${buildQuery({ camera_id: filterParams.camera_id, period: state.trendPeriod })}`
+        );
+        state.trends = trends;
+        renderTrends();
+      } catch (error) {
+        console.error("Failed to load trend analytics", error);
+      }
+    }
+
     function renderOverview() {
       const summary = state.summary || {};
       document.getElementById("total-detections").textContent = summary.total_detections_logged ?? 0;
@@ -2503,6 +2565,7 @@
       document.getElementById("camera-count").textContent = state.byCamera.length;
       populateCameraOptions();
       updateScopeLabel();
+      renderTrends();
 
       const cameraSummary = document.getElementById("camera-summary");
       cameraSummary.innerHTML = "";
@@ -4171,6 +4234,7 @@
     async function refreshDashboard(options = {}) {
       if (state.isRefreshing) return;
       state.isRefreshing = true;
+      loadTrends();
       try {
         const filterParams = currentFilterParams();
         const [summary, byCamera, violations, detectionsAnalytics, crossings, recent, speedDist, cameraConfigs, liveFeeds] = await Promise.all([
@@ -4252,6 +4316,7 @@
       state.violationLog.page = 1;
       updateExportActions();
       connectDashboardStream();
+      loadTrends();
     });
     document.getElementById("clear-filters").addEventListener("click", () => {
       state.filters = { cameraId: "", start: "", end: "" };
@@ -4259,6 +4324,20 @@
       state.violationLog.page = 1;
       updateExportActions();
       connectDashboardStream();
+      loadTrends();
+    });
+    document.querySelectorAll("[data-trend-period-button]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.trendPeriod = button.getAttribute("data-trend-period-button");
+        document.querySelectorAll("[data-trend-period-button]").forEach((btn) => {
+          const active = btn === button;
+          btn.classList.toggle("bg-white", active);
+          btn.classList.toggle("shadow-sm", active);
+          btn.classList.toggle("text-black", active);
+          btn.classList.toggle("text-on-surface-variant", !active);
+        });
+        loadTrends();
+      });
     });
 
     document.getElementById("config-search-button").addEventListener("click", () => {
@@ -4361,6 +4440,7 @@
     initializeDashboardSurface();
     updateExportActions();
     connectDashboardStream();
+    loadTrends();
     setInterval(refreshVisibleLiveSnapshots, 3000);
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && !state.liveStream.source) {

@@ -14,6 +14,7 @@ from .routes import (
     exports_router,
     ingest_router,
     live_router,
+    trends_router,
     video_analysis_router,
     violations_router,
 )
@@ -118,6 +119,7 @@ _ROUTERS = [
     video_analysis_router,
     violations_router,
     analytics_router,
+    trends_router,
     exports_router,
     live_router,
 ]

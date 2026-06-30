@@ -5,9 +5,10 @@ import logging
 from datetime import datetime, timezone
 from io import StringIO
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from starlette.responses import StreamingResponse
 
 from .. import models
@@ -48,6 +49,21 @@ def _apply_camera_filter(query, model, camera_id: str = None):
 
 def _apply_supported_violation_filter(query):
     return query.filter(models.DBViolation.violation_type.notin_(_RETIRED_VIOLATION_TYPES))
+
+
+def _daily_counts(db, model, camera_id: str = None, start: datetime = None, end: datetime = None) -> Dict[str, int]:
+    """One grouped query: ISO date string -> count, for bucketing trend windows in Python."""
+    query = _apply_time_filters(
+        _apply_camera_filter(db.query(model), model, camera_id), model, start, end,
+    )
+    if model is models.DBViolation:
+        query = _apply_supported_violation_filter(query)
+    rows = (
+        query.with_entities(func.date(model.timestamp).label("day"), func.count(model.id).label("count"))
+        .group_by("day")
+        .all()
+    )
+    return {row.day: row.count for row in rows}
 
 
 # ---------------------------------------------------------------------------
