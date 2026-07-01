@@ -2,7 +2,6 @@
 import logging
 import math
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, case

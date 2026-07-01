@@ -1,0 +1,126 @@
+# Docker Compose stack for the Road User Intelligence Platform.
+#
+# This mirrors the systemd unit files in deploy/systemd/ and the environment
+# variables documented in deploy/env/*.env.example. It is an alternative to
+# the systemd deployment path, not a replacement — see
+# docs/deployment_guide.md for details on both.
+#
+# Quickstart:
+#   cp deploy/env/server-common.env.example deploy/env/server-common.env
+#   cp deploy/env/edge-vision.env.example deploy/env/edge-vision.env
+#   # edit deploy/env/edge-vision.env: set EDGE_SOURCE to a licensed video
+#   # path mounted under ./data, e.g. EDGE_SOURCE=/data/demo.mp4
+#   docker compose up --build
+#
+# The backend is served at http://localhost:8000/dashboard/
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    env_file:
+      - deploy/env/server-common.env
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+      BACKEND_HOST: 0.0.0.0
+      DATABASE_URL: sqlite:////opt/road-user-platform/data/road_user_platform.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./config:/opt/road-user-platform/config:ro
+      - db-data:/opt/road-user-platform/data
+
+  speed-estimation:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    env_file:
+      - deploy/env/server-common.env
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+    volumes:
+      - ./config:/opt/road-user-platform/config:ro
+    command: ["python", "src/speed_estimation/main.py"]
+
+  violation-detection:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    env_file:
+      - deploy/env/server-common.env
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+    volumes:
+      - ./config:/opt/road-user-platform/config:ro
+    command: ["python", "src/violation_detection/main.py"]
+
+  mqtt-forwarder:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+      - backend
+    env_file:
+      - deploy/env/server-common.env
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+      BACKEND_API_URL: http://backend:8000
+    command: ["python", "src/data_streaming/mqtt_forwarder.py"]
+
+  edge-vision:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    env_file:
+      - deploy/env/edge-vision.env
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+    volumes:
+      - ./config:/opt/road-user-platform/config:ro
+      - ./data:/data:ro
+    command: ["python", "src/edge_vision/main.py"]
+
+  # Optional Postgres profile, disabled by default so the SQLite golden path
+  # stays the default researcher experience. To enable:
+  #   1. add `psycopg2-binary` to requirements.txt and rebuild the backend
+  #      image
+  #   2. set DATABASE_URL=postgresql://ruip:ruip@postgres:5432/ruip in
+  #      deploy/env/server-common.env
+  #   3. run: docker compose --profile postgres up --build
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_USER: ruip
+      POSTGRES_PASSWORD: ruip
+      POSTGRES_DB: ruip
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
+  postgres-data:

@@ -10,6 +10,9 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+.mypy_cache/
+.ruff_cache/
+deploy/env/*.env
 artifacts/
 logs/
 notebooks/

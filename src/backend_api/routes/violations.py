@@ -17,7 +17,7 @@ from .. import models
 from ..database import SessionLocal, get_db
 import sys as _sys
 
-from ._shared import _apply_supported_violation_filter, _serialize_dt
+from ._shared import _apply_supported_violation_filter
 
 
 def _m():

@@ -2,7 +2,6 @@ import argparse
 import csv
 import json
 import logging
-import math
 import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
@@ -14,8 +13,6 @@ import numpy as np
 import yaml
 
 from common.camera_config import DEFAULT_COUNTING_LINE_CLASSES, build_camera_profile_map
-
-logger = logging.getLogger(__name__)
 from common.event_schemas import dump_event
 from edge_vision.line_counter import LineCrossingCounter
 from speed_estimation.calibration import CameraCalibration
@@ -28,7 +25,6 @@ from video_analysis.geometry import (
     bbox_label_anchor as _bbox_label_anchor,
     point_in_polygon as _point_in_polygon,
     point_polygon_distance as _point_polygon_distance,
-    point_segment_distance as _point_segment_distance,
 )
 from video_analysis.serializer import (
     crossing_fieldnames,
@@ -37,6 +33,7 @@ from video_analysis.serializer import (
     zebra_occupancy_fieldnames,
 )
 
+logger = logging.getLogger(__name__)
 
 TRACK_CLASSES = {"car", "bus", "truck", "motorcycle", "pedestrian", "bicycle", "rider"}
 VEHICLE_CLASSES = {"car", "bus", "truck", "motorcycle"}

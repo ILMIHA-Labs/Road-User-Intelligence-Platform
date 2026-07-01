@@ -6,7 +6,7 @@ internal self-audit.
 
 Reference standard: <https://www.digitalpublicgoods.net/standard>
 
-Last self-audit update: 2026-06-09.
+Last self-audit update: 2026-07-01.
 
 The project is framed as a **research-reference open-source MVP** with primary
 public-interest relevance to **SDG 11 road safety**. This document describes
@@ -48,11 +48,16 @@ items.
 
 - The software supports file, webcam, RTSP, and optional `reCamera` inputs.
 - `reCamera` is documented as optional rather than mandatory.
+- A container-based deployment path (Docker Compose) is available alongside
+  the systemd/virtualenv path, reducing host-OS and Python-environment
+  lock-in.
 - Repository evidence:
   - [README.md](../README.md)
   - [docs/deployment_guide.md](deployment_guide.md)
   - [docs/installation_and_deployment.md](installation_and_deployment.md)
   - [docs/live_validation_guide.md](live_validation_guide.md)
+  - [Dockerfile](../Dockerfile), [Dockerfile.worker](../Dockerfile.worker),
+    [docker-compose.yml](../docker-compose.yml)
 
 ## Indicator 5: Documentation
 
@@ -93,10 +98,15 @@ items.
 
 - The system uses open messaging and API patterns such as MQTT, JSON, HTTP, and
   FastAPI/OpenAPI.
+- The API also exposes a `/metrics` endpoint in the standard Prometheus
+  text-exposition format for operational monitoring.
+- CI enforces a lint and static type-checking gate (`ruff`, `mypy`) on every
+  push and pull request, in addition to the test suite.
 - Repository evidence:
   - [docs/standards_compliance.md](standards_compliance.md)
   - [src/data_streaming/mqtt_forwarder.py](../src/data_streaming/mqtt_forwarder.py)
   - [src/backend_api/main.py](../src/backend_api/main.py)
+  - [src/backend_api/routes/metrics.py](../src/backend_api/routes/metrics.py)
   - [.github/workflows/ci.yml](../.github/workflows/ci.yml)
 
 ## Indicator 9A: Data Privacy and Security

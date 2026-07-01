@@ -2,12 +2,10 @@
 import csv
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from io import StringIO
-from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional
 
-from fastapi import HTTPException
 from sqlalchemy import func
 from starlette.responses import StreamingResponse
 

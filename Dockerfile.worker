@@ -1,0 +1,21 @@
+FROM python:3.11-slim AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/road-user-platform
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY config/ ./config/
+
+ENV PYTHONPATH=/opt/road-user-platform/src
+
+# Shared image for the edge-vision, speed-estimation, violation-detection, and
+# mqtt-forwarder worker processes. Each service in docker-compose.yml sets its
+# own `command:` to select which entrypoint to run.

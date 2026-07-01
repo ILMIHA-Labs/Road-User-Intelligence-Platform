@@ -41,9 +41,7 @@ class LineCrossingCounter:
                 current_distance = self._distance_to_line(line["points"], point)
                 current_side = self._normalize_side(side_value, current_distance, line["min_crossing_distance_px"])
                 previous_anchor_points = state.get("last_anchor_points") or {}
-                previous_point = previous_anchor_points.get("bottom_center") or state.get("last_point")
                 previous_side = state.get("last_side")
-                previous_distance = state.get("last_distance")
                 previous_observations = state.get("observations", 0)
                 emitted_direction = state.get("emitted_direction")
 

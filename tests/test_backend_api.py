@@ -98,6 +98,13 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("status", response.json())
 
+    def test_metrics_endpoint_exposes_prometheus_counters(self):
+        response = self.client.get("/metrics")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("text/plain", response.headers["content-type"])
+        self.assertIn("ruip_violations_total", response.text)
+        self.assertIn("ruip_uptime_seconds", response.text)
+
     def test_dashboard_static_page_serves(self):
         response = self.client.get("/dashboard/")
         self.assertEqual(response.status_code, 200)

@@ -42,6 +42,11 @@ jobs:
         run: |
           ! git ls-files | grep -E '(^|/)(\.DS_Store|road_user_platform\.db)$'
 
+      - name: Lint and type-check
+        run: |
+          ruff check src tests
+          mypy src
+
       - name: Run test suite
         env:
           PYTHONPATH: ${{ github.workspace }}/src

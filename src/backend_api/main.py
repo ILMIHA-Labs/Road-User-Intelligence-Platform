@@ -7,31 +7,37 @@ from typing import Optional
 from fastapi import Depends, FastAPI, HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .database import SessionLocal, engine, init_db
+from .database import SessionLocal, engine, init_db  # noqa: F401 (engine re-exported for tests)
 from .routes import (
     analytics_router,
     cameras_router,
     exports_router,
     ingest_router,
     live_router,
+    metrics_router,
     trends_router,
     video_analysis_router,
     violations_router,
 )
-from .routes.cameras import _seed_camera_registry, _upsert_camera_profile
-from .routes.video_analysis import _analyze_uploaded_video, _cleanup_video_analysis_jobs, _recover_video_analysis_jobs
+# _upsert_camera_profile and _analyze_uploaded_video are re-exported here so
+# tests can monkeypatch backend_api.main._upsert_camera_profile /
+# backend_api.main._analyze_uploaded_video.
+from .routes.cameras import _seed_camera_registry, _upsert_camera_profile  # noqa: F401
+from .routes.video_analysis import _analyze_uploaded_video, _cleanup_video_analysis_jobs, _recover_video_analysis_jobs  # noqa: F401
+# The following _config values are re-exported here so tests can monkeypatch
+# backend_api.main.<NAME> to override runtime behaviour per-test.
 from .routes._config import (
-    _CAMERAS_CONFIG_PATH,
-    _EVIDENCE_CAPTURE_ENABLED,
+    _CAMERAS_CONFIG_PATH,  # noqa: F401
+    _EVIDENCE_CAPTURE_ENABLED,  # noqa: F401
     _LIVE_CLIP_RETENTION_SECONDS,
     _LIVE_CLIPS_DIR,
     _LIVE_FRAMES_DIR,
     _LIVE_PREVIEW_RETENTION_SECONDS,
     _SETUP_PREVIEW_DIR,
     _SETUP_PREVIEW_RETENTION_SECONDS,
-    _VIDEO_ANALYSIS_DIR,
-    _VIDEO_ANALYSIS_MAX_UPLOAD_MB,
-    _VIDEO_ANALYSIS_RETENTION_SECONDS,
+    _VIDEO_ANALYSIS_DIR,  # noqa: F401
+    _VIDEO_ANALYSIS_MAX_UPLOAD_MB,  # noqa: F401
+    _VIDEO_ANALYSIS_RETENTION_SECONDS,  # noqa: F401
     _VIOLATION_EVIDENCE_DIR,
     _VIOLATION_EVIDENCE_RETENTION_SECONDS,
 )
@@ -122,6 +128,7 @@ _ROUTERS = [
     trends_router,
     exports_router,
     live_router,
+    metrics_router,
 ]
 
 for _router in _ROUTERS:
