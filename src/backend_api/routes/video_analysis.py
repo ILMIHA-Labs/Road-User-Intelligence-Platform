@@ -4,7 +4,7 @@ import logging
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 import cv2
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -13,25 +13,25 @@ from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
 from uuid import uuid4
 
-from .. import models
-from ..database import SessionLocal, get_db
 import sys as _sys
 
+from .. import models
+from ..database import SessionLocal, get_db
 from ._config import (
     _VIDEO_ANALYSIS_ALLOWED_EXTENSIONS,
     _VIDEO_ANALYSIS_ARTIFACTS,
     _VIDEO_ANALYSIS_EXECUTOR,
 )
-
-
-def _m():
-    """Return the main app module so tests can patch its runtime config."""
-    return _sys.modules["backend_api.main"]
 from ._shared import _serialize_dt
 from .cameras import SetupCountingLineInput, SetupZebraZoneInput, _normalize_setup_counting_lines, _normalize_setup_zebra_zones, _sanitize_camera_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _m():
+    """Return the main app module so tests can patch its runtime config."""
+    return _sys.modules["backend_api.main"]
 
 
 class VideoAnalysisRunRequest(BaseModel):

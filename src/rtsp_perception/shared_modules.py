@@ -6,5 +6,3 @@ import os
 # Add edge_vision to path so we can import its modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'edge_vision')))
 
-from edge_vision.detection import EdgeDetector
-from edge_vision.publisher import MQTTPublisher

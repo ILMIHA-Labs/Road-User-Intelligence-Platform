@@ -25,3 +25,47 @@ dependencies = []
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.ruff]
+src = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests deliberately set env vars (e.g. DATABASE_URL) before importing the
+# modules that read them at import time, so imports can't sit at the top.
+"tests/*.py" = ["E402"]
+
+[tool.mypy]
+# `src/__init__.py` exists so `uvicorn src.backend_api.main:app` works as a
+# deployment entrypoint, but internal modules import each other as
+# `from common.x import y` (relying on PYTHONPATH=$PWD/src), not
+# `from src.common.x import y`. explicit_package_bases + mypy_path make mypy
+# resolve modules the same way internally, so `mypy src` from the repo root
+# doesn't see the same file under two different module names.
+mypy_path = "src"
+explicit_package_bases = true
+ignore_missing_imports = true
+implicit_optional = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+
+# These modules have a pre-existing type-checking backlog (SQLAlchemy ORM
+# attribute typing on the classic declarative style, numpy/torch union
+# results from Ultralytics, implicit-Optional call sites) that is out of
+# scope for the CI lint gate. Remove an entry once its module's errors are
+# fixed.
+[[tool.mypy.overrides]]
+module = [
+    "backend_api.routes.analytics",
+    "backend_api.routes.cameras",
+    "backend_api.routes.trends",
+    "backend_api.routes.video_analysis",
+    "backend_api.routes.violations",
+    "common.event_schemas",
+    "edge_vision.detection",
+    "edge_vision.line_counter",
+    "edge_vision.publisher",
+    "video_analysis.detector",
+    "video_analysis.traffic_metrics",
+    "violation_detection.violation_rules",
+]
+ignore_errors = true
+

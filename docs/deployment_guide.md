@@ -118,6 +118,36 @@ python src/edge_vision/main.py --camera-id demo_cam --broker <server-ip> --sourc
 bash scripts/check_live_pipeline.sh http://127.0.0.1:${BACKEND_PORT:-8000} recam_01
 ```
 
+## Alternative: Docker Compose
+
+Instead of the systemd + virtualenv path above, the repository also ships a
+`docker-compose.yml` that runs the mosquitto broker, backend API, and all
+worker services (edge vision, speed estimation, violation detection, MQTT
+forwarder) as containers on a single host. This is useful for evaluators who
+want a single-command stack without managing a Python virtualenv or systemd
+units directly.
+
+```bash
+cp deploy/env/server-common.env.example deploy/env/server-common.env
+cp deploy/env/edge-vision.env.example deploy/env/edge-vision.env
+# edit deploy/env/edge-vision.env: point EDGE_SOURCE at a licensed video file
+# mounted under ./data (e.g. EDGE_SOURCE=/data/demo.mp4), or a webcam device
+docker compose up --build
+```
+
+The dashboard is served at `http://localhost:8000/dashboard/`. `config/`
+is mounted read-only into every service so edits to `config/cameras.yaml` on
+the host take effect on container restart.
+
+By default the backend uses a SQLite database stored in the `db-data` named
+volume. A commented-out `postgres` service (Compose profile `postgres`) is
+included in `docker-compose.yml` for operators who want a server-grade
+database; see the comments in that file before enabling it.
+
+This Docker path is an alternative to, not a replacement for, the systemd
+deployment above — both read the same `deploy/env/*.env` files and
+`config/cameras.yaml`.
+
 ## 7. Responsible deployment notes
 
 Before field deployment, review:

@@ -11,7 +11,6 @@ from common.camera_config import build_camera_profile_map
 from common.event_schemas import (
     DetectionEvent,
     SpeedEvent,
-    ViolationEvent,
     dump_event,
     parse_event_for_topic,
 )
