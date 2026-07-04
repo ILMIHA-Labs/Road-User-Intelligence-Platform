@@ -1,7 +1,3 @@
-> ⚠️ LEGAL NOTICE: This document was prepared as an engineering template for
-> project publication. It must be reviewed and approved by ILMIHA Labs and, if
-> needed, qualified legal counsel before being treated as a final policy.
-
 # Privacy Policy
 
 ## Summary
