@@ -27,13 +27,6 @@ submission.
 - confirm the intended public scope remains “research-reference MVP”
 - approve release notes and version for the first public research release
 
-## Legal-review items
-
-- approve the wording in `PRIVACY_POLICY.md`
-- approve the wording in `SECURITY.md` if required by organizational policy
-- confirm lawful-basis and deployment-language disclaimers are acceptable
-- confirm the repository does not include unlicensed demo media or assets
-- approve any future bundled dataset or video before publication
 
 ## Submission-ready evidence map
 
