@@ -80,7 +80,10 @@ def _video_analysis_public_artifacts(job: models.DBVideoAnalysisJob) -> dict:
     return {
         name: artifact
         for name, artifact in _VIDEO_ANALYSIS_ARTIFACTS.items()
-        if name not in {"zebra_events_csv", "zebra_occupancy_csv"}
+        if name not in {
+            "zebra_events_csv", "zebra_occupancy_csv",
+            "pedestrian_episodes_csv", "yielding_events_csv", "pet_events_csv",
+        }
     }
 
 

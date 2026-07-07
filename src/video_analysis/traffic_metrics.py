@@ -26,9 +26,13 @@ from video_analysis.geometry import (
     point_in_polygon as _point_in_polygon,
     point_polygon_distance as _point_polygon_distance,
 )
+from video_analysis.safety_measures import SafetyMeasuresTracker
 from video_analysis.serializer import (
     crossing_fieldnames,
+    pedestrian_episode_fieldnames,
+    pet_event_fieldnames,
     track_fieldnames,
+    yielding_event_fieldnames,
     zebra_event_fieldnames,
     zebra_occupancy_fieldnames,
 )
@@ -535,6 +539,13 @@ class TrafficMetricsAnalyzer:
         self.zebra_occupancy_rows: List[dict] = []
         self.zebra_approach_samples = defaultdict(list)
         self.rider_filtered_pedestrians_count = 0
+        self.safety_measures = SafetyMeasuresTracker(
+            camera_id=self.camera_id,
+            vehicle_classes=frozenset(VEHICLE_CLASSES),
+            pedestrian_classes=frozenset(PEDESTRIAN_CLASSES),
+            stale_after_seconds=self.zebra_interaction_window_seconds,
+            approach_min_speed_kmh=self.zebra_speed_threshold_kmh,
+        )
 
     def _short_zone_label(self, zone: dict, index: int) -> str:
         label = zone.get("label") or zone.get("id") or f"Z{index + 1}"
@@ -877,6 +888,8 @@ class TrafficMetricsAnalyzer:
             frame_crossings.append(row)
         frame_zebra_occupancy = self._update_zebra_occupancy(frame_number, elapsed_seconds, frame_rows)
         frame_zebra_events = self._update_zebra_events(frame_number, elapsed_seconds, frame_rows)
+        if self.zebra_zones:
+            self.safety_measures.update(elapsed_seconds, frame_rows)
         return frame_rows, frame_crossings, frame_zebra_events, frame_zebra_occupancy
 
     def _draw_count_overlay(self, annotated):
@@ -1073,16 +1086,22 @@ class TrafficMetricsAnalyzer:
             for speed in summary["_speed_samples"]:
                 speeds_by_class[summary["class"]].append(speed)
 
+        speed_limit = self.camera_profile.get("speed_limit_kmh")
+        speed_limit = float(speed_limit) if speed_limit is not None else None
         speed_metrics_by_class = {}
         for class_name, speeds in speeds_by_class.items():
             sorted_speeds = sorted(speeds)
             p85_index = min(len(sorted_speeds) - 1, int(round((len(sorted_speeds) - 1) * 0.85)))
-            speed_metrics_by_class[class_name] = {
+            entry = {
                 "avg_speed_kmh": round(sum(speeds) / len(speeds), 2),
                 "max_speed_kmh": round(max(speeds), 2),
                 "p85_speed_kmh": round(sorted_speeds[p85_index], 2),
                 "samples": len(speeds),
             }
+            if speed_limit is not None:
+                within = sum(1 for s in speeds if s <= speed_limit)
+                entry["compliance_rate"] = round(within / len(speeds), 4)
+            speed_metrics_by_class[class_name] = entry
 
         duration_minutes = max(duration_seconds / 60.0, 1e-9)
         return {
@@ -1091,6 +1110,7 @@ class TrafficMetricsAnalyzer:
             "counts_by_line": dict(sorted(counts_by_line.items())),
             "counts_by_direction": dict(sorted(counts_by_direction.items())),
             "flow_rate_per_minute": round(len(self.crossing_rows) / duration_minutes, 2),
+            "speed_limit_kmh": speed_limit,
             "speed_metrics_by_class": speed_metrics_by_class,
         }
 
@@ -1191,13 +1211,19 @@ class TrafficMetricsAnalyzer:
                 sys.stderr.flush()
 
         duration_seconds = frame_number / fps if fps else 0.0
+        if self.zebra_zones:
+            self.safety_measures.finalize(duration_seconds)
         summary_path = output_path / "summary.json"
         metrics_path = output_path / "metrics.json"
         crossings_path = output_path / "crossings.csv"
         zebra_events_path = output_path / "zebra_events.csv"
         zebra_occupancy_path = output_path / "zebra_occupancy.csv"
         tracks_path = output_path / "tracks.csv"
+        pedestrian_episodes_path = output_path / "pedestrian_episodes.csv"
+        yielding_events_path = output_path / "yielding_events.csv"
+        pet_events_path = output_path / "pet_events.csv"
         metrics = self._metric_summary(duration_seconds)
+        metrics["crossing_safety"] = self.safety_measures.metric_summary()
         summary = {
             "mode": "traffic_metrics",
             "camera_id": self.camera_id,
@@ -1227,6 +1253,9 @@ class TrafficMetricsAnalyzer:
                 "zebra_events_csv": str(zebra_events_path),
                 "zebra_occupancy_csv": str(zebra_occupancy_path),
                 "tracks_csv": str(tracks_path),
+                "pedestrian_episodes_csv": str(pedestrian_episodes_path),
+                "yielding_events_csv": str(yielding_events_path),
+                "pet_events_csv": str(pet_events_path),
             },
         }
 
@@ -1234,6 +1263,9 @@ class TrafficMetricsAnalyzer:
         self._write_csv(zebra_events_path, self.zebra_event_rows, zebra_event_fieldnames())
         self._write_csv(zebra_occupancy_path, self.zebra_occupancy_rows, zebra_occupancy_fieldnames())
         self._write_csv(tracks_path, self.track_rows, track_fieldnames())
+        self._write_csv(pedestrian_episodes_path, self.safety_measures.pedestrian_episode_rows, pedestrian_episode_fieldnames())
+        self._write_csv(yielding_events_path, self.safety_measures.yielding_event_rows, yielding_event_fieldnames())
+        self._write_csv(pet_events_path, self.safety_measures.pet_event_rows, pet_event_fieldnames())
         with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2)
         with open(metrics_path, "w") as f:

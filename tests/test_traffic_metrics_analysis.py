@@ -13,6 +13,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "s
 
 import yaml
 
+from video_analysis.safety_measures import SafetyMeasuresTracker
 from video_analysis.traffic_metrics import (
     TrafficMetricsAnalyzer,
     build_counting_lines,
@@ -484,6 +485,132 @@ class TestTrafficMetricsAnalysis(unittest.TestCase):
             self.assertEqual(metrics["counts_by_class"]["car"], 1)
             self.assertEqual(summary["metrics"]["total_crossings"], 1)
             self.assertEqual(progress_updates[-1], (3, 3))
+
+
+class TestSafetyMeasures(unittest.TestCase):
+    VEHICLES = frozenset({"car", "bus", "truck", "motorcycle"})
+    PEDESTRIANS = frozenset({"pedestrian"})
+
+    def _tracker(self):
+        return SafetyMeasuresTracker(
+            camera_id="cam",
+            vehicle_classes=self.VEHICLES,
+            pedestrian_classes=self.PEDESTRIANS,
+        )
+
+    @staticmethod
+    def _zstate(zone="z1", near=True, inside=False, dist=1.0):
+        return {"zone_id": zone, "near": near, "inside": inside, "distance_m": dist}
+
+    def _ped(self, oid, speed, inside):
+        return {
+            "object_id": oid, "class": "pedestrian", "is_rider": False,
+            "speed_kmh": speed, "_zebra_zone_states": [self._zstate(inside=inside)],
+        }
+
+    def _veh(self, oid, speed, inside, cls="car"):
+        return {
+            "object_id": oid, "class": cls, "is_rider": False,
+            "speed_kmh": speed, "_zebra_zone_states": [self._zstate(inside=inside)],
+        }
+
+    def test_pedestrian_wait_then_cross_episode(self):
+        tracker = self._tracker()
+        for e in (0.0, 0.5, 1.0):
+            tracker.update(e, [self._ped(1, 1.0, inside=False)])  # waiting
+        for e in (1.5, 2.0):
+            tracker.update(e, [self._ped(1, 4.0, inside=True)])   # crossing
+        tracker.update(2.5, [self._ped(1, 4.0, inside=False)])    # exited far side
+        tracker.finalize(3.0)
+
+        self.assertEqual(len(tracker.pedestrian_episode_rows), 1)
+        episode = tracker.pedestrian_episode_rows[0]
+        self.assertEqual(episode["outcome"], "crossed")
+        self.assertAlmostEqual(episode["wait_seconds"], 1.5)
+        self.assertGreater(episode["crossing_seconds"], 0.0)
+        summary = tracker.metric_summary()["pedestrian_episodes"]
+        self.assertEqual(summary["completed"], 1)
+
+    def test_vehicle_yields_versus_does_not_yield(self):
+        # Yields: decelerates below the yield threshold before entering.
+        yielded = self._tracker()
+        for e, spd in ((0.0, 30.0), (0.5, 18.0), (1.0, 6.0)):
+            yielded.update(e, [self._ped(9, 1.0, inside=False), self._veh(2, spd, inside=False)])
+        yielded.finalize(2.0)
+        self.assertEqual(yielded.yielding_event_rows[0]["outcome"], "yielded")
+        self.assertEqual(yielded.yielding_event_rows[0]["vehicle_class"], "car")
+
+        # Does not yield: enters the zone still travelling fast.
+        ran = self._tracker()
+        for e, spd, inside in ((0.0, 30.0, False), (0.5, 29.0, False), (1.0, 28.0, True)):
+            ran.update(e, [self._ped(9, 1.0, inside=False), self._veh(3, spd, inside=inside)])
+        ran.finalize(2.0)
+        self.assertEqual(ran.yielding_event_rows[0]["outcome"], "did_not_yield")
+        self.assertEqual(ran.metric_summary()["yielding"]["yielding_rate"], 0.0)
+
+    def test_post_encroachment_time(self):
+        tracker = self._tracker()
+        tracker.update(0.0, [self._ped(5, 4.0, inside=True)])
+        tracker.update(0.5, [self._ped(5, 4.0, inside=True)])
+        tracker.update(1.0, [self._veh(6, 20.0, inside=False)])   # pedestrian gone -> exit at 1.0
+        tracker.update(2.0, [self._veh(6, 20.0, inside=True)])    # vehicle enters 1s later
+        tracker.finalize(3.0)
+
+        self.assertEqual(len(tracker.pet_event_rows), 1)
+        pet = tracker.pet_event_rows[0]
+        self.assertEqual(pet["encroachment_order"], "pedestrian_first")
+        self.assertAlmostEqual(pet["pet_seconds"], 1.0)
+        self.assertTrue(pet["critical"])
+        self.assertEqual(tracker.metric_summary()["post_encroachment"]["critical_events"], 1)
+
+    def test_analyzer_feeds_safety_measures(self):
+        # Drives real detections through the analyzer and confirms the tracker
+        # was fed (object categories populated) when a zebra zone is present.
+        detector = FakeDetector(
+            [
+                [
+                    {"object_id": 51, "class_name": "car", "bbox": [120.0, 120.0, 160.0, 170.0], "confidence": 0.95},
+                    {"object_id": 52, "class_name": "pedestrian", "bbox": [140.0, 120.0, 150.0, 180.0], "confidence": 0.95},
+                ]
+            ]
+        )
+        zebra_zones = [
+            {
+                "id": "zebra_1", "label": "Z1", "category": "zebra_crossing",
+                "points": [[100.0, 100.0], [200.0, 100.0], [200.0, 200.0], [100.0, 200.0]],
+            }
+        ]
+        analyzer = TrafficMetricsAnalyzer(
+            camera_id="cam_count",
+            camera_profile=self._camera_profile_with_limit(),
+            detector=detector,
+            counting_lines=self._camera_profile_with_limit()["counting_lines"],
+            zebra_zones=zebra_zones,
+        )
+        frame = np.zeros((320, 320, 3), dtype=np.uint8)
+        analyzer.analyze_frame(frame, 1, 0.0)
+        self.assertIn(51, analyzer.safety_measures._object_categories)
+        self.assertIn(52, analyzer.safety_measures._object_categories)
+        # metric summary block is present and well-formed
+        block = analyzer.safety_measures.metric_summary()
+        self.assertIn("yielding", block)
+        self.assertIn("post_encroachment", block)
+
+    def _camera_profile_with_limit(self):
+        return {
+            "pixels_per_meter": 10.0,
+            "speed_history_size": 2,
+            "speed_limit_kmh": 50.0,
+            "zones": [],
+            "counting_lines": [
+                {
+                    "id": "main_gate", "label": "Main Gate",
+                    "points": [[100.0, 0.0], [100.0, 240.0]], "enabled": True,
+                    "classes": ["car", "pedestrian"], "min_crossing_distance_px": 5.0,
+                    "reset_distance_px": 8.0, "min_displacement_px": 10.0, "min_observations": 2,
+                }
+            ],
+        }
 
 
 if __name__ == "__main__":
