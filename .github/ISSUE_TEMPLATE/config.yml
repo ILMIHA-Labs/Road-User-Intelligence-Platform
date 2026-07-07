@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or vulnerability disclosure
+    url: https://github.com/ILMIHA-Labs/Road-User-Intelligence-Platform/blob/main/SECURITY.md
+    about: Please report security vulnerabilities privately as described in SECURITY.md — do not open a public issue.
+  - name: Data-handling & privacy questions
+    url: https://github.com/ILMIHA-Labs/Road-User-Intelligence-Platform/blob/main/docs/data_governance.md
+    about: Questions about retention, evidence capture, PII, and privacy-aware deployment.
+  - name: Usage & evaluation questions
+    url: https://github.com/ILMIHA-Labs/Road-User-Intelligence-Platform/blob/main/README.md
+    about: Quickstart, the canonical evaluation workflow, and research-use guidance.
