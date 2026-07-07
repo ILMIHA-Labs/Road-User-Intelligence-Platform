@@ -108,3 +108,21 @@ class DBVideoAnalysisJob(Base):
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=False, index=True)
+
+
+class DBSceneCondition(Base):
+    """Researcher-supplied lighting/weather tag for a camera time window.
+
+    Lets analytics be correlated with scene conditions without inferring them
+    from imagery. Windows are matched by [start, end) against event timestamps.
+    """
+
+    __tablename__ = "scene_conditions"
+    id = Column(Integer, primary_key=True, index=True)
+    camera_id = Column(String, nullable=False, index=True)
+    start = Column(DateTime, nullable=False, index=True)
+    end = Column(DateTime, nullable=False, index=True)
+    lighting = Column(String, nullable=True, index=True)
+    weather = Column(String, nullable=True, index=True)
+    notes = Column(String, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

@@ -123,6 +123,23 @@ Expected outputs include:
 - safety-event records
 - dashboard summaries and exports
 
+Derived research measures include:
+
+- pedestrian crossing episodes (kerb wait time and crossing duration)
+- driver yielding rate at zebra crossings
+- post-encroachment time (PET) between sequential crossing occupancies
+- speed-limit compliance by class
+- hourly / peak-hour demand profiles and vehicle headway distributions
+- lighting/weather scene-condition tagging to slice any of the above
+- a one-download research dataset bundle
+  (`GET /exports/research-bundle.zip`) containing the event CSVs, an
+  aggregate `traffic_flow.json`, and a `manifest.json` recording schema,
+  calibration, and platform version for reproducibility
+
+The uploaded-video `Video Analysis` workspace additionally writes
+`pedestrian_episodes.csv`, `yielding_events.csv`, and `pet_events.csv`
+alongside the existing crossing/zebra outputs when a zebra zone is drawn.
+
 Known reproducibility limits:
 
 - results depend heavily on camera placement and calibration

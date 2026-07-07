@@ -49,3 +49,27 @@ This catalog maps expected user personas to outcomes for the Road User Intellige
 - Inputs: Runtime audit scripts and deployment checklists
 - Outputs: Runtime evidence, decision gate, release branch recommendation
 - Success metric: Stable sustained run and successful publish to broker
+
+## UC-7 Crossing-Safety Research Measures
+
+- Persona: Road-safety researcher
+- Goal: Quantify pedestrian–vehicle interaction quality at zebra crossings
+- Inputs: Detection/speed tracks and configured zebra zones (live pipeline or
+  the uploaded-video `Video Analysis` workspace)
+- Outputs: Pedestrian crossing episodes (wait + crossing time), driver
+  yielding rate, post-encroachment time (PET) events, and per-class speed
+  compliance — as CSVs and aggregate metrics
+- Success metric: Reproducible measures that align with manual review on
+  labelled scenarios
+
+## UC-8 Demand & Reproducible Dataset Export
+
+- Persona: Transport planning / open-data researcher
+- Goal: Produce publishable demand statistics and a reproducible dataset
+- Inputs: Persisted crossings/speeds/detections plus optional lighting/weather
+  scene-condition tags
+- Outputs: Hourly/peak-hour profiles, vehicle headway distributions, and a
+  one-download `research-bundle.zip` (event CSVs + `traffic_flow.json` +
+  `manifest.json` with schema, calibration, and platform version)
+- Success metric: A downloaded bundle that reproduces the reported aggregates
+  from its own CSVs

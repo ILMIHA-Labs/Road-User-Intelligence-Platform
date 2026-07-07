@@ -10,3 +10,16 @@ STOPPED_SPEED_THRESHOLD_KMH: float = 3.0
 PEDESTRIAN_CROSSING_WINDOW_SECONDS: float = 2.0
 CROSSING_MIN_PRESENCE_SECONDS: float = 0.75
 CROSSING_VEHICLE_MIN_DISPLACEMENT_PX: float = 12.0
+
+# Crossing-safety research measures
+# A pedestrian moving at or below this speed near a crossing is treated as
+# waiting at the kerb.
+PEDESTRIAN_WAITING_SPEED_KMH: float = 3.0
+# A vehicle whose approach speed drops to or below this is treated as having
+# yielded to a waiting pedestrian.
+YIELD_SPEED_THRESHOLD_KMH: float = 8.0
+# Maximum gap between one road user leaving a crossing and the next entering
+# it for the pair to count as a post-encroachment-time (PET) conflict.
+PET_WINDOW_SECONDS: float = 5.0
+# PET below this threshold is considered a critical near-miss.
+PET_CRITICAL_SECONDS: float = 1.5

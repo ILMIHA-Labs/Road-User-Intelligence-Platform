@@ -532,6 +532,105 @@ class TestBackendAPI(unittest.TestCase):
         response = self.client.post("/crossings", json=payload)
         self.assertEqual(response.status_code, 201)
 
+    def _seed_crossing(self, object_id, timestamp, direction="north", cls="car", line_id="L1"):
+        self.client.post("/crossings", json={
+            "camera_id": "research_cam", "line_id": line_id, "line_label": line_id,
+            "object_id": object_id, "class": cls, "direction": direction,
+            "timestamp": timestamp, "frame_number": object_id, "source": "test",
+        })
+
+    def _seed_speed(self, object_id, speed, timestamp):
+        self.client.post("/speeds", json={
+            "camera_id": "research_cam", "object_id": object_id,
+            "speed_kmh": speed, "timestamp": timestamp,
+        })
+
+    def test_traffic_profile_endpoint(self):
+        for i in range(4):
+            self._seed_crossing(i, f"2026-07-06T08:00:0{i}Z")
+        data = self.client.get("/analytics/traffic-profile?camera_id=research_cam").json()
+        self.assertEqual(data["total_crossings"], 4)
+        self.assertEqual(data["peak_hour"], 8)
+        self.assertEqual(data["weekday_count"], 4)
+        self.assertEqual(len(data["hourly_counts"]), 24)
+
+    def test_headways_endpoint(self):
+        for i in range(4):
+            self._seed_crossing(i, f"2026-07-06T08:00:0{i * 2}Z")
+        data = self.client.get("/analytics/headways?camera_id=research_cam").json()
+        self.assertEqual(data["headway_count"], 3)
+        self.assertAlmostEqual(data["mean_headway_seconds"], 2.0)
+        self.assertIn("histogram", data)
+
+    def test_speed_compliance_endpoint(self):
+        for i, spd in enumerate([40.0, 55.0, 80.0, 100.0]):
+            self._seed_speed(i, spd, f"2026-07-06T08:00:0{i}Z")
+        data = self.client.get("/analytics/speed-compliance?camera_id=research_cam").json()
+        self.assertEqual(data["samples"], 4)
+        self.assertEqual(data["within_limit"] + data["over_limit"], 4)
+        self.assertIsNotNone(data["compliance_rate"])
+
+    def test_scene_condition_crud_and_filter(self):
+        for i in range(4):
+            self._seed_crossing(i, f"2026-07-06T08:00:0{i}Z")
+        create = self.client.post("/cameras/research_cam/conditions", json={
+            "start": "2026-07-06T08:00:00Z", "end": "2026-07-06T08:00:02Z",
+            "lighting": "day", "weather": "clear",
+        })
+        self.assertEqual(create.status_code, 201)
+        condition_id = create.json()["id"]
+
+        listed = self.client.get("/cameras/research_cam/conditions").json()
+        self.assertEqual(len(listed["conditions"]), 1)
+
+        # window [08:00:00, 08:00:02) covers crossings at :00 and :01 -> 2
+        filtered = self.client.get(
+            "/analytics/traffic-profile?camera_id=research_cam&lighting=day&weather=clear"
+        ).json()
+        self.assertEqual(filtered["total_crossings"], 2)
+
+        # no night-tagged windows -> empty
+        night = self.client.get(
+            "/analytics/traffic-profile?camera_id=research_cam&lighting=night"
+        ).json()
+        self.assertEqual(night["total_crossings"], 0)
+
+        bad = self.client.post("/cameras/research_cam/conditions", json={
+            "start": "2026-07-06T08:00:00Z", "end": "2026-07-06T09:00:00Z", "lighting": "bogus",
+        })
+        self.assertEqual(bad.status_code, 400)
+
+        deleted = self.client.delete(f"/cameras/research_cam/conditions/{condition_id}")
+        self.assertEqual(deleted.status_code, 200)
+        self.assertEqual(len(self.client.get("/cameras/research_cam/conditions").json()["conditions"]), 0)
+
+    def test_research_bundle_export(self):
+        import io
+        import json as _json
+        import zipfile
+
+        self._seed_crossing(1, "2026-07-06T08:00:00Z")
+        self._seed_speed(1, 55.0, "2026-07-06T08:00:00Z")
+        self.client.post("/cameras/research_cam/conditions", json={
+            "start": "2026-07-06T08:00:00Z", "end": "2026-07-06T09:00:00Z", "lighting": "day",
+        })
+        response = self.client.get("/exports/research-bundle.zip?camera_id=research_cam")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "application/zip")
+        archive = zipfile.ZipFile(io.BytesIO(response.content))
+        self.assertEqual(
+            set(archive.namelist()),
+            {
+                "crossings.csv", "speeds.csv", "safety_events.csv",
+                "scene_conditions.csv", "traffic_flow.json", "manifest.json", "README.txt",
+            },
+        )
+        manifest = _json.loads(archive.read("manifest.json"))
+        self.assertEqual(manifest["schema_version"], "1.0")
+        self.assertIn("columns", manifest)
+        self.assertEqual(manifest["record_counts"]["crossings"], 1)
+        self.assertEqual(manifest["record_counts"]["scene_conditions"], 1)
+
     def test_violation_evidence_is_captured_and_served(self):
         camera_dir = Path(self.live_clip_tmp.name) / "test_cam"
         camera_dir.mkdir(parents=True, exist_ok=True)

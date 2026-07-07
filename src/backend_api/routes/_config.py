@@ -63,6 +63,9 @@ _VIDEO_ANALYSIS_ARTIFACTS = {
     "zebra_events_csv": ("zebra_events.csv", "text/csv"),
     "zebra_occupancy_csv": ("zebra_occupancy.csv", "text/csv"),
     "tracks_csv": ("tracks.csv", "text/csv"),
+    "pedestrian_episodes_csv": ("pedestrian_episodes.csv", "text/csv"),
+    "yielding_events_csv": ("yielding_events.csv", "text/csv"),
+    "pet_events_csv": ("pet_events.csv", "text/csv"),
 }
 _VIDEO_ANALYSIS_EXECUTOR = ThreadPoolExecutor(max_workers=_VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS)
 _CAMERA_DEFAULTS_CACHE: dict = {"path": None, "mtime_ns": None, "defaults": {}}

@@ -15,6 +15,7 @@ from .routes import (
     ingest_router,
     live_router,
     metrics_router,
+    research_router,
     trends_router,
     video_analysis_router,
     violations_router,
@@ -129,6 +130,7 @@ _ROUTERS = [
     exports_router,
     live_router,
     metrics_router,
+    research_router,
 ]
 
 for _router in _ROUTERS:
