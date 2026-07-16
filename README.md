@@ -13,6 +13,7 @@ The project supports:
 - event review with optional evidence capture
 - live dashboard-based monitoring and export
 - optional operational alerting on safety events and camera-offline health
+- privacy redaction (face/plate blurring on stored imagery; k-anonymity on aggregates)
 
 This public release is framed primarily around **SDG 11 road safety** and is
 intended to help researchers and evaluators study safer urban mobility
