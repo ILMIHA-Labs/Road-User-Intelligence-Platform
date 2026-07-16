@@ -12,6 +12,7 @@ The project supports:
 - configurable safety-event detection
 - event review with optional evidence capture
 - live dashboard-based monitoring and export
+- optional operational alerting on safety events and camera-offline health
 
 This public release is framed primarily around **SDG 11 road safety** and is
 intended to help researchers and evaluators study safer urban mobility

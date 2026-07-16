@@ -126,3 +126,23 @@ class DBSceneCondition(Base):
     weather = Column(String, nullable=True, index=True)
     notes = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
+
+class DBAlert(Base):
+    """A dispatched operational alert (safety event or camera health change).
+
+    Records are written whether or not delivery to an external channel
+    succeeds, so the alert history is auditable and queryable via /alerts.
+    Payloads carry event-level metadata only — never imagery or PII.
+    """
+
+    __tablename__ = "alerts"
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    alert_type = Column(String, nullable=False, index=True)
+    camera_id = Column(String, nullable=True, index=True)
+    severity = Column(String, nullable=False, default="info")
+    dedup_key = Column(String, nullable=True, index=True)
+    payload = Column(JSON, nullable=True)
+    delivered = Column(Boolean, nullable=False, default=False)
+    delivery_error = Column(String, nullable=True)

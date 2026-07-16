@@ -71,6 +71,40 @@ Important variables include:
 - `VIDEO_ANALYSIS_RETENTION_SECONDS`
 - `VIDEO_ANALYSIS_MAX_UPLOAD_MB`
 - `VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS`
+- `ALERTS_ENABLED`, `ALERT_WEBHOOK_URL`, `ALERT_VIOLATION_TYPES`, and the
+  camera-health thresholds (see "Alerting & camera health" below)
+
+## Alerting & camera health
+
+The backend can notify operators when a safety violation fires or when a camera
+stops publishing. Alerting is **disabled by default** (`ALERTS_ENABLED=false`)
+and is delivered over a webhook and/or an MQTT topic. Every alert is also
+recorded to the `alerts` table and is queryable at `GET /api/v1/alerts`.
+
+```bash
+ALERTS_ENABLED=true
+ALERT_WEBHOOK_URL=https://your-endpoint.example/road-user-alerts
+ALERT_VIOLATION_TYPES=            # empty = all supported types
+ALERT_DEBOUNCE_SECONDS=60         # min gap between same camera+type alerts
+CAMERA_OFFLINE_AFTER_SECONDS=60   # no activity for this long => offline alert
+CAMERA_HEALTH_POLL_SECONDS=30     # how often the health monitor checks
+ALERT_CAMERA_RECOVERY_ENABLED=true
+# Optional MQTT delivery (reuses MQTT_BROKER_HOST / MQTT_BROKER_PORT):
+ALERT_MQTT_ENABLED=false
+ALERT_MQTT_TOPIC=alerts/events
+```
+
+Verify configuration and delivery:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/alerts/config   # effective config, secrets redacted
+curl -X POST http://127.0.0.1:8000/api/v1/alerts/test   # fire a test alert
+```
+
+Alert payloads carry **event-level metadata only** (camera id, event type,
+timestamp) — never imagery or personal data — consistent with the platform's
+privacy posture. If a delivery channel fails, the alert is still recorded with
+the error; it never blocks event ingest.
 
 ## Privacy-sensitive runtime defaults
 

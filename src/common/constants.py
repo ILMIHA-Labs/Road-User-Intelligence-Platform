@@ -23,3 +23,12 @@ YIELD_SPEED_THRESHOLD_KMH: float = 8.0
 PET_WINDOW_SECONDS: float = 5.0
 # PET below this threshold is considered a critical near-miss.
 PET_CRITICAL_SECONDS: float = 1.5
+
+# Alerting and camera-health monitoring
+# Minimum seconds between two alerts sharing the same dedup key.
+ALERT_DEBOUNCE_SECONDS: float = 60.0
+# A camera with no recorded activity for longer than this is treated as
+# having gone offline.
+CAMERA_OFFLINE_AFTER_SECONDS: float = 60.0
+# How often the background monitor re-checks camera health.
+CAMERA_HEALTH_POLL_SECONDS: float = 30.0

@@ -4,6 +4,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from common import constants as _constants
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,24 @@ def _env_int(name: str, default: int) -> int:
     except ValueError:
         logger.warning("Invalid integer for %s=%r. Falling back to %s.", name, value, default)
         return default
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        logger.warning("Invalid float for %s=%r. Falling back to %s.", name, value, default)
+        return default
+
+
+def _env_csv(name: str) -> frozenset:
+    value = os.getenv(name)
+    if not value:
+        return frozenset()
+    return frozenset(item.strip() for item in value.split(",") if item.strip())
 
 
 _CAMERAS_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "cameras.yaml"
@@ -68,6 +88,20 @@ _VIDEO_ANALYSIS_ARTIFACTS = {
     "pet_events_csv": ("pet_events.csv", "text/csv"),
 }
 _VIDEO_ANALYSIS_EXECUTOR = ThreadPoolExecutor(max_workers=_VIDEO_ANALYSIS_MAX_CONCURRENT_JOBS)
+# Alerting and camera-health monitoring (conservative: disabled by default)
+_ALERTS_ENABLED = _env_flag("ALERTS_ENABLED", False)
+_ALERT_WEBHOOK_URL = os.getenv("ALERT_WEBHOOK_URL", "")
+_ALERT_WEBHOOK_TIMEOUT_SECONDS = _env_float("ALERT_WEBHOOK_TIMEOUT_SECONDS", 5.0)
+_ALERT_VIOLATION_TYPES = _env_csv("ALERT_VIOLATION_TYPES")  # empty = all supported
+_ALERT_DEBOUNCE_SECONDS = _env_float("ALERT_DEBOUNCE_SECONDS", _constants.ALERT_DEBOUNCE_SECONDS)
+_ALERT_MQTT_ENABLED = _env_flag("ALERT_MQTT_ENABLED", False)
+_ALERT_MQTT_TOPIC = os.getenv("ALERT_MQTT_TOPIC", "alerts/events")
+_ALERT_MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+_ALERT_MQTT_BROKER_PORT = _env_int("MQTT_BROKER_PORT", 1883)
+_CAMERA_OFFLINE_AFTER_SECONDS = _env_float("CAMERA_OFFLINE_AFTER_SECONDS", _constants.CAMERA_OFFLINE_AFTER_SECONDS)
+_CAMERA_HEALTH_POLL_SECONDS = _env_float("CAMERA_HEALTH_POLL_SECONDS", _constants.CAMERA_HEALTH_POLL_SECONDS)
+_ALERT_CAMERA_RECOVERY_ENABLED = _env_flag("ALERT_CAMERA_RECOVERY_ENABLED", True)
+
 _CAMERA_DEFAULTS_CACHE: dict = {"path": None, "mtime_ns": None, "defaults": {}}
 _RETIRED_VIOLATION_TYPES = ("multiple_riders_violation",)
 _RETIRED_CAMERA_CONFIG_FIELDS = {
