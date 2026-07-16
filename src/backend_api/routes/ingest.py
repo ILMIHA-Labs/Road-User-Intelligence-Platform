@@ -13,6 +13,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _dispatch_violation_alerts_safe(db: Session, violations: list) -> None:
+    """Fire alerts for persisted violations. Best-effort — never breaks ingest."""
+    try:
+        from ..alerting import dispatch_violation_alerts
+        dispatch_violation_alerts(db, violations)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Violation alert dispatch failed: %s", exc)
+
+
 @router.post("/detections", status_code=201)
 def create_detection(event: schemas.DetectionEvent, db: Session = Depends(get_db)):
     data = event.model_dump()
@@ -59,6 +68,7 @@ def create_violation(event: schemas.ViolationEvent, db: Session = Depends(get_db
         db.rollback()
         logger.error("Failed to insert violation: %s", e)
         raise HTTPException(status_code=500, detail="Database Error")
+    _dispatch_violation_alerts_safe(db, [db_violation])
     return {"message": "Violation stored"}
 
 
@@ -123,14 +133,16 @@ def create_speeds_batch(events: list[schemas.SpeedEvent], db: Session = Depends(
 @router.post("/violations/batch", status_code=207)
 def create_violations_batch(events: list[schemas.ViolationEvent], db: Session = Depends(get_db)):
     accepted = [e for e in events if e.violation_type not in _RETIRED_VIOLATION_TYPES]
-    for event in accepted:
-        db.add(models.DBViolation(**event.model_dump()))
+    rows = [models.DBViolation(**event.model_dump()) for event in accepted]
+    for row in rows:
+        db.add(row)
     try:
         db.commit()
     except SQLAlchemyError as e:
         db.rollback()
         logger.error("Failed to insert violation batch: %s", e)
         raise HTTPException(status_code=500, detail="Database Error")
+    _dispatch_violation_alerts_safe(db, rows)
     return {"inserted": len(accepted), "skipped": len(events) - len(accepted)}
 
 

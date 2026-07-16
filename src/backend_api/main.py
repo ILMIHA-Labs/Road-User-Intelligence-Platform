@@ -9,6 +9,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .database import SessionLocal, engine, init_db  # noqa: F401 (engine re-exported for tests)
 from .routes import (
+    alerts_router,
     analytics_router,
     cameras_router,
     exports_router,
@@ -106,6 +107,14 @@ def startup_event():
     finally:
         db.close()
     _cleanup_runtime_artifacts()
+    from .alerting import camera_monitor
+    camera_monitor.start()
+
+
+@app.on_event("shutdown")
+def shutdown_event():
+    from .alerting import camera_monitor
+    camera_monitor.stop()
 
 
 @app.get("/", dependencies=[])
@@ -131,6 +140,7 @@ _ROUTERS = [
     live_router,
     metrics_router,
     research_router,
+    alerts_router,
 ]
 
 for _router in _ROUTERS:
