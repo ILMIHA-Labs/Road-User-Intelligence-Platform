@@ -74,6 +74,40 @@ Important variables include:
 - `ALERTS_ENABLED`, `ALERT_WEBHOOK_URL`, `ALERT_VIOLATION_TYPES`, and the
   camera-health thresholds (see "Alerting & camera health" below)
 
+## Privacy redaction
+
+Stored imagery can leak identities, so the platform blurs faces and licence
+plates on any frame it writes — violation evidence clips and the video-analysis
+`annotated.mp4`. **Imagery redaction is ON by default** (`REDACTION_ENABLED=true`)
+and only takes effect where imagery is actually stored (e.g. when evidence
+capture is enabled).
+
+```bash
+REDACTION_ENABLED=true
+REDACT_FACES=true
+REDACT_PLATES=true
+REDACTION_METHOD=blur      # blur | pixelate
+REDACTION_STRENGTH=25
+REDACTION_MIN_GROUP=0      # k-anonymity for aggregate endpoints; >=2 to enable
+```
+
+The blur is **heuristic**: it derives the face region from the upper part of a
+person detection and the plate region from the lower part of a vehicle
+detection, using the bounding boxes the pipeline already produces. It adds no
+extra model or dependency, but is approximate — a dedicated face/plate detector
+is a possible future enhancement.
+
+`REDACTION_MIN_GROUP` applies **k-anonymity** to the aggregate research
+endpoints (`/analytics/traffic-profile`, `/analytics/headways`,
+`/analytics/speed-compliance`): with a value of `k >= 2`, any positive group
+count below `k` is suppressed (returned as `null`) so small groups can't
+re-identify individuals. It is `0` (off) by default so research numbers are
+never silently altered. Verify what's active:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/privacy/redaction
+```
+
 ## Alerting & camera health
 
 The backend can notify operators when a safety violation fires or when a camera

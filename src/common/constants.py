@@ -32,3 +32,13 @@ ALERT_DEBOUNCE_SECONDS: float = 60.0
 CAMERA_OFFLINE_AFTER_SECONDS: float = 60.0
 # How often the background monitor re-checks camera health.
 CAMERA_HEALTH_POLL_SECONDS: float = 30.0
+
+# Privacy redaction (heuristic face/plate blurring on stored imagery)
+# Fraction of a person box height, measured from the top, treated as the face.
+FACE_REGION_HEIGHT_RATIO: float = 0.4
+# Fraction of a vehicle box height, measured from the bottom, treated as the
+# plate region, and the horizontal margin trimmed from each side.
+PLATE_REGION_HEIGHT_RATIO: float = 0.35
+PLATE_REGION_SIDE_MARGIN_RATIO: float = 0.2
+# Blur strength: Gaussian kernel size (forced odd) or pixelation block factor.
+REDACTION_STRENGTH: int = 25

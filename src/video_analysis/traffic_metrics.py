@@ -14,6 +14,7 @@ import yaml
 
 from common.camera_config import DEFAULT_COUNTING_LINE_CLASSES, build_camera_profile_map
 from common.event_schemas import dump_event
+from common.redaction import redact_frame, redaction_config_from_env
 from edge_vision.line_counter import LineCrossingCounter
 from speed_estimation.calibration import CameraCalibration
 from speed_estimation.speed_calc import SpeedCalculator
@@ -539,6 +540,7 @@ class TrafficMetricsAnalyzer:
         self.zebra_occupancy_rows: List[dict] = []
         self.zebra_approach_samples = defaultdict(list)
         self.rider_filtered_pedestrians_count = 0
+        self.redaction_cfg = redaction_config_from_env()
         self.safety_measures = SafetyMeasuresTracker(
             camera_id=self.camera_id,
             vehicle_classes=frozenset(VEHICLE_CLASSES),
@@ -993,6 +995,12 @@ class TrafficMetricsAnalyzer:
 
     def annotate_frame(self, frame, frame_rows: List[dict], frame_crossings: List[dict], frame_zebra_events: Optional[List[dict]] = None):
         annotated = frame.copy()
+        if self.redaction_cfg.enabled:
+            redact_frame(
+                annotated,
+                [(row.get("class"), json.loads(row["bbox"])) for row in frame_rows],
+                self.redaction_cfg,
+            )
         frame_zebra_events = frame_zebra_events or []
         for zone in self.zebra_zones:
             zone_index = self.zebra_zones.index(zone)

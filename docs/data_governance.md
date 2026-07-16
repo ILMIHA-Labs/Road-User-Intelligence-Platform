@@ -54,6 +54,16 @@ Important runtime controls include:
 
 These controls should be reviewed and set before any field or pilot deployment.
 
+## Privacy redaction
+
+When the platform writes imagery (violation evidence, analysis video), it blurs
+faces and licence plates by default (`REDACTION_ENABLED=true`). The blur is a
+heuristic derived from existing person/vehicle detections rather than a
+dedicated face/plate detector, so it is approximate; operators storing evidence
+should treat it as risk-reduction, not a guarantee. `REDACTION_MIN_GROUP`
+(default off) additionally applies k-anonymity suppression to small groups in
+the aggregate research endpoints. See `docs/deployment_guide.md` for details.
+
 ## Uploaded-video analysis isolation
 
 The dashboard `Video Analysis` workspace accepts a researcher-supplied licensed

@@ -13,10 +13,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
 
-from .. import models
-from ..database import SessionLocal, get_db
 import sys as _sys
 
+from common.redaction import redact_frame
+
+from .. import models
+from ..database import SessionLocal, get_db
 from ._shared import _apply_supported_violation_filter
 
 
@@ -152,23 +154,35 @@ def _render_violation_evidence_clip(db_violation: models.DBViolation, clip_path:
 
     start_time = datetime.fromtimestamp(min(timestamp_values), tz=timezone.utc).replace(tzinfo=None) if timestamp_values else None
     end_time = datetime.fromtimestamp(max(timestamp_values), tz=timezone.utc).replace(tzinfo=None) if timestamp_values else None
-    db = SessionLocal()
-    try:
-        detection_query = db.query(models.DBDetection).filter(
-            models.DBDetection.camera_id == db_violation.camera_id,
-            models.DBDetection.object_id == db_violation.object_id,
-        )
+
+    def _window(query):
         if start_time is not None and end_time is not None:
-            detection_query = detection_query.filter(
+            return query.filter(
                 models.DBDetection.timestamp >= start_time,
                 models.DBDetection.timestamp <= end_time,
             )
-        else:
-            detection_query = detection_query.filter(
-                models.DBDetection.frame_number >= min(frame_numbers),
-                models.DBDetection.frame_number <= max(frame_numbers),
+        return query.filter(
+            models.DBDetection.frame_number >= min(frame_numbers),
+            models.DBDetection.frame_number <= max(frame_numbers),
+        )
+
+    from . import _config
+    redaction_cfg = _config._REDACTION_CONFIG
+    db = SessionLocal()
+    try:
+        detections = _window(
+            db.query(models.DBDetection).filter(
+                models.DBDetection.camera_id == db_violation.camera_id,
+                models.DBDetection.object_id == db_violation.object_id,
             )
-        detections = detection_query.all()
+        ).all()
+        # For redaction, blur every road user in the frame, not just the
+        # violation subject.
+        all_detections = _window(
+            db.query(models.DBDetection).filter(
+                models.DBDetection.camera_id == db_violation.camera_id,
+            )
+        ).all() if redaction_cfg.enabled else []
     finally:
         db.close()
 
@@ -177,6 +191,11 @@ def _render_violation_evidence_clip(db_violation: models.DBViolation, clip_path:
         for row in detections
         if row.frame_number is not None and row.bbox
     }
+    redaction_by_frame: dict = {}
+    for row in all_detections:
+        if row.frame_number is None or not row.bbox:
+            continue
+        redaction_by_frame.setdefault(row.frame_number, []).append((row.class_name, row.bbox))
 
     matched_frames = 0
     started = False
@@ -188,11 +207,14 @@ def _render_violation_evidence_clip(db_violation: models.DBViolation, clip_path:
             frame_number = item.get("frame_number")
             detection = detections_by_frame.get(frame_number)
             if detection is not None:
-                frame = _draw_evidence_box(frame, detection.bbox, db_violation.object_id)
                 matched_frames += 1
                 started = True
             if not started:
                 continue
+            if redaction_cfg.enabled:
+                redact_frame(frame, redaction_by_frame.get(frame_number, []), redaction_cfg)
+            if detection is not None:
+                frame = _draw_evidence_box(frame, detection.bbox, db_violation.object_id)
             writer.write(frame)
     finally:
         writer.release()
