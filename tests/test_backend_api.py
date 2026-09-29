@@ -570,6 +570,33 @@ class TestBackendAPI(unittest.TestCase):
         self.assertEqual(data["within_limit"] + data["over_limit"], 4)
         self.assertIsNotNone(data["compliance_rate"])
 
+    def test_privacy_redaction_status_endpoint(self):
+        data = self.client.get("/privacy/redaction").json()
+        self.assertIn("imagery_redaction_enabled", data)
+        self.assertIn("k_anonymity_min_group", data)
+        self.assertIn(data["method"], {"blur", "pixelate"})
+
+    def test_traffic_profile_k_anonymity_suppression(self):
+        from backend_api.routes import _config
+        original = _config._REDACTION_MIN_GROUP
+        _config._REDACTION_MIN_GROUP = 5
+        try:
+            for i in range(3):  # 3 crossings in hour 08 -> below k=5
+                self._seed_crossing(i, f"2026-07-06T08:00:0{i}Z")
+            data = self.client.get("/analytics/traffic-profile?camera_id=research_cam").json()
+            self.assertTrue(data["k_anonymity"]["applied"])
+            self.assertEqual(data["k_anonymity"]["min_group"], 5)
+            self.assertIsNone(data["hourly_counts"][8])  # small cell suppressed
+        finally:
+            _config._REDACTION_MIN_GROUP = original
+
+    def test_traffic_profile_no_suppression_by_default(self):
+        for i in range(3):
+            self._seed_crossing(i, f"2026-07-06T08:00:0{i}Z")
+        data = self.client.get("/analytics/traffic-profile?camera_id=research_cam").json()
+        self.assertFalse(data["k_anonymity"]["applied"])
+        self.assertEqual(data["hourly_counts"][8], 3)
+
     def test_scene_condition_crud_and_filter(self):
         for i in range(4):
             self._seed_crossing(i, f"2026-07-06T08:00:0{i}Z")

@@ -1,3 +1,5 @@
 -r requirements.txt
-ruff
-mypy
+# Pinned so CI is reproducible: an unpinned linter upgrade otherwise changes
+# what CI enforces with no code change. Bump these deliberately.
+ruff==0.16.9
+mypy==2.3.1

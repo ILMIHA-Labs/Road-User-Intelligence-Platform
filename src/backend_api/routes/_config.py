@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from common import constants as _constants
+from common import redaction as _redaction
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,12 @@ _ALERT_MQTT_BROKER_PORT = _env_int("MQTT_BROKER_PORT", 1883)
 _CAMERA_OFFLINE_AFTER_SECONDS = _env_float("CAMERA_OFFLINE_AFTER_SECONDS", _constants.CAMERA_OFFLINE_AFTER_SECONDS)
 _CAMERA_HEALTH_POLL_SECONDS = _env_float("CAMERA_HEALTH_POLL_SECONDS", _constants.CAMERA_HEALTH_POLL_SECONDS)
 _ALERT_CAMERA_RECOVERY_ENABLED = _env_flag("ALERT_CAMERA_RECOVERY_ENABLED", True)
+
+# Privacy redaction. Imagery redaction defaults ON (privacy-first; only affects
+# imagery that is actually stored). k-anonymity defaults OFF so it never
+# silently alters research numbers unless an operator opts in (min group >= 2).
+_REDACTION_CONFIG = _redaction.redaction_config_from_env()
+_REDACTION_MIN_GROUP = _env_int("REDACTION_MIN_GROUP", 0)
 
 _CAMERA_DEFAULTS_CACHE: dict = {"path": None, "mtime_ns": None, "defaults": {}}
 _RETIRED_VIOLATION_TYPES = ("multiple_riders_violation",)
