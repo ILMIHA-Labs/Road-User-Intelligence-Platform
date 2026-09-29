@@ -29,6 +29,14 @@ package-dir = {"" = "src"}
 [tool.ruff]
 src = ["src"]
 
+[tool.ruff.lint]
+# Pin the rule set explicitly to ruff's classic default (Pyflakes + core
+# pycodestyle) so a newer ruff can't silently enable extra rule families
+# (isort, pyupgrade, flake8-bugbear, …) and break CI without a code change.
+# The dev tools are also version-pinned in requirements-dev.txt. Broadening
+# this set (e.g. enabling "I" import sorting) is a deliberate, separate change.
+select = ["E4", "E7", "E9", "F"]
+
 [tool.ruff.lint.per-file-ignores]
 # Tests deliberately set env vars (e.g. DATABASE_URL) before importing the
 # modules that read them at import time, so imports can't sit at the top.

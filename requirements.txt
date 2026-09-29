@@ -8,6 +8,9 @@ fastapi
 python-multipart
 httpx
 uvicorn
-sqlalchemy
+# <2.1: the [tool.mypy] config uses sqlalchemy.ext.mypy.plugin, which was
+# removed in SQLAlchemy 2.1. Staying on the 2.0.x line keeps the type-check
+# gate working. Drop this cap only alongside migrating off the mypy plugin.
+sqlalchemy<2.1
 pandas
 requests
