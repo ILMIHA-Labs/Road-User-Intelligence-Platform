@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from common.redaction import suppress_small_counts_list, suppress_value
+
 from .. import models
 from ..database import get_db
 from ._shared import _apply_camera_filter, _apply_time_filters, _serialize_dt
@@ -248,6 +250,11 @@ def _serialize_condition(row: models.DBSceneCondition) -> dict:
 # Routes
 # ---------------------------------------------------------------------------
 
+def _min_group() -> int:
+    from . import _config
+    return _config._REDACTION_MIN_GROUP
+
+
 @router.get("/analytics/traffic-profile")
 def get_traffic_profile(
     camera_id: str = Query(default=None),
@@ -258,7 +265,14 @@ def get_traffic_profile(
     db: Session = Depends(get_db),
 ):
     windows = _matching_condition_windows(db, camera_id, lighting, weather)
-    return _get_traffic_profile_data(db, camera_id, start, end, windows)
+    data = _get_traffic_profile_data(db, camera_id, start, end, windows)
+    k = _min_group()
+    if k >= 2:
+        data["hourly_counts"] = suppress_small_counts_list(data["hourly_counts"], k)
+        data["weekday_count"] = suppress_value(data["weekday_count"], k)
+        data["weekend_count"] = suppress_value(data["weekend_count"], k)
+    data["k_anonymity"] = {"min_group": k, "applied": k >= 2}
+    return data
 
 
 @router.get("/analytics/headways")
@@ -271,7 +285,13 @@ def get_headways(
     db: Session = Depends(get_db),
 ):
     windows = _matching_condition_windows(db, camera_id, lighting, weather)
-    return _get_headways_data(db, camera_id, start, end, windows)
+    data = _get_headways_data(db, camera_id, start, end, windows)
+    k = _min_group()
+    if k >= 2:
+        for bucket in data["histogram"]:
+            bucket["count"] = suppress_value(bucket["count"], k)
+    data["k_anonymity"] = {"min_group": k, "applied": k >= 2}
+    return data
 
 
 @router.get("/analytics/speed-compliance")
@@ -284,7 +304,28 @@ def get_speed_compliance(
     db: Session = Depends(get_db),
 ):
     windows = _matching_condition_windows(db, camera_id, lighting, weather)
-    return _get_speed_compliance_data(db, camera_id, start, end, windows)
+    data = _get_speed_compliance_data(db, camera_id, start, end, windows)
+    k = _min_group()
+    if k >= 2:
+        data["within_limit"] = suppress_value(data["within_limit"], k)
+        data["over_limit"] = suppress_value(data["over_limit"], k)
+    data["k_anonymity"] = {"min_group": k, "applied": k >= 2}
+    return data
+
+
+@router.get("/privacy/redaction")
+def get_redaction_status():
+    """Report the effective privacy-redaction configuration (no secrets)."""
+    from . import _config
+    cfg = _config._REDACTION_CONFIG
+    return {
+        "imagery_redaction_enabled": cfg.enabled,
+        "redact_faces": cfg.redact_faces,
+        "redact_plates": cfg.redact_plates,
+        "method": cfg.method,
+        "strength": cfg.strength,
+        "k_anonymity_min_group": _config._REDACTION_MIN_GROUP,
+    }
 
 
 @router.post("/cameras/{camera_id}/conditions", status_code=201)
