@@ -4,6 +4,15 @@ YOLO_CLASSES_OF_INTEREST: list[int] = [0, 1, 2, 3, 5, 7]  # person, bicycle, car
 
 # Speed estimation
 DEFAULT_MAX_SPEED_KMH: float = 200.0
+# Arbitrary fallback scale used only when no real calibration is provided.
+# Perspective-blind, so speeds/distances derived from it are approximate.
+DEFAULT_PIXELS_PER_METER: float = 25.0
+# Default exponential-moving-average factor for pipeline speed smoothing
+# (1.0 = no smoothing). Lower = smoother/laggier.
+DEFAULT_SPEED_SMOOTHING_ALPHA: float = 0.5
+# A per-frame displacement implying a speed this many times the max plausible
+# speed is treated as a tracker ID-switch/teleport and rejected.
+SPEED_TELEPORT_REJECT_FACTOR: float = 1.5
 
 # Violation detection — time windows and thresholds
 STOPPED_SPEED_THRESHOLD_KMH: float = 3.0

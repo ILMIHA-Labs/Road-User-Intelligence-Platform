@@ -12,11 +12,12 @@ import cv2
 import numpy as np
 import yaml
 
+from common import constants as _constants
 from common.camera_config import DEFAULT_COUNTING_LINE_CLASSES, build_camera_profile_map
 from common.event_schemas import dump_event
 from common.redaction import redact_frame, redaction_config_from_env
 from edge_vision.line_counter import LineCrossingCounter
-from speed_estimation.calibration import CameraCalibration
+from speed_estimation.calibration import SOURCE_SCALAR, CameraCalibration
 from speed_estimation.speed_calc import SpeedCalculator
 from video_analysis.detector import YoloTrackDetector
 from video_analysis.geometry import (
@@ -498,6 +499,7 @@ class TrafficMetricsAnalyzer:
         counting_lines: Optional[List[dict]] = None,
         zebra_zones: Optional[List[dict]] = None,
         pixels_per_meter: Optional[float] = None,
+        calibration=None,
         zebra_speed_threshold_kmh: float = 15.0,
         zebra_zone_margin_m: float = 2.0,
         zebra_interaction_window_seconds: float = 3.0,
@@ -513,20 +515,36 @@ class TrafficMetricsAnalyzer:
             raise ValueError("No counting line configured. Add a counting line to cameras.yaml or pass --line-points.")
         self.zebra_zones = zebra_zones or []
 
-        self.pixels_per_meter = float(pixels_per_meter or camera_profile.get("pixels_per_meter", 25.0))
+        explicit_ppm = pixels_per_meter if pixels_per_meter is not None else camera_profile.get("pixels_per_meter")
+        self.pixels_per_meter = float(explicit_ppm) if explicit_ppm is not None else _constants.DEFAULT_PIXELS_PER_METER
         self.zebra_speed_threshold_kmh = float(zebra_speed_threshold_kmh)
         self.zebra_zone_margin_m = float(zebra_zone_margin_m)
         self.zebra_interaction_window_seconds = float(zebra_interaction_window_seconds)
         self.zebra_speed_trend_deadband_kmh = float(zebra_speed_trend_deadband_kmh)
         self.filter_riders_from_pedestrians = bool(filter_riders_from_pedestrians)
         self.max_riders_per_bike = int(max_riders_per_bike)
+
+        # Calibration precedence: explicit arg > camera_profile["calibration"] >
+        # explicit pixels_per_meter (scalar) > arbitrary default (warns).
+        calibration_config = calibration if calibration is not None else camera_profile.get("calibration")
+        if isinstance(calibration_config, CameraCalibration):
+            self.calibration = calibration_config
+        elif calibration_config:
+            self.calibration = CameraCalibration.from_config(calibration_config)
+        elif explicit_ppm is not None:
+            self.calibration = CameraCalibration(pixels_per_meter=self.pixels_per_meter, source=SOURCE_SCALAR)
+        else:
+            self.calibration = CameraCalibration.default()
+
         self.speed_calculator = SpeedCalculator(
-            calibration=CameraCalibration(pixels_per_meter=self.pixels_per_meter),
+            calibration=self.calibration,
             history_size=int(camera_profile.get("speed_history_size", 5)),
-            max_speed_kmh=float(camera_profile.get("speed_max_kmh", 200.0)),
+            max_speed_kmh=float(camera_profile.get("speed_max_kmh", _constants.DEFAULT_MAX_SPEED_KMH)),
             min_time_delta_seconds=float(camera_profile.get("speed_min_time_delta_seconds", 0.0)),
-            smoothing_alpha=float(camera_profile.get("speed_smoothing_alpha", 1.0)),
-            outlier_mode=camera_profile.get("speed_outlier_mode", "cap"),
+            smoothing_alpha=float(camera_profile.get("speed_smoothing_alpha", _constants.DEFAULT_SPEED_SMOOTHING_ALPHA)),
+            outlier_mode=camera_profile.get("speed_outlier_mode", "ignore"),
+            velocity_method=camera_profile.get("speed_velocity_method", "regression"),
+            teleport_reject=bool(camera_profile.get("speed_teleport_reject", True)),
         )
         self.line_counter = LineCrossingCounter(self.counting_lines)
         self.track_rows: List[dict] = []
@@ -1244,10 +1262,7 @@ class TrafficMetricsAnalyzer:
                 "processed_frames": frame_number,
                 "duration_seconds": round(duration_seconds, 3),
             },
-            "calibration": {
-                "pixels_per_meter": self.pixels_per_meter,
-                "source": "pixels_per_meter",
-            },
+            "calibration": self.calibration.describe(),
             "counting_lines": self.counting_lines,
             "zebra_zones": self.zebra_zones,
             "metrics": metrics,
@@ -1297,6 +1312,7 @@ def build_analyzer(
     zebra_points: Optional[List[List[float]]] = None,
     zebra_config: Optional[List[dict]] = None,
     pixels_per_meter: Optional[float] = None,
+    calibration=None,
     zebra_speed_threshold_kmh: float = 15.0,
     zebra_zone_margin_m: float = 2.0,
     zebra_interaction_window_seconds: float = 3.0,
@@ -1323,6 +1339,7 @@ def build_analyzer(
         counting_lines=counting_lines,
         zebra_zones=zebra_zones,
         pixels_per_meter=pixels_per_meter,
+        calibration=calibration,
         zebra_speed_threshold_kmh=zebra_speed_threshold_kmh,
         zebra_zone_margin_m=zebra_zone_margin_m,
         zebra_interaction_window_seconds=zebra_interaction_window_seconds,
