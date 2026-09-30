@@ -4,7 +4,7 @@ import logging
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import cv2
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -34,10 +34,27 @@ def _m():
     return _sys.modules["backend_api.main"]
 
 
+class CalibrationReferenceInput(BaseModel):
+    image_point_a: List[float] = Field(min_length=2, max_length=2)
+    image_point_b: List[float] = Field(min_length=2, max_length=2)
+    distance_m: float = Field(gt=0)
+
+
+class CalibrationInput(BaseModel):
+    """Optional real-world calibration. Homography (image_points + world_points_m,
+    >=4 correspondences) is preferred; a single reference distance or a plain
+    pixels_per_meter scalar are approximate fallbacks."""
+    image_points: Optional[List[List[float]]] = None
+    world_points_m: Optional[List[List[float]]] = None
+    reference: Optional[CalibrationReferenceInput] = None
+    pixels_per_meter: Optional[float] = Field(default=None, gt=0)
+
+
 class VideoAnalysisRunRequest(BaseModel):
     counting_lines: List[SetupCountingLineInput] = Field(default_factory=list)
     zebra_zones: List[SetupZebraZoneInput] = Field(default_factory=list)
     pixels_per_meter: float = Field(default=25.0, gt=0)
+    calibration: Optional[CalibrationInput] = None
     zebra_speed_threshold_kmh: float = Field(default=15.0, ge=0)
     approach_deadband_kmh: float = Field(default=2.0, ge=0)
 
@@ -176,18 +193,23 @@ def _analyze_uploaded_video(job: models.DBVideoAnalysisJob, progress_callback):
     from video_analysis.traffic_metrics import TrafficMetricsAnalyzer, YoloTrackDetector
 
     setup = job.setup or {}
+    calibration_config = setup.get("calibration")
     camera_profile = {
-        "pixels_per_meter": setup.get("pixels_per_meter", 25.0),
         "counting_lines": setup.get("counting_lines", []),
         "zones": setup.get("zebra_zones", []),
     }
+    if setup.get("pixels_per_meter") is not None:
+        camera_profile["pixels_per_meter"] = setup["pixels_per_meter"]
+    if calibration_config is not None:
+        camera_profile["calibration"] = calibration_config
     analyzer = TrafficMetricsAnalyzer(
         camera_id=job.camera_id,
         camera_profile=camera_profile,
         detector=YoloTrackDetector(model_path="yolov8l.pt", confidence=0.25),
         counting_lines=setup.get("counting_lines", []),
         zebra_zones=setup.get("zebra_zones", []),
-        pixels_per_meter=setup.get("pixels_per_meter", 25.0),
+        pixels_per_meter=setup.get("pixels_per_meter"),
+        calibration=calibration_config,
         zebra_speed_threshold_kmh=setup.get("zebra_speed_threshold_kmh", 15.0),
         zebra_zone_margin_m=2.0,
         zebra_interaction_window_seconds=3.0,
@@ -410,6 +432,8 @@ def run_video_analysis_job(job_id: str, request: VideoAnalysisRunRequest, db: Se
         "zebra_speed_threshold_kmh": request.zebra_speed_threshold_kmh,
         "zebra_speed_trend_deadband_kmh": request.approach_deadband_kmh,
     }
+    if request.calibration is not None:
+        job.setup["calibration"] = request.calibration.model_dump(exclude_none=True)
     job.status = "queued"
     job.processed_frames = 0
     job.total_frames = None

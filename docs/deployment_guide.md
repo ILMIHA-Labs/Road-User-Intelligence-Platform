@@ -140,6 +140,29 @@ timestamp) — never imagery or personal data — consistent with the platform's
 privacy posture. If a delivery channel fails, the alert is still recorded with
 the error; it never blocks event ingest.
 
+## Video-analysis calibration (speed & distance accuracy)
+
+Speeds, speed-compliance, and every metre-based zebra distance depend on knowing
+the real-world scale of the scene. Provide calibration per analysis (and per
+camera) — otherwise the pipeline falls back to an arbitrary scale and records a
+warning in `summary.json` under `calibration` (`source: "scalar_default"`).
+
+Best to worst, in the analysis run request / camera profile `calibration` block:
+
+- **Homography (recommended):** `image_points` (≥4 pixel points) plus
+  `world_points_m` (their real ground-plane positions in metres). Corrects
+  perspective across the whole frame — the only option that makes speeds/
+  distances accurate both near and far from the camera.
+- **Reference distance:** `reference: { image_point_a, image_point_b, distance_m }`
+  — two points a known distance apart. Better than a guess, but still a single
+  perspective-blind scale.
+- **Scalar:** `pixels_per_meter`. Simplest; least accurate.
+
+`summary.json.calibration.source` reports which was used, so operators can verify
+calibration provenance. Speed estimation additionally smooths (EMA), rejects
+tracker ID-switch "teleports", and fits velocity over a window; these are on by
+default for the analysis pipeline.
+
 ## Privacy-sensitive runtime defaults
 
 The public release is conservative by default:
