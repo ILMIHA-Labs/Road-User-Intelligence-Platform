@@ -20,6 +20,6 @@
   "iconLibrary": "lucide",
   "registries": {
     "@kokonutui": "https://kokonutui.com/r/{name}.json",
-    "@bklit": "https://ui.bklit.com/r/{name}.json"
+    "@bklit": "https://bklit.com/r/{name}.json"
   }
 }
