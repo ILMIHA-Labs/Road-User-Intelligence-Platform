@@ -85,3 +85,85 @@ export const SAMPLE_JOB = fromSummaryFile(SAMPLE_SUMMARY, {
   label: "Oxford St — 08:30 sample",
   originalFilename: "oxford_st_0830.mp4",
 });
+
+/** A second, quieter crossing — for the multi-job Compare view. */
+export const SAMPLE_SUMMARY_2: AnalysisSummary = {
+  mode: "traffic_metrics",
+  camera_id: "cam-elm-rd",
+  video: {
+    path: "elm_rd_1400.mp4",
+    fps: 25,
+    width: 1920,
+    height: 1080,
+    frame_count: 13500,
+    processed_frames: 13500,
+    duration_seconds: 540,
+  },
+  calibration: { source: "reference_distance", pixels_per_meter: 20.1 },
+  counting_lines: [{ id: "line-nb", label: "Northbound" }, { id: "line-sb", label: "Southbound" }],
+  zebra_zones: [{ id: "zebra-main" }],
+  metrics: {
+    total_crossings: 196,
+    counts_by_class: { car: 118, bus: 6, truck: 9, motorcycle: 14, bicycle: 21, pedestrian: 28 },
+    counts_by_line: { "line-nb": 103, "line-sb": 93 },
+    counts_by_direction: { northbound: 103, southbound: 93 },
+    flow_rate_per_minute: 21.8,
+    speed_limit_kmh: 30,
+    speed_metrics_by_class: {
+      car: { avg_speed_kmh: 24.1, max_speed_kmh: 38.5, p85_speed_kmh: 29.2, samples: 118, compliance_rate: 0.91 },
+      bus: { avg_speed_kmh: 20.4, max_speed_kmh: 27.9, p85_speed_kmh: 25.1, samples: 6, compliance_rate: 1.0 },
+      truck: { avg_speed_kmh: 22.8, max_speed_kmh: 33.0, p85_speed_kmh: 28.4, samples: 9, compliance_rate: 0.95 },
+      motorcycle: { avg_speed_kmh: 27.6, max_speed_kmh: 44.1, p85_speed_kmh: 35.0, samples: 14, compliance_rate: 0.79 },
+    },
+    crossing_safety: {
+      pedestrian_episodes: {
+        count: 34,
+        completed: 33,
+        avg_wait_seconds: 3.9,
+        median_wait_seconds: 3.1,
+        p85_wait_seconds: 8.4,
+        avg_crossing_seconds: 7.1,
+        median_crossing_seconds: 6.8,
+      },
+      yielding: { opportunities: 41, yielded: 36, did_not_yield: 3, unresolved: 2, yielding_rate: 0.9231 },
+      post_encroachment: {
+        events: 9,
+        min_pet_seconds: 1.9,
+        median_pet_seconds: 4.8,
+        critical_events: 1,
+        critical_threshold_seconds: 2.0,
+      },
+    },
+  },
+  zebra_metrics: {
+    events: 12,
+    zebra_yielding_risk: 9,
+    zebra_crossing_violation: 3,
+    rider_filtered_pedestrians_count: 2,
+    by_zone: {
+      "zebra-main": {
+        events: 12,
+        zebra_yielding_risk: 9,
+        zebra_crossing_violation: 3,
+        unique_objects_in_zone: 54,
+        max_objects_in_zone: 4,
+        max_vehicles_in_zone: 2,
+        max_pedestrians_in_zone: 3,
+        vehicle_approach_trends: { decelerating: 31, steady: 7, accelerating: 3 },
+      },
+    },
+  },
+  objects: [
+    { object_id: 1, class: "car", frames_seen: 120, max_speed_kmh: 33.1, avg_speed_kmh: 24.2 },
+    { object_id: 2, class: "pedestrian", frames_seen: 76, max_speed_kmh: 5.4, avg_speed_kmh: 3.9 },
+  ],
+  outputs: {},
+};
+
+export const SAMPLE_JOB_2 = fromSummaryFile(SAMPLE_SUMMARY_2, {
+  jobId: "sample-elm-rd",
+  label: "Elm Rd — 14:00 sample",
+  originalFilename: "elm_rd_1400.mp4",
+});
+
+export const SAMPLE_JOBS = [SAMPLE_JOB, SAMPLE_JOB_2];

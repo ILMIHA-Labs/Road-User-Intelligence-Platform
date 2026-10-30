@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChatPanel } from "@/components/assistant/chat-panel";
+import { CompareView } from "@/components/views/compare";
 import { OverviewView } from "@/components/views/overview";
 import { ZebraSafetyView } from "@/components/views/zebra-safety";
 import { cn } from "@/lib/utils";
@@ -13,14 +14,15 @@ const VIEWS = [
   { id: "speed", label: "Speed", ready: false },
   { id: "objects", label: "Objects", ready: false },
   { id: "video", label: "Annotated video", ready: false },
-  { id: "compare", label: "Compare", ready: false },
+  { id: "compare", label: "Compare", ready: true },
 ] as const;
 
 type ViewId = (typeof VIEWS)[number]["id"];
 
-export function AppShell({ job }: { job: DashboardJob }) {
+export function AppShell({ jobs }: { jobs: DashboardJob[] }) {
   const [active, setActive] = useState<ViewId>("overview");
   const [chatOpen, setChatOpen] = useState(false);
+  const job = jobs[0];
   const s = job.summary;
 
   return (
@@ -81,7 +83,8 @@ export function AppShell({ job }: { job: DashboardJob }) {
         <main>
           {active === "overview" ? <OverviewView job={job} /> : null}
           {active === "zebra" ? <ZebraSafetyView job={job} /> : null}
-          {active !== "overview" && active !== "zebra" ? <Planned /> : null}
+          {active === "compare" ? <CompareView jobs={jobs} /> : null}
+          {active !== "overview" && active !== "zebra" && active !== "compare" ? <Planned /> : null}
         </main>
         {chatOpen ? (
           <aside className="mt-6 lg:mt-0">
