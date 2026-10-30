@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChatPanel } from "@/components/assistant/chat-panel";
 import { OverviewView } from "@/components/views/overview";
 import { ZebraSafetyView } from "@/components/views/zebra-safety";
 import { cn } from "@/lib/utils";
@@ -19,10 +20,11 @@ type ViewId = (typeof VIEWS)[number]["id"];
 
 export function AppShell({ job }: { job: DashboardJob }) {
   const [active, setActive] = useState<ViewId>("overview");
+  const [chatOpen, setChatOpen] = useState(false);
   const s = job.summary;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6">
       <header className="mb-6">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold tracking-tight">
@@ -31,6 +33,18 @@ export function AppShell({ job }: { job: DashboardJob }) {
           <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
             {job.source === "api" ? "live API" : "imported file"}
           </span>
+          <button
+            onClick={() => setChatOpen((v) => !v)}
+            aria-pressed={chatOpen}
+            className={cn(
+              "ml-auto rounded-md border px-3 py-1.5 text-sm transition-colors",
+              chatOpen
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted-foreground hover:text-foreground",
+            )}
+          >
+            Assistant
+          </button>
         </div>
         {s ? (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -63,11 +77,20 @@ export function AppShell({ job }: { job: DashboardJob }) {
         ))}
       </nav>
 
-      <main>
-        {active === "overview" ? <OverviewView job={job} /> : null}
-        {active === "zebra" ? <ZebraSafetyView job={job} /> : null}
-        {active !== "overview" && active !== "zebra" ? <Planned /> : null}
-      </main>
+      <div className={cn(chatOpen && "lg:grid lg:grid-cols-[1fr_380px] lg:gap-6")}>
+        <main>
+          {active === "overview" ? <OverviewView job={job} /> : null}
+          {active === "zebra" ? <ZebraSafetyView job={job} /> : null}
+          {active !== "overview" && active !== "zebra" ? <Planned /> : null}
+        </main>
+        {chatOpen ? (
+          <aside className="mt-6 lg:mt-0">
+            <div className="lg:sticky lg:top-6 h-[32rem] lg:h-[calc(100vh-7rem)]">
+              <ChatPanel job={job} />
+            </div>
+          </aside>
+        ) : null}
+      </div>
     </div>
   );
 }
