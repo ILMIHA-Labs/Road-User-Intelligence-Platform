@@ -48,8 +48,35 @@ If `shadcn add` reports the registry is unconfigured, confirm the `registries` b
 
 ```bash
 npm run dev     # http://localhost:3000
-npm run build   # production build (verified to compile offline)
+npm run build   # production build
 ```
+
+## Serving & deployment
+
+The dashboard runs as a **Node server** (not a static export) because the chat
+proxy (`/api/assistant/chat`) needs a server runtime (#15, #17).
+
+- **Same-origin API.** The browser calls the backend at `/api/v1/*`. In dev,
+  `next.config.ts` rewrites that to the Python FastAPI backend (`API_ORIGIN`,
+  default `http://localhost:8000`), so there is **no CORS** to configure. The
+  dashboard's own `/api/assistant/*` route is matched before the rewrite.
+- **Local dev:** run the Python API, then `npm run dev`. Override the backend
+  with `API_ORIGIN=http://host:port`.
+- **Production:** build with `output: "standalone"` and run `node server.js`
+  (see the `Dockerfile`). Put it behind a reverse proxy that routes `/api/v1/*`
+  to the backend and everything else to the dashboard.
+- **Auth:** none in-app — deploy behind the platform's existing auth / a trusted
+  boundary. The Anthropic key stays server-side (`ANTHROPIC_API_KEY`); the
+  browser never sees it.
+
+Build and run the container:
+
+```bash
+docker build -t ruip-dashboard --build-arg API_ORIGIN=http://backend:8000 .
+docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... ruip-dashboard
+```
+
+See `.env.example` for all environment variables.
 
 ## Where the data comes from
 
