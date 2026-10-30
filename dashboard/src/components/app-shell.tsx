@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { ChatPanel } from "@/components/assistant/chat-panel";
+import { AnnotatedVideoView } from "@/components/views/annotated-video";
 import { CompareView } from "@/components/views/compare";
+import { ObjectsView } from "@/components/views/objects";
 import { OverviewView } from "@/components/views/overview";
+import { SpeedView } from "@/components/views/speed";
 import { ZebraSafetyView } from "@/components/views/zebra-safety";
 import { cn } from "@/lib/utils";
 import type { DashboardJob } from "@/data/types";
@@ -11,9 +14,9 @@ import type { DashboardJob } from "@/data/types";
 const VIEWS = [
   { id: "overview", label: "Overview", ready: true },
   { id: "zebra", label: "Zebra safety", ready: true },
-  { id: "speed", label: "Speed", ready: false },
-  { id: "objects", label: "Objects", ready: false },
-  { id: "video", label: "Annotated video", ready: false },
+  { id: "speed", label: "Speed", ready: true },
+  { id: "objects", label: "Objects", ready: true },
+  { id: "video", label: "Annotated video", ready: true },
   { id: "compare", label: "Compare", ready: true },
 ] as const;
 
@@ -83,8 +86,10 @@ export function AppShell({ jobs }: { jobs: DashboardJob[] }) {
         <main>
           {active === "overview" ? <OverviewView job={job} /> : null}
           {active === "zebra" ? <ZebraSafetyView job={job} /> : null}
+          {active === "speed" ? <SpeedView job={job} /> : null}
+          {active === "objects" ? <ObjectsView job={job} /> : null}
+          {active === "video" ? <AnnotatedVideoView job={job} /> : null}
           {active === "compare" ? <CompareView jobs={jobs} /> : null}
-          {active !== "overview" && active !== "zebra" && active !== "compare" ? <Planned /> : null}
         </main>
         {chatOpen ? (
           <aside className="mt-6 lg:mt-0">
@@ -94,16 +99,6 @@ export function AppShell({ jobs }: { jobs: DashboardJob[] }) {
           </aside>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function Planned() {
-  return (
-    <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
-      Planned view — part of the view catalogue (ticket #18). The Overview and
-      Zebra safety views are prototyped; the rest follow once this layout is
-      approved.
     </div>
   );
 }
